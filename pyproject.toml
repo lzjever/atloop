@@ -1,0 +1,141 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "titan"
+dynamic = ["version"]
+description = "Tool-Integrated Task Automation Node - Automated agent for code tasks in sandbox environments"
+readme = "README.md"
+requires-python = ">=3.8,<3.15"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "TITAN Team"}
+]
+keywords = ["agent", "automation", "code-fix", "sandbox", "llm", "ai", "development-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+]
+
+# Core dependencies (includes varlord - used by both lib/api and CLI)
+dependencies = [
+    "varlord>=0.7.0",  # Configuration management (used by lib/api and CLI)
+    "lexilux>=2.0.0",  # LLM communication
+    "noxrunner>=0.1.0",  # Sandbox execution
+    "rich>=13.0.0",  # Console output
+    "json-repair>=0.30.0",  # JSON repair
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "build>=0.10.0",
+]
+docs = [
+    "sphinx>=5.0.0,<9.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "furo>=2024.1.0",
+    "sphinx-autodoc-typehints>=1.19.0",
+    "sphinx-copybutton>=0.5.0",
+    "sphinx-design>=0.5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "build>=0.10.0",
+]
+docs = [
+    "sphinx>=5.0.0,<9.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "furo>=2024.1.0",
+    "sphinx-autodoc-typehints>=1.19.0",
+    "sphinx-copybutton>=0.5.0",
+    "sphinx-design>=0.5.0",
+]
+
+[project.scripts]
+titanc = "titan.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/lzjever/titan"
+Documentation = "https://titan.readthedocs.io"
+Repository = "https://github.com/lzjever/titan"
+Issues = "https://github.com/lzjever/titan/issues"
+
+[tool.setuptools.packages.find]
+include = ["titan*", "bin*"]
+exclude = [
+    "tests*",
+    "examples*",
+    "docs*",
+    "*.tests*",
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "titan.__version__"}
+
+[tool.setuptools.package-data]
+titan = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::pytest.PytestDeprecationWarning",
+    "ignore::pytest.PytestReturnNotNoneWarning",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["titan"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
