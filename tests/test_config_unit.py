@@ -8,11 +8,11 @@ import pytest
 
 from atloop.config.loader import ConfigLoader
 from atloop.config.models import (
+    AtloopConfig,
     Budget,
     MemoryConfig,
     SandboxConfig,
     TaskSpec,
-    AtloopConfig,
 )
 
 logger = logging.getLogger(__name__)

@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict
 
-from atloop.config.models import TaskSpec, AtloopConfig
+from atloop.config.models import AtloopConfig, TaskSpec
 from atloop.orchestrator.coordinator import WorkflowCoordinator
 from atloop.orchestrator.workflow import Workflow
 

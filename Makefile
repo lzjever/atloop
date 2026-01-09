@@ -1,4 +1,4 @@
-.PHONY: help clean install dev-install test test-cov lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package setup-venv
+.PHONY: help clean install dev-install test test-cov test-integration lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package setup-venv
 
 # Use uv if available, otherwise fall back to pip
 UV := $(shell command -v uv 2>/dev/null)
@@ -22,11 +22,9 @@ help:
 	@echo "  install       - Install the package (after setup-venv or standalone)"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test          - Run all tests"
-	@echo "  test-unit     - Run unit tests only"
-	@echo "  test-integration - Run integration tests only"
-	@echo "  test-e2e      - Run end-to-end tests only"
+	@echo "  test          - Run all unit tests (excludes integration tests)"
 	@echo "  test-cov      - Run tests with coverage report"
+	@echo "  test-integration - Run all integration tests (requires external services)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run linting checks (ruff)"
@@ -94,25 +92,20 @@ test:
 	$(PYTHON_CMD) -m pytest tests/ -v
 
 test-cov:
-	$(PYTHON_CMD) -m pytest tests/ --cov=atloop --cov-report=html --cov-report=term --cov-report=xml
-
-test-unit:
-	$(PYTHON_CMD) -m pytest tests/ -v -k "unit" || $(PYTHON_CMD) -m pytest tests/test_*_unit.py -v
+	$(PYTHON_CMD) -m pytest tests/ --cov=atloop --cov-report=html --cov-report=term
 
 test-integration:
-	$(PYTHON_CMD) -m pytest tests/ -v -k "integration" || $(PYTHON_CMD) -m pytest tests/test_*_integration.py -v
-
-test-e2e:
-	$(PYTHON_CMD) -m pytest tests/ -v -k "e2e" || $(PYTHON_CMD) -m pytest tests/test_e2e_*.py -v
+	@echo "Running integration tests (requires external services)..."
+	$(PYTHON_CMD) -m pytest tests/ -v -m integration
 
 lint:
-	$(PYTHON_CMD) -m ruff check atloop/ tests/ --output-format=concise --no-fix
+	$(PYTHON_CMD) -m ruff check atloop/ tests/ --output-format=concise
 
 format:
 	$(PYTHON_CMD) -m ruff format atloop/ tests/
 
 format-check:
-	$(PYTHON_CMD) -m ruff format --check atloop/ tests/ cli/
+	$(PYTHON_CMD) -m ruff format --check atloop/ tests/
 
 check: lint format-check test
 	@echo "All checks passed!"
@@ -177,10 +170,10 @@ upload-test: check-package
 		--username __token__ \
 		--password $$TEST_PYPI_TOKEN
 
-docs:
+docs: clean-docs
 	cd docs && make html
 
-html:
+html: clean-docs
 	cd docs && make html
 
 clean:

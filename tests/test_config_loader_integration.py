@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.integration
+
 from atloop.config.loader import ConfigLoader
 from atloop.config.models import AtloopConfig
 

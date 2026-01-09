@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from atloop.config.models import TaskSpec, AtloopConfig
+from atloop.config.models import AtloopConfig, TaskSpec
 from atloop.llm import LLMClient
 from atloop.logging import EventLogger
 from atloop.orchestrator.budget import BudgetManager

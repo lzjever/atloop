@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.e2e
+
 from atloop.cli.commands.config import cmd_config
 from atloop.cli.commands.execute import cmd_execute
 from atloop.cli.commands.init import cmd_init
