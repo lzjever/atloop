@@ -81,6 +81,25 @@ class VerifyPhase(BasePhase):
             state.artifacts.verification_success = verification_result.success
             logger.debug(f"[VerifyPhase] Verification success stored: {verification_result.success}")
 
+            # Task completion detection: Check if task goal is achieved
+            task_goal = self.coordinator.task_spec.goal.lower()
+            if state.memory.created_files and task_goal:
+                # Simple heuristic: if goal contains "write" and "code" and file exists, task might be complete
+                if ('write' in task_goal or 'create' in task_goal) and \
+                   ('code' in task_goal or 'file' in task_goal or 'python' in task_goal):
+                    logger.info(
+                        f"[VerifyPhase] Task completion detected: "
+                        f"goal='{self.coordinator.task_spec.goal}', "
+                        f"created_files={state.memory.created_files}"
+                    )
+                    # Add completion hint to state for next PLAN phase
+                    state.memory.notes.append(
+                        f"Task completion hint: File(s) {state.memory.created_files} created. "
+                        f"Task goal '{self.coordinator.task_spec.goal}' appears to be achieved. "
+                        f"Consider setting stop_reason='done' if task is complete."
+                    )
+                    logger.info(f"[VerifyPhase] Added task completion hint to memory.notes")
+
             # Transition to DISCOVER (let LLM decide in PLAN phase)
             logger.debug(f"[VerifyPhase] Transitioning to DISCOVER phase")
             self._transition(Phase.DISCOVER)

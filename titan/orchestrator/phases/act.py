@@ -15,6 +15,7 @@ from titan.config.limits import (
 from titan.llm import ActionJSON
 from titan.orchestrator.executor.tool_executor import ToolExecutor
 from titan.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
+from titan.orchestrator.phases.stop_reason_handler import StopReasonHandler
 from titan.orchestrator.state_machine import Phase
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,19 @@ class ActPhase(BasePhase):
                         if file_path not in state.memory.created_files:
                             state.memory.created_files.append(file_path)
                             logger.info(f"[ActPhase] Tracking newly created file: {file_path} (total: {len(state.memory.created_files)})")
+                            
+                            # Update current_diff to show file creation
+                            file_content = args.get("content", "")
+                            if file_content:
+                                # Create a simple diff showing file was created
+                                diff_content = f"+++ {file_path}\n@@ -0,0 +1,{len(file_content.splitlines())} @@\n"
+                                for line in file_content.splitlines()[:50]:  # First 50 lines
+                                    diff_content += f"+{line}\n"
+                                if len(file_content.splitlines()) > 50:
+                                    diff_content += f"... ({len(file_content.splitlines()) - 50} more lines)\n"
+                                state.artifacts.current_diff = diff_content[:5000]  # Limit diff size
+                                logger.debug(f"[ActPhase] Updated current_diff after file creation: {file_path}")
+                            
                             self.coordinator.state_manager.save()
 
                 # Update budget
@@ -220,47 +234,23 @@ class ActPhase(BasePhase):
                     self.coordinator.state_manager.save()
                     logger.debug(f"[ActPhase] Added milestone: {milestone_content}")
 
-            # Check pending stop_reason
-            pending_stop_reason = self.coordinator.job_state.shared_data.get("pending_stop_reason")
+            # Check and apply pending stop_reason using unified handler
+            pending_stop_reason = self.coordinator.job_state.shared_data.pop(
+                "pending_stop_reason", None
+            )
             if pending_stop_reason:
                 logger.info(
-                    f"[ActPhase] ACT phase detected pending_stop_reason='{pending_stop_reason}', will stop after executing actions"
+                    f"[ActPhase] Applying pending stop_reason='{pending_stop_reason}' "
+                    f"after actions execution (Step {state.step})"
                 )
-                del self.coordinator.job_state.shared_data["pending_stop_reason"]
-
-                if pending_stop_reason == "done":
-                    logger.info(f"[ActPhase] After executing actions, marking as DONE (Step {state.step})")
-                    self.coordinator.event_logger.log_decision(
-                        step=state.step,
-                        stop_reason="done",
-                        verification_success=state.artifacts.verification_success,
-                        reason="LLM determined task is complete (all actions executed)",
-                    )
-                    self.coordinator.state_manager.update(phase="DONE")
-                    self._transition(Phase.DONE)
-                    logger.info(f"[ActPhase] Set phase=DONE, main loop should exit")
-                    return PhaseResult(
-                        success=True,
-                        data={},
-                        next_phase=Phase.DONE,
-                    )
-                elif pending_stop_reason == "fail":
-                    logger.info(f"[ActPhase] After executing actions, marking as FAIL (Step {state.step})")
-                    self.coordinator.event_logger.log_decision(
-                        step=state.step,
-                        stop_reason="fail",
-                        verification_success=state.artifacts.verification_success,
-                        reason="LLM determined task failed",
-                    )
-                    self.coordinator.state_manager.update(phase="FAIL")
-                    self._transition(Phase.FAIL)
-                    logger.info(f"[ActPhase] Set phase=FAIL, main loop should exit")
-                    return PhaseResult(
-                        success=False,
-                        data={},
-                        next_phase=Phase.FAIL,
-                        error="LLM determined task failed",
-                    )
+                return StopReasonHandler.apply_pending_stop_reason(
+                    pending_stop_reason=pending_stop_reason,
+                    step=state.step,
+                    verification_success=state.artifacts.verification_success,
+                    event_logger=self.coordinator.event_logger,
+                    state_manager=self.coordinator.state_manager,
+                    state_machine=self.coordinator.state_machine,
+                )
 
             # Transition to VERIFY
             logger.debug(f"[ActPhase] Transitioning to VERIFY phase")

@@ -86,7 +86,7 @@ class MemoryCompressor:
             try:
                 # Estimate memory size by generating a summary with very large limit
                 from titan.memory.summarizer import MemorySummarizer
-                memory_summary = MemorySummarizer.summarize(state, max_length=999999)
+                memory_summary = MemorySummarizer.summarize(state, max_length=999999, task_goal=None)
                 memory_size = len(memory_summary)
                 
                 if memory_size > memory_config.llm_compression_threshold:
@@ -249,12 +249,13 @@ class MemoryCompressor:
             
             # Call LLM for compression
             # Use a simple completion call (not plan_and_act)
+            # lexilux 2.1.0: complete(messages, *, system=..., params=ChatParams, **kwargs)
             from lexilux import ChatParams
             chat_params = ChatParams(temperature=0.3, max_tokens=4000)
             
             # Use LLM client's chat directly
             result = llm_client.chat.complete(
-                message=compression_prompt,
+                compression_prompt,
                 system="你是一个记忆压缩专家。请将历史决策压缩为简洁的摘要，保留关键信息。",
                 params=chat_params,
             )

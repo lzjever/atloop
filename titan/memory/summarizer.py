@@ -9,6 +9,8 @@ from titan.config.limits import (
     MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
     MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
 )
+from typing import Optional
+
 from titan.memory.state import AgentState
 
 
@@ -30,12 +32,12 @@ class MemorySummarizer:
         
         # Created files count
         if state.memory.created_files:
-            parts.append(f"📁 {len(state.memory.created_files)} 文件")
+            parts.append(f"📁 {len(state.memory.created_files)} files")
             # Show last file name (truncated if too long)
             last_file = state.memory.created_files[-1]
             if len(last_file) > 30:
                 last_file = "..." + last_file[-27:]
-            parts.append(f"最新: {last_file}")
+            parts.append(f"Latest: {last_file}")
         
         # Recent attempts
         if state.memory.attempts:
@@ -43,10 +45,10 @@ class MemorySummarizer:
             success = last_attempt.get("success", False)
             files = last_attempt.get("files", [])
             status = "✓" if success else "✗"
-            parts.append(f"{status} 修改 {len(files)} 文件")
+            parts.append(f"{status} Modified {len(files)} files")
         
         # Budget usage
-        parts.append(f"💰 LLM:{state.budget_used.llm_calls} 工具:{state.budget_used.tool_calls}")
+        parts.append(f"💰 LLM:{state.budget_used.llm_calls} Tools:{state.budget_used.tool_calls}")
         
         # Long-term memory preview
         if state.memory.plan or state.memory.task_summary:
@@ -56,11 +58,11 @@ class MemorySummarizer:
                 plan_str = PlanManager.plan_to_string(state.memory.plan)
                 if plan_str:
                     plan_preview = plan_str[:40] + "..." if len(plan_str) > 40 else plan_str
-                    long_term_parts.append(f"计划: {plan_preview}")
+                    long_term_parts.append(f"Plan: {plan_preview}")
             if state.memory.important_decisions:
-                long_term_parts.append(f"决策:{len(state.memory.important_decisions)}")
+                long_term_parts.append(f"Decisions:{len(state.memory.important_decisions)}")
             if state.memory.milestones:
-                long_term_parts.append(f"里程碑:{len(state.memory.milestones)}")
+                long_term_parts.append(f"Milestones:{len(state.memory.milestones)}")
             if long_term_parts:
                 parts.append(f"📋 {' | '.join(long_term_parts)}")
         
@@ -73,16 +75,17 @@ class MemorySummarizer:
             error_first_line = error_preview.split("\n")[0]
             parts.append(f"⚠️ {error_first_line}")
         
-        return " | ".join(parts) if parts else "无记忆信息"
+        return " | ".join(parts) if parts else "No memory information"
 
     @staticmethod
-    def summarize(state: AgentState, max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT) -> str:
+    def summarize(state: AgentState, max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT, task_goal: Optional[str] = None) -> str:
         """
         Summarize agent state memory.
 
         Args:
             state: Agent state
             max_length: Maximum summary length
+            task_goal: Optional task goal for completion detection
 
         Returns:
             Summary string
@@ -100,18 +103,18 @@ class MemorySummarizer:
             not state.memory.llm_responses and
             not state.memory.tool_results_history and
             not state.memory.modified_files_content):
-            return "初始状态：任务刚开始，还没有执行任何操作。"
+            return "Initial state: Task just started, no operations executed yet."
         
         # Long-term memory: Task summary (shown first, persists across steps)
         if state.memory.task_summary:
-            parts.append("## 📋 任务概览（长期记忆）")
+            parts.append("## 📋 Task Overview (Long-term Memory)")
             parts.append(state.memory.task_summary)
             parts.append("")
         
         # Long-term memory: Current plan (can be dynamically updated)
         if state.memory.plan:
             from titan.memory.plan import PlanManager, PlanStep
-            parts.append("## 📝 当前执行计划（长期记忆，可动态更新）")
+            parts.append("## 📝 Current Execution Plan (Long-term Memory, Dynamically Updated)")
             
             # Convert plan to string representation
             plan_str = PlanManager.plan_to_string(state.memory.plan)
@@ -122,15 +125,15 @@ class MemorySummarizer:
                 if isinstance(state.memory.plan, list) and state.memory.plan and isinstance(state.memory.plan[0], (PlanStep, dict)):
                     progress = PlanManager.get_progress(state)
                     if progress["total"] > 0:
-                        parts.append(f"\n进度: {progress['completed']}/{progress['total']} 已完成 "
+                        parts.append(f"\nProgress: {progress['completed']}/{progress['total']} completed "
                                    f"({progress['completion_rate']*100:.0f}%), "
-                                   f"{progress['in_progress']} 进行中, {progress['pending']} 待处理")
+                                   f"{progress['in_progress']} in progress, {progress['pending']} pending")
             parts.append("")
         
         # Long-term memory: Important decisions (sorted by importance)
         if state.memory.important_decisions:
             from titan.memory.scorer import ImportanceScorer
-            parts.append("## 🎯 重要决策（长期记忆）")
+            parts.append("## 🎯 Important Decisions (Long-term Memory)")
             
             # Score and sort by importance
             scored_decisions = []
@@ -151,7 +154,7 @@ class MemorySummarizer:
         # Long-term memory: Milestones (sorted by importance)
         if state.memory.milestones:
             from titan.memory.scorer import ImportanceScorer
-            parts.append("## 🏆 已达成里程碑（长期记忆）")
+            parts.append("## 🏆 Achieved Milestones (Long-term Memory)")
             
             # Score and sort by importance
             scored_milestones = []
@@ -171,7 +174,7 @@ class MemorySummarizer:
         # Long-term memory: Learnings (sorted by importance)
         if state.memory.learnings:
             from titan.memory.scorer import ImportanceScorer
-            parts.append("## 💡 重要经验（长期记忆）")
+            parts.append("## 💡 Important Learnings (Long-term Memory)")
             
             # Score and sort by importance
             scored_learnings = []
@@ -188,7 +191,7 @@ class MemorySummarizer:
 
         # Recent decisions (last 3) - Enhanced with LLM response details
         if state.memory.decisions:
-            parts.append("## 最近决策")
+            parts.append("## Recent Decisions")
             for decision in state.memory.decisions[-3:]:
                 step = decision.get("step", "?")
                 actions_count = len(decision.get("actions", []))
@@ -197,13 +200,13 @@ class MemorySummarizer:
                 
                 # Show decision with thought summary if available
                 if thought_summary:
-                    parts.append(f"- Step {step}: {thought_summary[:100]}... (执行了 {actions_count} 个动作, {stop_reason})")
+                    parts.append(f"- Step {step}: {thought_summary[:100]}... (executed {actions_count} actions, {stop_reason})")
                 else:
-                    parts.append(f"- Step {step}: 执行了 {actions_count} 个动作 ({stop_reason})")
+                    parts.append(f"- Step {step}: Executed {actions_count} actions ({stop_reason})")
         
         # Phase 3: Enhanced - Show recent LLM responses if available
         if state.memory.llm_responses:
-            parts.append("\n## 最近 LLM 回复（增强存储）")
+            parts.append("\n## Recent LLM Responses (Enhanced Storage)")
             for response in state.memory.llm_responses[-3:]:  # Last 3 responses
                 step = response.get("step", "?")
                 thought = response.get("thought_summary", "")
@@ -213,23 +216,23 @@ class MemorySummarizer:
                 if plan:
                     plan_preview = ", ".join(str(p)[:30] for p in plan[:2])
                     if len(plan) > 2:
-                        plan_preview += f" ... (共 {len(plan)} 步)"
-                    parts.append(f"  计划: {plan_preview}")
+                        plan_preview += f" ... (total {len(plan)} steps)"
+                    parts.append(f"  Plan: {plan_preview}")
 
         # Recent attempts (last 3) - include detailed tool execution results
         # CRITICAL: Show ALL tool outputs, especially for shell commands
         if state.memory.attempts:
-            parts.append("\n## 最近尝试")
+            parts.append("\n## Recent Attempts")
             for attempt in state.memory.attempts[-3:]:
                 files = attempt.get("files", [])
                 success = attempt.get("success", False)
-                status = "成功" if success else "失败"
-                parts.append(f"- 修改了 {len(files)} 个文件: {status}")
+                status = "Success" if success else "Failed"
+                parts.append(f"- Modified {len(files)} files: {status}")
 
                 # Include detailed tool execution results for LLM to judge
                 results = attempt.get("results", [])
                 if results:
-                    parts.append("  工具执行详情:")
+                    parts.append("  Tool Execution Details:")
                     for i, result in enumerate(results[-3:], 1):  # Last 3 results
                         tool = result.get("tool", "unknown")
                         tool_ok = result.get("ok", False)
@@ -260,44 +263,59 @@ class MemorySummarizer:
                             if len(stderr) > max_stderr:
                                 stderr_preview = (
                                     stderr[: max_stderr // 2]
-                                    + f"\n... [省略 {len(stderr) - max_stderr} 字符] ...\n"
+                                    + f"\n... [Omitted {len(stderr) - max_stderr} chars] ...\n"
                                     + stderr[-max_stderr // 2 :]
                                 )
                             else:
                                 stderr_preview = stderr
-                            parts.append(f"      Stderr ({len(stderr)} 字符):\n{stderr_preview}")
+                            parts.append(f"      Stderr ({len(stderr)} chars):\n{stderr_preview}")
                         if stdout:
                             # Always show stdout for shell commands, even if long
                             if len(stdout) > max_stdout:
                                 stdout_preview = (
                                     stdout[: max_stdout // 2]
-                                    + f"\n... [省略 {len(stdout) - max_stdout} 字符] ...\n"
+                                    + f"\n... [Omitted {len(stdout) - max_stdout} chars] ...\n"
                                     + stdout[-max_stdout // 2 :]
                                 )
                             else:
                                 stdout_preview = stdout
-                            parts.append(f"      Stdout ({len(stdout)} 字符):\n{stdout_preview}")
+                            parts.append(f"      Stdout ({len(stdout)} chars):\n{stdout_preview}")
+
+        # Task completion status check (add at the beginning for visibility)
+        # Check if task goal matches created files for simple "write code" tasks
+        if task_goal and state.memory.created_files:
+            task_goal_lower = task_goal.lower()
+            # Simple heuristic: if goal contains "write" and "code" and file is created, task might be complete
+            if ('write' in task_goal_lower or 'create' in task_goal_lower) and \
+               ('code' in task_goal_lower or 'file' in task_goal_lower or 'python' in task_goal_lower):
+                parts.insert(0, "\n## ✅ Task Completion Status")
+                parts.insert(1, f"**Task Goal**: {task_goal}")
+                parts.insert(2, f"**Created Files**: {', '.join(state.memory.created_files)}")
+                parts.insert(3, "")
+                parts.insert(4, "**Analysis**: File(s) have been created. For simple 'write code' tasks, this typically means the task is complete.")
+                parts.insert(5, "**Recommendation**: If the created file(s) satisfy the task goal, please set `stop_reason='done'`.")
+                parts.insert(6, "")
 
         # Created files (for resume capability) - Important but after long-term memory
         if state.memory.created_files:
-            parts.insert(0, "\n## ⚠️⚠️⚠️ 已创建的文件（CRITICAL：不要重复创建！）")
-            parts.insert(1, f"**已创建 {len(state.memory.created_files)} 个文件**：")
+            parts.insert(0, "\n## ⚠️⚠️⚠️ Created Files (CRITICAL: Do NOT recreate!)")
+            parts.insert(1, f"**{len(state.memory.created_files)} files created**:")
             for i, file_path in enumerate(state.memory.created_files[-20:], 1):  # Last 20 files
                 parts.insert(1 + i, f"- ✅ {file_path}")
             if len(state.memory.created_files) > 20:
-                parts.insert(1 + len(state.memory.created_files[-20:]) + 1, f"... (还有 {len(state.memory.created_files) - 20} 个文件)")
+                parts.insert(1 + len(state.memory.created_files[-20:]) + 1, f"... ({len(state.memory.created_files) - 20} more files)")
             insert_pos = 1 + min(20, len(state.memory.created_files)) + (2 if len(state.memory.created_files) > 20 else 1)
             parts.insert(insert_pos, "")
-            parts.insert(insert_pos + 1, "🚨🚨🚨 **CRITICAL 警告**：")
-            parts.insert(insert_pos + 2, "1. **这些文件已经存在，绝对不要重复创建！**")
-            parts.insert(insert_pos + 3, "2. 如果任务需要创建多个文件，请继续创建**剩余的文件**（不在上述列表中的文件）")
-            parts.insert(insert_pos + 4, "3. 如果上述文件需要修改，使用 `edit_file` 工具进行修改，不要使用 `write_file` 重新创建")
-            parts.insert(insert_pos + 5, "4. **在创建任何新文件之前，必须先检查上述列表，确保不会重复创建**")
-            parts.insert(insert_pos + 6, "5. 如果看到上述列表中有文件，说明该文件已经存在，直接使用 `read_file` 读取或 `edit_file` 修改")
+            parts.insert(insert_pos + 1, "🚨🚨🚨 **CRITICAL WARNING**:")
+            parts.insert(insert_pos + 2, "1. **These files already exist, DO NOT recreate them!**")
+            parts.insert(insert_pos + 3, "2. If task requires multiple files, continue creating **remaining files** (not in the list above)")
+            parts.insert(insert_pos + 4, "3. If files above need modification, use `edit_file` tool, do NOT use `write_file` to recreate")
+            parts.insert(insert_pos + 5, "4. **Before creating any new file, check the list above to ensure no duplicates**")
+            parts.insert(insert_pos + 6, "5. If a file is in the list above, it already exists - use `read_file` to read or `edit_file` to modify")
 
         # Key files
         if state.memory.key_files:
-            parts.append("\n## 关键文件")
+            parts.append("\n## Key Files")
             for key_file in state.memory.key_files[-5:]:  # Last 5
                 path = key_file.get("path", "?")
                 reason = key_file.get("reason", "")
@@ -305,9 +323,9 @@ class MemorySummarizer:
 
         # Phase 5: Recently modified files content (auto-read)
         if state.memory.modified_files_content:
-            parts.append("\n## 最近修改的文件内容（自动读取）")
+            parts.append("\n## Recently Modified File Content (Auto-read)")
             
-            # 按重要性排序，取最重要的 N 个
+            # Sort by importance, take top N
             sorted_files = sorted(
                 state.memory.modified_files_content,
                 key=lambda x: (
@@ -317,10 +335,10 @@ class MemorySummarizer:
                 reverse=True
             )
             
-            # 显示最近修改的、最重要的文件（最多 5 个）
+            # Show recently modified, most important files (max 5)
             max_files_to_show = 5
             total_size = 0
-            max_total_size = 20000  # 最多显示 20KB 内容（约 5k tokens）
+            max_total_size = 20000  # Max 20KB content (~5k tokens)
             
             for file_record in sorted_files[:max_files_to_show]:
                 path = file_record.get("path", "?")
@@ -329,24 +347,24 @@ class MemorySummarizer:
                 size = file_record.get("size", 0)
                 importance = file_record.get("importance_score", 0)
                 
-                # 如果总大小超过限制，截断内容
+                # If total size exceeds limit, truncate content
                 if total_size + size > max_total_size:
                     remaining = max_total_size - total_size
-                    if remaining > 100:  # 至少显示 100 字符
-                        content = content[:remaining] + f"\n... [文件过大，已截断，完整内容 {size} 字节]"
+                    if remaining > 100:  # At least show 100 chars
+                        content = content[:remaining] + f"\n... [File too large, truncated, full content {size} bytes]"
                     else:
-                        content = f"[文件过大 ({size} 字节)，未显示内容]"
-                        parts.append(f"\n### {path} (Step {step}, 重要性: {importance:.2f})")
+                        content = f"[File too large ({size} bytes), content not shown]"
+                        parts.append(f"\n### {path} (Step {step}, Importance: {importance:.2f})")
                         parts.append(f"```\n{content}\n```")
-                        total_size += 100  # 估算
+                        total_size += 100  # Estimate
                         continue
                 
-                parts.append(f"\n### {path} (Step {step}, 重要性: {importance:.2f})")
+                parts.append(f"\n### {path} (Step {step}, Importance: {importance:.2f})")
                 
-                # 根据文件大小决定显示策略
-                if size > 10000:  # 大于 10KB
-                    # 只显示前 5000 字符和后 500 字符
-                    preview = content[:5000] + f"\n... [省略 {size - 5500} 字符] ...\n" + content[-500:]
+                # Display strategy based on file size
+                if size > 10000:  # Larger than 10KB
+                    # Show first 5000 chars and last 500 chars
+                    preview = content[:5000] + f"\n... [Omitted {size - 5500} chars] ...\n" + content[-500:]
                     parts.append(f"```\n{preview}\n```")
                 else:
                     parts.append(f"```\n{content}\n```")
@@ -355,12 +373,12 @@ class MemorySummarizer:
                 if total_size >= max_total_size:
                     remaining_files = len(sorted_files) - max_files_to_show
                     if remaining_files > 0:
-                        parts.append(f"\n... [还有 {remaining_files} 个文件未显示]")
+                        parts.append(f"\n... [{remaining_files} more files not shown]")
                     break
 
         # Notes
         if state.memory.notes:
-            parts.append("\n## 重要备注")
+            parts.append("\n## Important Notes")
             for note in state.memory.notes[-3:]:  # Last 3
                 parts.append(f"- {note}")
 
@@ -397,37 +415,38 @@ class MemorySummarizer:
 
             # Warn LLM if it's viewing files without fixing
             if recent_viewing_without_fix and viewing_count >= 2:
-                parts.append('\n## 警告：检测到"查看文件但不修复"的行为')
+                parts.append('\n## Warning: Detected "View Files Without Fixing" Pattern')
                 parts.append(
-                    f"你已经执行了 {viewing_count} 次文件查看操作（cat, grep, head, tail 等），但只有 {write_file_count} 次修复操作（write_file）。"
+                    f"You have executed {viewing_count} file viewing operations (cat, grep, head, tail, etc.), "
+                    f"but only {write_file_count} fix operations (write_file)."
                 )
                 parts.append("")
-                parts.append("**重要理解**：")
-                parts.append("- 你在 PLAN 阶段生成所有 actions，系统在 ACT 阶段依次执行")
-                parts.append("- **执行完所有 actions 后，你才能看到结果**（在下一轮的 PLAN 阶段）")
+                parts.append("**Important Understanding**:")
+                parts.append("- You generate all actions in PLAN phase, system executes them in ACT phase")
+                parts.append("- **You can only see results after all actions are executed** (in next PLAN phase)")
                 parts.append(
-                    "- 因此，如果你需要查看文件内容才能修复，**不要在同一轮中既查看又修复**"
+                    "- Therefore, if you need to view file content to fix, **do NOT view and fix in the same round**"
                 )
                 parts.append("")
-                parts.append("**正确的修复流程**：")
+                parts.append("**Correct Fix Flow**:")
                 parts.append(
-                    "1. **如果错误信息已经明确指出问题**（如 ImportError 指出了缺失的函数名）："
+                    "1. **If error message clearly indicates the problem** (e.g., ImportError shows missing function name):"
                 )
-                parts.append("   - **直接使用 `write_file` 修复**，不需要先查看")
-                parts.append("   - 从错误信息或之前的上下文中推断实际存在的函数名，直接修复")
+                parts.append("   - **Use `write_file` directly to fix**, no need to view first")
+                parts.append("   - Infer actual function name from error or previous context, fix directly")
                 parts.append("")
-                parts.append("2. **如果你需要查看文件内容才能修复**：")
+                parts.append("2. **If you need to view file content to fix**:")
                 parts.append(
-                    '   - **第一轮**：只执行查看操作（如 `run("grep ...")`），设置 `stop_reason="continue"`'
+                    '   - **Round 1**: Only execute viewing operations (e.g., `run("grep ...")`), set `stop_reason="continue"`'
                 )
-                parts.append("   - **等待系统执行并返回结果**")
-                parts.append("   - **第二轮**：看到查看结果后，**必须立即**执行 `write_file` 修复")
-                parts.append("   - **禁止**：看到结果后继续查看其他文件而不修复")
+                parts.append("   - **Wait for system to execute and return results**")
+                parts.append("   - **Round 2**: After seeing viewing results, **must immediately** execute `write_file` to fix")
+                parts.append("   - **Forbidden**: Continue viewing other files without fixing after seeing results")
                 parts.append("")
-                parts.append("**你当前的问题**：")
-                parts.append("- 你已经查看了文件，但还没有修复")
-                parts.append("- **必须**：在下一轮看到查看结果后，立即执行 `write_file` 修复")
-                parts.append("- **禁止**：继续查看其他文件而不修复")
+                parts.append("**Your Current Problem**:")
+                parts.append("- You have viewed files but haven't fixed yet")
+                parts.append("- **Must**: In next round after seeing viewing results, immediately execute `write_file` to fix")
+                parts.append("- **Forbidden**: Continue viewing other files without fixing")
 
         # Detect repetitive exploration actions (for new project creation)
         if state.memory.attempts:
@@ -451,31 +470,32 @@ class MemorySummarizer:
 
             # If we've done many exploration actions but no file creation, warn LLM
             if exploration_count >= 3 and file_creation_count == 0:
-                parts.append("\n## ⚠️ 重要提示：请开始创建文件")
+                parts.append("\n## ⚠️ Important: Please Start Creating Files")
                 parts.append(
-                    f"你已经执行了 {exploration_count} 次探索操作（ls, find, pwd 等），但还没有开始创建任何文件。"
+                    f"You have executed {exploration_count} exploration operations (ls, find, pwd, etc.), "
+                    f"but haven't started creating any files yet."
                 )
-                parts.append("如果已经了解了项目结构，请立即开始创建文件，不要再继续探索。")
+                parts.append("If you already understand the project structure, start creating files immediately, don't continue exploring.")
                 parts.append(
-                    "使用 write_file 工具创建项目文件，使用 run('mkdir -p ...') 创建目录结构。"
+                    "Use write_file tool to create project files, use run('mkdir -p ...') to create directory structure."
                 )
-                parts.append("对于新项目创建任务，探索 2-3 次就足够了，应该立即开始创建文件。")
+                parts.append("For new project creation tasks, 2-3 explorations are enough, should start creating files immediately.")
 
         # Last error (includes all recent tool execution results)
         # CRITICAL: This is the PRIMARY source of tool execution info for LLM
         # Must include ALL outputs, especially stderr which often contains critical error info
         if state.last_error.summary:
-            parts.append("\n## 最后工具执行结果（最重要）")
-            parts.append("⚠️ 关键提示：")
+            parts.append("\n## Last Tool Execution Result (Most Important)")
+            parts.append("⚠️ Key Points:")
             parts.append(
-                "  - 即使 exit_code=0，stderr 中的错误信息（如 'not found', 'error', 'failed'）也需要处理"
+                "  - Even if exit_code=0, error messages in stderr (e.g., 'not found', 'error', 'failed') need to be handled"
             )
-            parts.append("  - 请仔细检查 stderr 和 stdout 的完整内容")
-            parts.append("  - 对于 shell 命令，stderr 通常包含命令执行的真实状态")
+            parts.append("  - Please carefully check complete content of stderr and stdout")
+            parts.append("  - For shell commands, stderr usually contains the real execution status")
             parts.append("")
             parts.append(f"{state.last_error.summary}")
             if state.last_error.repro_cmd:
-                parts.append(f"\n复现命令: {state.last_error.repro_cmd}")
+                parts.append(f"\nRepro Command: {state.last_error.repro_cmd}")
             if state.last_error.raw_stderr_tail:
                 # Show more of stderr tail for detailed analysis
                 stderr_tail = (
@@ -484,12 +504,12 @@ class MemorySummarizer:
                     else state.last_error.raw_stderr_tail
                 )
                 parts.append(
-                    f"\n完整 Stderr 详情 ({len(state.last_error.raw_stderr_tail)} 字符):\n{stderr_tail}"
+                    f"\nComplete Stderr Details ({len(state.last_error.raw_stderr_tail)} chars):\n{stderr_tail}"
                 )
 
         # Phase 3: Enhanced - Show recent tool results from tool_results_history if available
         if state.memory.tool_results_history:
-            parts.append("\n## 最近工具执行结果（增强存储）")
+            parts.append("\n## Recent Tool Execution Results (Enhanced Storage)")
             for tool_result in state.memory.tool_results_history[-5:]:  # Last 5 tool results
                 step = tool_result.get("step", "?")
                 tool = tool_result.get("tool", "unknown")
@@ -545,29 +565,29 @@ class MemorySummarizer:
                         if len(stderr) > max_stderr:
                             stderr_preview = (
                                 stderr[: max_stderr // 2]
-                                + f"\n... [省略 {len(stderr) - max_stderr} 字符] ...\n"
+                                + f"\n... [Omitted {len(stderr) - max_stderr} chars] ...\n"
                                 + stderr[-max_stderr // 2 :]
                             )
                         else:
                             stderr_preview = stderr
-                        exec_parts.append(f"Stderr ({len(stderr)} 字符):\n{stderr_preview}")
+                        exec_parts.append(f"Stderr ({len(stderr)} chars):\n{stderr_preview}")
                     if stdout:
                         if len(stdout) > max_stdout:
                             stdout_preview = (
                                 stdout[: max_stdout // 2]
-                                + f"\n... [省略 {len(stdout) - max_stdout} 字符] ...\n"
+                                + f"\n... [Omitted {len(stdout) - max_stdout} chars] ...\n"
                                 + stdout[-max_stdout // 2 :]
                             )
                         else:
                             stdout_preview = stdout
-                        exec_parts.append(f"Stdout ({len(stdout)} 字符):\n{stdout_preview}")
+                        exec_parts.append(f"Stdout ({len(stdout)} chars):\n{stdout_preview}")
 
                     recent_executions.append("\n".join(exec_parts))
 
             if recent_executions:
-                parts.append("\n## 最近工具执行结果")
+                parts.append("\n## Recent Tool Execution Results")
                 parts.append(
-                    "⚠️ 重要：包括成功和失败，请根据完整信息（特别是 stderr）判断是否需要处理"
+                    "⚠️ Important: Includes both success and failure, please judge based on complete information (especially stderr)"
                 )
                 for execution in recent_executions[-3:]:  # Last 3 executions
                     parts.append(f"- {execution}")
@@ -580,8 +600,8 @@ class MemorySummarizer:
         if len(summary) > effective_max_length:
             # Strategy: Keep long-term memory + last_error + high-importance items
             # Find section boundaries
-            long_term_end = summary.find("## 最近决策")
-            last_error_start = summary.find("## 最后工具执行结果")
+            long_term_end = summary.find("## Recent Decisions")
+            last_error_start = summary.find("## Last Tool Execution Result")
             
             # Calculate what we can keep
             if long_term_end > 0:
@@ -594,8 +614,8 @@ class MemorySummarizer:
                 # Keep long-term + last_error
                 remaining = effective_max_length - len(long_term_section)
                 if remaining > 0:
-                    # Find end of last_error section (before "## 最近工具执行结果" or end)
-                    recent_exec_start = summary.find("## 最近工具执行结果", last_error_start)
+                    # Find end of last_error section (before "## Recent Tool Execution Results" or end)
+                    recent_exec_start = summary.find("## Recent Tool Execution Results", last_error_start)
                     if recent_exec_start > 0:
                         last_error_section = summary[last_error_start:recent_exec_start]
                     else:
@@ -609,11 +629,11 @@ class MemorySummarizer:
                     
                     summary = long_term_section + "\n" + last_error_section
                     if len(summary) < effective_max_length:
-                        summary += "\n[摘要已截断，但保留了长期记忆和最后工具执行结果...]"
+                        summary += "\n[Summary truncated, but preserved long-term memory and last tool execution result...]"
                 else:
-                    summary = long_term_section + "\n[摘要已截断，但保留了长期记忆...]"
+                    summary = long_term_section + "\n[Summary truncated, but preserved long-term memory...]"
             else:
                 # Fallback: simple truncation
-                summary = summary[:effective_max_length] + "\n[摘要已截断...]"
+                summary = summary[:effective_max_length] + "\n[Summary truncated...]"
 
-        return summary if summary.strip() else "无记忆信息"
+        return summary if summary.strip() else "No memory information"

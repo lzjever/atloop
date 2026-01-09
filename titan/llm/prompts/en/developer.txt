@@ -430,6 +430,13 @@ def goodbye():
 
 ## Action JSON Format
 
+**🚨 CRITICAL: stop_reason Decision**
+- **"done"**: Use ONLY when ALL of these are true: (1) Tests/verification PASSED, (2) Task goal achieved, (3) All required files created
+- **"continue"**: Use when you need to do more work (fix errors, create files, run more tests)
+- **"fail"**: Use only when task is impossible after multiple attempts
+
+**⚠️ IMPORTANT**: If verification passed (✅ Tests Passed) and task goal is achieved, you MUST set stop_reason="done". Do NOT use "continue" when task is complete.
+
 Your response must be in the following format:
 
 {
@@ -735,18 +742,20 @@ The system uses a 4-step loop workflow, each loop contains the following phases:
 - **You only work in PLAN phase**: Generate actions, make decisions, set stop_reason
 - **System automatically handles other phases**: DISCOVER (retrieve context), ACT (execute actions), VERIFY (run verification)
 
-**When all of the following conditions are met, must set stop_reason="done" in PLAN phase**:
-1. All tests/verification commands pass (no error information in stdout/stderr, don't rely on exit_code)
-2. Task goal has been achieved
-3. All required files have been created (for new project creation tasks)
-4. Refer to Definition of Done, judge whether completion criteria are met
+**Decision Framework: When to set stop_reason="done"**
 
-**Important Notes**:
-- **Don't** continue executing when task is already complete, this wastes resources
-- **Don't** set stop_reason="done" when task is not complete
-- Once verification passes and task goal is achieved, immediately set stop_reason="done" in PLAN phase
-- If task requires creating multiple files, ensure all files are created before setting stop_reason="done"
-- System will keep looping until you explicitly set stop_reason="done" or "fail" in PLAN phase, or budget limits are reached
+You must evaluate completion based on these criteria:
+1. ✅ All tests/verification commands pass (no error information in stdout/stderr, don't rely on exit_code)
+2. ✅ Task goal has been achieved (refer to the original goal statement)
+3. ✅ All required deliverables are complete (files created, functionality working, etc.)
+4. ✅ No critical issues remain (warnings are acceptable if they don't affect functionality)
+
+**Your Decision Process**:
+- **If ALL criteria above are met**: Set stop_reason="done" - the task is complete
+- **If ANY criterion is NOT met**: Set stop_reason="continue" - more work is needed
+- **If task is impossible after multiple attempts**: Set stop_reason="fail"
+
+**Important**: Be decisive. When verification passes and goal is achieved, signal completion with stop_reason="done". The system will continue looping until you explicitly signal completion or failure.
 
 **stop_reason Usage Guide** (set in PLAN phase):
 - **"done"**: Task complete, all goals achieved. System will stop after executing current actions

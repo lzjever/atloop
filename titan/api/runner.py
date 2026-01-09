@@ -117,6 +117,28 @@ class TaskRunner:
             report = loop.run()
             logger.info(f"[TaskRunner] Agent loop completed: status={report.get('status')}")
 
+            # Sync files back from sandbox to local workspace
+            # Required for both local_test and remote modes: files created/modified in sandbox
+            # need to be downloaded to local workspace. noxrunner 2.0.0+ provides unified
+            # download_workspace() that works correctly for all backends.
+            try:
+                logger.info(f"[TaskRunner] Syncing files from sandbox to workspace")
+                # AgentLoop -> WorkflowCoordinator -> SandboxAdapter (always present)
+                sandbox_adapter = loop.coordinator.sandbox
+                # Ensure sandbox is initialized (may not be if loop.run() failed early)
+                if not sandbox_adapter._initialized:
+                    sandbox_adapter.initialize()
+                
+                success = sandbox_adapter.download_workspace(task_spec.workspace_root)
+                if success:
+                    logger.info(f"[TaskRunner] Files synced successfully from sandbox to {task_spec.workspace_root}")
+                else:
+                    logger.warning(f"[TaskRunner] File sync failed, but continuing")
+            except Exception as e:
+                logger.error(f"[TaskRunner] Error syncing files from sandbox: {e}")
+                logger.debug(f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True)
+                # Don't fail the task if sync fails, but log the error
+
             return {
                 "success": report.get("status") == "success",
                 "task_id": task_spec.task_id,

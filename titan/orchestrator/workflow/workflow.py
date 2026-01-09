@@ -64,6 +64,12 @@ class Workflow:
             current_phase = Phase.from_string(state.phase)
             logger.debug(f"[Workflow] Executing phase: {current_phase} at step {state.step}")
             result = self._execute_phase(current_phase, state.step)
+            
+            # Safety check: ensure result is not None
+            if result is None:
+                logger.error(f"[Workflow] Phase {current_phase} returned None instead of PhaseResult")
+                return self._failure(f"Phase {current_phase} execution returned None")
+            
             logger.debug(f"[Workflow] Phase execution result: success={result.success}, next_phase={result.next_phase}")
 
             # Check termination

@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict, List
 
 from titan.orchestrator.coordinator import WorkflowCoordinator
+from titan.orchestrator.executor.result_adapter import ResultAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +43,17 @@ class ToolExecutor:
                 logger.debug(f"[ToolExecutor] Action {i+1} completed: success={result.get('success', False)}")
             except Exception as e:
                 logger.error(f"[ToolExecutor] Action {i+1} failed: {e}")
-                logger.debug(f"[ToolExecutor] Exception details: {type(e).__name__}: {e}", exc_info=True)
-                results.append({
-                    "success": False,
-                    "error": str(e),
-                    "action": action,
-                })
+                logger.debug(
+                    f"[ToolExecutor] Exception details: {type(e).__name__}: {e}",
+                    exc_info=True,
+                )
+                results.append(
+                    ResultAdapter._from_error(
+                        action.get("tool", "unknown"),
+                        action.get("args", {}),
+                        str(e),
+                    )
+                )
 
         logger.debug(f"[ToolExecutor] All actions executed: {len(results)} results")
         return results
@@ -55,37 +61,26 @@ class ToolExecutor:
     def _execute_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute a single action.
-        
+
+        ToolRegistry.execute() returns ToolResult in all code paths (success,
+        unknown tool, or invalid args). ResultAdapter handles conversion to
+        unified format, with defensive support for legacy/alternate implementations.
+
         Args:
-            action: Action dictionary
-            
+            action: Action dictionary with 'tool' and 'args' keys
+
         Returns:
-            Tool execution result
+            Dict with keys: success, tool, args, result, ok, stdout, stderr,
+            error, exit_code (format expected by ActPhase and MemorySummarizer)
         """
         tool_name = action.get("tool")
         args = action.get("args", {})
-        
+
         logger.debug(f"[ToolExecutor] Executing tool: {tool_name} with args: {list(args.keys())}")
 
-        # Execute tool via tool_runtime registry
+        # ToolRegistry.execute() returns ToolResult (ok, stdout, stderr, meta)
         result = self.coordinator.tool_runtime.registry.execute(tool_name, args)
         logger.debug(f"[ToolExecutor] Tool execution completed: {tool_name}")
 
-        # Convert result to dict
-        if hasattr(result, 'to_dict'):
-            result_dict = result.to_dict()
-        elif isinstance(result, dict):
-            result_dict = result
-        else:
-            result_dict = {"result": str(result)}
-
-        return {
-            "success": result_dict.get("success", True),
-            "tool": tool_name,
-            "args": args,
-            "result": result_dict,
-            "ok": result_dict.get("ok", result_dict.get("success", True)),
-            "stdout": result_dict.get("stdout", ""),
-            "stderr": result_dict.get("stderr", ""),
-            "error": result_dict.get("error", ""),
-        }
+        # Convert to unified format using ResultAdapter
+        return ResultAdapter.to_action_result(tool_name, args, result)

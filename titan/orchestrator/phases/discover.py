@@ -48,7 +48,7 @@ class DiscoverPhase(BasePhase):
                 logger.debug(f"[DiscoverPhase] Using default memory summary max length: {memory_summary_max_length}")
             
             memory_summary = MemorySummarizer.summarize(
-                state, max_length=memory_summary_max_length
+                state, max_length=memory_summary_max_length, task_goal=self.coordinator.task_spec.goal
             )
             logger.debug(f"[DiscoverPhase] Memory summary length: {len(memory_summary)} chars (max: {memory_summary_max_length})")
 

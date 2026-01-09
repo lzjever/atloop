@@ -185,18 +185,28 @@ class LLMClient:
         if test_results:
             if verification_success is True:
                 test_status = "✅ **Tests Passed**"
+                # Guide LLM to make correct decision when verification passes
+                completion_reminder = """
+🚨 **DECISION REQUIRED**: Tests have PASSED. You must now decide:
+
+1. **If task goal is achieved**: Set stop_reason="done" immediately. Do not use "continue".
+2. **If task goal is NOT yet achieved**: Set stop_reason="continue" and explain what remains.
+
+**Key principle**: When verification passes AND goal is achieved, the task is complete. Use stop_reason="done" to signal completion.
+"""
             elif verification_success is False:
                 test_status = "❌ **Tests Failed**"
+                completion_reminder = ""
             else:
                 test_status = "⚠️ **Test Status Unknown**"
+                completion_reminder = ""
 
             test_results_section = f"""
 ### Latest Test/Verification Results
 {test_status}
 
 {test_results}
-
-**Important**: If tests pass and task goal is achieved, please set stop_reason='done'. Do not continue executing unnecessary operations.
+{completion_reminder}
 """
 
         logger.debug(f"[LLMClient] build_user_message: state_summary length={len(state_summary) if state_summary else 0}")
@@ -537,24 +547,43 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         action_json: Optional[ActionJSON],
         full_output: str,
     ) -> None:
-        """Log file contents extraction results."""
+        """Log file contents extraction results.
+        
+        File contents (---(FILE_CONTENT_#N)--- blocks) are only expected when the LLM
+        uses write_file/append_file/edit_file tools with FILE_CONTENT_#N placeholders.
+        For run/read_file/etc. actions, empty file_contents is normal - not a warning.
+        """
+        # Collect placeholders that file-writing actions expect
+        expected_placeholders = []
+        if action_json:
+            for action in action_json.actions:
+                if action.get("tool") in ["write_file", "append_file", "edit_file"]:
+                    content = action.get("args", {}).get("content", "")
+                    if isinstance(content, str) and content.startswith("FILE_CONTENT_#"):
+                        expected_placeholders.append(content)
+        
         if file_contents:
             logger.info(
                 f"[LLMClient] Extracted {len(file_contents)} file content placeholders: {list(file_contents.keys())}"
             )
             for placeholder, content in file_contents.items():
                 logger.debug(f"[LLMClient] {placeholder}: {len(content)} chars")
-        else:
-            logger.warning(f"[LLMClient] No file contents extracted! full_output length: {len(full_output)}")
-            if action_json:
-                for action in action_json.actions:
-                    if action.get("tool") in ["write_file", "append_file", "edit_file"]:
-                        content = action.get("args", {}).get("content", "")
-                        if content.startswith("FILE_CONTENT_#"):
-                            logger.warning(
-                                f"[LLMClient] Action contains placeholder {content}, "
-                                f"but not found in file_contents!"
-                            )
+            # Check if any expected placeholders are missing
+            missing = [p for p in expected_placeholders if p not in file_contents]
+            if missing:
+                logger.warning(
+                    f"[LLMClient] Actions reference placeholders {missing} "
+                    f"but corresponding ---(FILE_CONTENT_#N)--- blocks not found in LLM output!"
+                )
+        elif expected_placeholders:
+            # File-writing actions use placeholders but we extracted nothing - LLM didn't provide content blocks
+            logger.warning(
+                f"[LLMClient] Actions reference placeholders {expected_placeholders} "
+                f"but no ---(FILE_CONTENT_#N)--- blocks found in LLM output! "
+                f"full_output length: {len(full_output)}"
+            )
+        # else: No file-writing actions with placeholders (e.g., only run/read_file) -
+        # empty file_contents is expected, no need to log
 
     def _continue_with_streaming(
         self,

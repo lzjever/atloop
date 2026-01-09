@@ -42,56 +42,56 @@ class ContextPack:
         parts = []
 
         # Goal & Constraints
-        parts.append("## 任务目标")
+        parts.append("## Task Goal")
         parts.append(self.goal)
         parts.append("")
 
         if self.constraints:
-            parts.append("## 约束条件")
+            parts.append("## Constraints")
             for constraint in self.constraints:
                 parts.append(f"- {constraint}")
             parts.append("")
 
         # Project Profile
-        parts.append("## 项目信息")
+        parts.append("## Project Information")
         parts.append(self.project_profile)
         parts.append("")
 
         # Relevant Files
-        parts.append("## 相关文件片段")
+        parts.append("## Relevant File Snippets")
         parts.append(self.relevant_files)
         parts.append("")
 
         # Recent Error
-        if self.recent_error and self.recent_error != "无":
-            parts.append("## 最近错误")
+        if self.recent_error and self.recent_error != "None":
+            parts.append("## Recent Error")
             parts.append(self.recent_error)
             parts.append("")
 
         # Current Diff
-        if self.current_diff and self.current_diff != "无变更":
-            parts.append("## 当前 Diff")
+        if self.current_diff and self.current_diff != "No changes":
+            parts.append("## Current Diff")
             parts.append(self.current_diff)
             parts.append("")
 
         # Test Results (critical for task completion judgment)
         if self.test_results:
-            parts.append("## 最新测试/验证结果")
+            parts.append("## Latest Test/Verification Results")
             if self.verification_success is True:
-                parts.append("✅ **测试通过**")
+                parts.append("✅ **Tests Passed**")
             elif self.verification_success is False:
-                parts.append("❌ **测试失败**")
+                parts.append("❌ **Tests Failed**")
             else:
-                parts.append("⚠️ **测试状态未知**")
+                parts.append("⚠️ **Test Status Unknown**")
             parts.append("")
             parts.append(self.test_results)
             parts.append("")
-            parts.append("**重要**：如果测试通过且任务目标已达成，请设置 stop_reason='done'")
+            parts.append("**Important**: If tests pass and task goal is achieved, please set stop_reason='done'")
             parts.append("")
 
         # Memory Summary
         if self.memory_summary:
-            parts.append("## 记忆摘要")
+            parts.append("## Memory Summary")
             parts.append(self.memory_summary)
             parts.append("")
 
@@ -100,7 +100,7 @@ class ContextPack:
         # Truncate if too large
         if len(result.encode("utf-8")) > max_size:
             result = result[:max_size]
-            result += "\n\n[上下文已截断...]"
+            result += "\n\n[Context truncated...]"
 
         return result
 
@@ -150,13 +150,13 @@ class ContextPackBuilder:
         """
         # Build project profile string
         profile_dict = self.project_profile.to_dict()
-        profile_str = f"语言: {profile_dict.get('language', '未知')}\n"
-        profile_str += f"包管理器: {profile_dict.get('package_manager', '未知')}\n"
+        profile_str = f"Language: {profile_dict.get('language', 'Unknown')}\n"
+        profile_str += f"Package Manager: {profile_dict.get('package_manager', 'Unknown')}\n"
         if profile_dict.get("test_commands"):
-            profile_str += f"测试命令候选: {', '.join(profile_dict['test_commands'][:3])}\n"
+            profile_str += f"Test Command Candidates: {', '.join(profile_dict['test_commands'][:3])}\n"
 
         # Search for relevant files
-        relevant_files_str = "无"
+        relevant_files_str = "None"
         if keywords:
             # Search using keywords
             # Use shorter timeout to avoid blocking
@@ -189,7 +189,7 @@ class ContextPackBuilder:
         # CRITICAL: Increase limit to preserve more tool execution information
         # Tool outputs (especially stderr) are critical for LLM decision-making
         # For file viewing commands, preserve even more to show complete file content
-        recent_error_str = recent_error or "无"
+        recent_error_str = recent_error or "None"
         # Check if this contains file viewing command output
         max_recent_error = (
             RECENT_ERROR_LIMIT_FILE_CONTENT
@@ -200,21 +200,21 @@ class ContextPackBuilder:
             # Show both beginning and end for better context
             recent_error_str = (
                 recent_error_str[: max_recent_error // 2]
-                + f"\n\n[中间省略 {len(recent_error_str) - max_recent_error} 字符]...\n\n"
+                + f"\n\n[Omitted {len(recent_error_str) - max_recent_error} chars in middle]...\n\n"
                 + recent_error_str[-max_recent_error // 2 :]
-                + "\n[错误信息已截断，完整信息请查看记忆摘要]"
+                + "\n[Error message truncated, see memory summary for full details]"
             )
 
         # Format current diff
-        current_diff_str = current_diff or "无变更"
+        current_diff_str = current_diff or "No changes"
         if len(current_diff_str) > DIFF_LIMIT:
-            current_diff_str = current_diff_str[:DIFF_LIMIT] + "\n[Diff已截断...]"
+            current_diff_str = current_diff_str[:DIFF_LIMIT] + "\n[Diff truncated...]"
 
         # Format test results
         test_results_str = test_results or None
         if test_results_str and len(test_results_str) > TEST_RESULTS_LIMIT_CONTEXT:
             test_results_str = (
-                test_results_str[:TEST_RESULTS_LIMIT_CONTEXT] + "\n[测试结果已截断...]"
+                test_results_str[:TEST_RESULTS_LIMIT_CONTEXT] + "\n[Test results truncated...]"
             )
 
         return ContextPack(

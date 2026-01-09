@@ -11,6 +11,7 @@ from titan.config.limits import (
 from titan.llm import ActionJSON
 from titan.memory.summarizer import MemorySummarizer
 from titan.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
+from titan.orchestrator.phases.stop_reason_handler import StopReasonHandler
 from titan.orchestrator.state_machine import Phase
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class PlanPhase(BasePhase):
                 logger.debug(f"[PlanPhase] Using default memory summary max length: {memory_summary_max_length}")
             
             memory_summary = MemorySummarizer.summarize(
-                state, max_length=memory_summary_max_length
+                state, max_length=memory_summary_max_length, task_goal=self.coordinator.task_spec.goal
             )
             logger.debug(
                 f"[PlanPhase] Memory summary length: {len(memory_summary)} chars "
@@ -271,113 +272,25 @@ class PlanPhase(BasePhase):
                     f"(total responses={len(state.memory.llm_responses)})"
                 )
 
-            # Handle stop_reason
-            if stop_reason == "done":
-                logger.info(
-                    f"[PlanPhase] LLM determined task is done (Step {state.step}), "
-                    f"actions={len(actions)}"
-                )
-                if not actions:
-                    logger.info("[PlanPhase] No actions, marking as DONE immediately")
-                    self.coordinator.event_logger.log_decision(
-                        step=state.step,
-                        stop_reason=stop_reason,
-                        verification_success=state.artifacts.verification_success,
-                        reason="LLM determined task is complete",
-                    )
-                    self.coordinator.state_manager.update(phase="DONE")
-                    self._transition(Phase.DONE)
-                    return PhaseResult(
-                        success=True,
-                        data={},
-                        next_phase=Phase.DONE,
-                    )
-                else:
-                    logger.info(
-                        f"[PlanPhase] Has {len(actions)} actions, will mark as DONE after execution"
-                    )
-                    self.coordinator.job_state.shared_data["pending_stop_reason"] = "done"
-                    logger.info(
-                        "[PlanPhase] Set pending_stop_reason='done', will stop after ACT phase"
-                    )
-            elif stop_reason == "fail":
-                logger.info(f"[PlanPhase] LLM determined task failed")
-                self.coordinator.event_logger.log_decision(
-                    step=state.step,
-                    stop_reason=stop_reason,
-                    verification_success=state.artifacts.verification_success,
-                    reason="LLM determined task failed",
-                )
-                self.coordinator.state_manager.update(phase="FAIL")
-                self._transition(Phase.FAIL)
-                return PhaseResult(
-                    success=False,
-                    data={},
-                    next_phase=Phase.FAIL,
-                    error="LLM determined task failed",
-                )
-            else:  # continue
-                logger.debug(f"[PlanPhase] LLM wants to continue")
-                self.coordinator.event_logger.log_decision(
-                    step=state.step,
-                    stop_reason=stop_reason,
-                    verification_success=state.artifacts.verification_success,
-                    reason="LLM chose to continue execution",
-                )
-
-                if not actions:
-                    state.memory.notes.append("LLM chose to continue but provided no actions, will replan")
-                    self.coordinator.state_manager.update(phase="DISCOVER")
-                    self._transition(Phase.DISCOVER)
-                    return PhaseResult(
-                        success=True,
-                        data={},
-                        next_phase=Phase.DISCOVER,
-                    )
-                else:
-                    # Store actions for ACT phase
-                    from titan.llm import ActionJSON
-                    action_json_with_replaced = ActionJSON(
-                        thought_summary=action_json.thought_summary,
-                        plan=action_json.plan,
-                        actions=actions,
-                        stop_reason=action_json.stop_reason,
-                        result_message=action_json.result_message,
-                    )
-                    self.coordinator.job_state.shared_data["actions"] = (
-                        action_json_with_replaced.to_dict()
-                    )
-                    logger.info(
-                        f"[PlanPhase] PLAN phase complete, stored {len(actions)} actions, "
-                        "preparing to transition to ACT phase"
-                    )
-                    self.coordinator.state_manager.update(phase="ACT")
-                    transition_result = self._transition(Phase.ACT)
-                    if not transition_result:
-                        logger.error(
-                            f"[PlanPhase] State transition failed: PLAN -> ACT "
-                            f"(current state: {self.coordinator.state_machine.current_phase})"
-                        )
-                        self.coordinator.state_manager.agent_state.last_error.summary = (
-                            "State transition failed: PLAN -> ACT"
-                        )
-                        self.coordinator.state_manager.update(phase="FAIL")
-                        self._transition(Phase.FAIL)
-                        return PhaseResult(
-                            success=False,
-                            data={},
-                            next_phase=Phase.FAIL,
-                            error="State transition failed: PLAN -> ACT",
-                        )
-                    else:
-                        logger.info(
-                            f"[PlanPhase] Successfully transitioned to ACT phase (Step {state.step})"
-                        )
-                        return PhaseResult(
-                            success=True,
-                            data={"actions": actions},
-                            next_phase=Phase.ACT,
-                        )
+            # Handle stop_reason using unified handler
+            next_phase, pending_stop_reason, phase_result = StopReasonHandler.process_stop_reason(
+                stop_reason=stop_reason,
+                actions=actions,
+                action_json=action_json,
+                verification_success=state.artifacts.verification_success,
+                step=state.step,
+                event_logger=self.coordinator.event_logger,
+                state_manager=self.coordinator.state_manager,
+                state_machine=self.coordinator.state_machine,
+                job_state=self.coordinator.job_state,
+            )
+            
+            logger.debug(
+                f"[PlanPhase] Stop reason processed: stop_reason={stop_reason}, "
+                f"next_phase={next_phase}, pending_stop_reason={pending_stop_reason}"
+            )
+            
+            return phase_result
 
         except Exception as e:
             import traceback

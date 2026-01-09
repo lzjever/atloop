@@ -18,41 +18,64 @@ class ToolRegistry:
         Initialize tool registry.
 
         Args:
-            sandbox: Sandbox adapter instance
-            skill_loader: Optional skill loader instance for read_skill_file tool
+            sandbox: Sandbox adapter instance (required by run, read_file, write_file, etc.)
+            skill_loader: Optional skill loader for read_skill_file and skill tools.
+                Passed automatically to tools that declare skill_loader in __init__.
         """
         self.sandbox = sandbox
         self.skill_loader = skill_loader
         self.tools: Dict[str, BaseTool] = {}
+        self._registration_stats: Dict[str, Any] = {}
         self._register_builtin_tools()
 
-    def _register_builtin_tools(self):
-        """Register builtin tools using automatic discovery."""
+    def _register_builtin_tools(self) -> None:
+        """
+        Register builtin tools using automatic discovery.
+
+        This is called during initialization. Registration failures are logged
+        but do not prevent registry creation (some tools may be optional).
+        """
         try:
-            # Use automatic discovery to find and register all tools
             stats = auto_register_tools(
                 registry=self,
                 sandbox=self.sandbox,
                 skill_loader=self.skill_loader
             )
-            
+            self._registration_stats = stats
+
             logger.info(
                 f"[ToolRegistry] Auto-discovered {stats['discovered']} tools, "
                 f"registered {stats['registered']}, failed {stats['failed']}"
             )
-            
+
             if stats["registered"] > 0:
                 tool_names = [t["name"] for t in stats["tools"]]
-                logger.info(f"[ToolRegistry] Registered tools: {', '.join(sorted(tool_names))}")
-            
+                logger.info(
+                    f"[ToolRegistry] Registered tools: {', '.join(sorted(tool_names))}"
+                )
+
             if stats["failed"] > 0:
-                logger.warning(f"[ToolRegistry] Failed to register {stats['failed']} tool(s)")
-        
+                logger.warning(
+                    f"[ToolRegistry] Failed to register {stats['failed']} tool(s). "
+                    f"Some tools may not be available."
+                )
+
         except Exception as e:
-            # Fallback: log error but continue
-            import warnings
-            logger.error(f"[ToolRegistry] Auto-discovery failed: {e}", exc_info=True)
-            warnings.warn(f"Failed to auto-discover tools: {e}. Some tools may not be available.")
+            logger.error(
+                f"[ToolRegistry] Auto-discovery failed: {e}",
+                exc_info=True,
+            )
+            self._registration_stats = {
+                "discovered": 0,
+                "registered": 0,
+                "failed": 0,
+                "tools": [],
+                "error": str(e),
+            }
+            logger.warning(
+                f"[ToolRegistry] Tool registration failed. "
+                f"Registry created but no tools available. Error: {e}"
+            )
 
     def register(self, tool: BaseTool):
         """Register a tool."""
@@ -65,6 +88,15 @@ class ToolRegistry:
     def list_tools(self) -> List[str]:
         """List all registered tool names."""
         return list(self.tools.keys())
+
+    def get_registration_stats(self) -> Dict[str, Any]:
+        """
+        Get tool registration statistics.
+
+        Returns:
+            Dictionary with registration stats (discovered, registered, failed, tools)
+        """
+        return self._registration_stats.copy()
 
     def execute(self, tool_name: str, args: Dict[str, Any]) -> ToolResult:
         """

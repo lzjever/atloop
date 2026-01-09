@@ -3,13 +3,20 @@
 import ast
 import importlib
 import inspect
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, TYPE_CHECKING
 
 from titan.tools.base import BaseTool
+from titan.tools.tool_factory import ToolFactory
 
 if TYPE_CHECKING:
     from titan.runtime.sandbox_adapter import SandboxAdapter
+
+logger = logging.getLogger(__name__)
+
+# Python files in tools/ to exclude from discovery (infrastructure, not tools)
+_EXCLUDED_FILES = frozenset({"__init__.py", "base.py", "registry.py", "auto_discovery.py"})
 
 
 class ToolDiscovery:
@@ -40,25 +47,23 @@ class ToolDiscovery:
         
         # Scan all Python files in tools directory
         for py_file in self.tools_dir.rglob("*.py"):
-            # Skip __init__.py and base.py
-            if py_file.name in ["__init__.py", "base.py", "registry.py", "auto_discovery.py"]:
+            if py_file.name in _EXCLUDED_FILES:
                 continue
-            
-            # Skip test files
             if "test" in py_file.name.lower():
                 continue
-            
+
             try:
                 classes = self._extract_tool_classes_from_file(py_file)
                 for class_name, tool_class in classes:
-                    # Verify it's actually a BaseTool subclass
-                    if inspect.isclass(tool_class) and issubclass(tool_class, BaseTool) and tool_class != BaseTool:
+                    if (
+                        inspect.isclass(tool_class)
+                        and issubclass(tool_class, BaseTool)
+                        and tool_class != BaseTool
+                    ):
                         module_path = self._file_to_module_path(py_file)
                         tool_classes.append((module_path, class_name, tool_class))
             except Exception as e:
-                # Log but continue - some files might not be importable
-                import warnings
-                warnings.warn(f"Failed to scan {py_file}: {e}")
+                logger.debug(f"[ToolDiscovery] Failed to scan {py_file}: {e}")
                 continue
         
         return tool_classes
@@ -151,18 +156,14 @@ class ToolDiscovery:
                             classes.append((class_name, cls))
                 return classes
             except ImportError as e:
-                # Module might not be importable (e.g., missing dependencies)
-                import warnings
-                warnings.warn(f"Failed to import {module_path}: {e}")
+                logger.debug(f"[ToolDiscovery] Failed to import {module_path}: {e}")
                 return []
-        
+
         except SyntaxError as e:
-            import warnings
-            warnings.warn(f"Syntax error in {file_path}: {e}")
+            logger.debug(f"[ToolDiscovery] Syntax error in {file_path}: {e}")
             return []
         except Exception as e:
-            import warnings
-            warnings.warn(f"Error parsing {file_path}: {e}")
+            logger.debug(f"[ToolDiscovery] Error parsing {file_path}: {e}")
             return []
 
     def get_tool_info(self, tool_class: Type[BaseTool]) -> Dict[str, Any]:
@@ -211,6 +212,8 @@ class ToolDiscovery:
         """
         Instantiate a tool class with appropriate parameters.
 
+        Delegates to ToolFactory for dependency injection.
+
         Args:
             tool_class: Tool class to instantiate
             sandbox: Sandbox adapter instance
@@ -219,24 +222,8 @@ class ToolDiscovery:
         Returns:
             Tool instance or None if instantiation fails
         """
-        try:
-            init_sig = inspect.signature(tool_class.__init__)
-            params = list(init_sig.parameters.keys())[1:]  # Skip 'self'
-            
-            # Build arguments based on parameter names
-            kwargs = {}
-            if "sandbox" in params:
-                kwargs["sandbox"] = sandbox
-            if "skill_loader" in params:
-                kwargs["skill_loader"] = skill_loader
-            
-            # Instantiate
-            instance = tool_class(**kwargs)
-            return instance
-        except Exception as e:
-            import warnings
-            warnings.warn(f"Failed to instantiate {tool_class.__name__}: {e}")
-            return None
+        factory = ToolFactory(sandbox=sandbox, skill_loader=skill_loader)
+        return factory.create(tool_class)
 
 
 def auto_register_tools(
@@ -283,8 +270,9 @@ def auto_register_tools(
             else:
                 stats["failed"] += 1
         except Exception as e:
-            import warnings
-            warnings.warn(f"Failed to register {class_name} from {module_path}: {e}")
+            logger.warning(
+                f"[ToolDiscovery] Failed to register {class_name} from {module_path}: {e}"
+            )
             stats["failed"] += 1
     
     return stats
