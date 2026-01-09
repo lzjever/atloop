@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from titan.orchestrator.coordinator import WorkflowCoordinator
-from titan.orchestrator.executor.result_adapter import ResultAdapter
-from titan.orchestrator.executor.tool_executor import ToolExecutor
-from titan.tools.base import BaseTool, ToolResult
-from titan.tools.registry import ToolRegistry
+from atloop.orchestrator.coordinator import WorkflowCoordinator
+from atloop.orchestrator.executor.result_adapter import ResultAdapter
+from atloop.orchestrator.executor.tool_executor import ToolExecutor
+from atloop.tools.base import BaseTool, ToolResult
+from atloop.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -388,7 +388,7 @@ class TestToolDiscovery:
         mock_sandbox = MagicMock()
         registry = ToolRegistry(sandbox=mock_sandbox)
 
-        # Should have discovered tools from titan/tools/
+        # Should have discovered tools from atloop/tools/
         tools = registry.list_tools()
         assert len(tools) > 0
 

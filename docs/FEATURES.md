@@ -1,14 +1,14 @@
-# TITAN Features
+# atloop Features
 
 ## Overview
 
-TITAN is an AI-powered task automation system designed to execute coding tasks autonomously. It provides both CLI and API interfaces for task execution.
+atloop is an AI-powered task automation system designed to execute coding tasks autonomously. It provides both CLI and API interfaces for task execution.
 
 ## Core Features
 
 ### 1. Unified Workflow
 
-TITAN uses a single, unified workflow: **DISCOVER → PLAN → ACT → VERIFY**
+atloop uses a single, unified workflow: **DISCOVER → PLAN → ACT → VERIFY**
 
 - **DISCOVER**: Analyze workspace, understand task requirements
 - **PLAN**: Generate execution plan
@@ -19,7 +19,7 @@ This unified approach eliminates confusion and provides predictable behavior.
 
 ### 2. Task Types
 
-TITAN supports three task types:
+atloop supports three task types:
 
 - **bugfix**: Fix bugs in code
 - **feature**: Implement new features
@@ -29,17 +29,17 @@ TITAN supports three task types:
 
 #### Type-Safe Configuration
 - Uses **varlord** for type-safe configuration
-- Centralized models in `titan/config/models.py`
+- Centralized models in `atloop/config/models.py`
 - Multi-source loading: YAML files, environment variables, .env files
 
 #### Configuration Sources (Priority Order)
-1. Environment variables (`TITAN__*`)
+1. Environment variables (`ATLOOP__*`)
 2. `.env` file (in current directory)
-3. Project config (`./.titan/config/titan.yaml`)
-4. User config (`~/.titan/config/titan.yaml`)
+3. Project config (`./.atloop/config/atloop.yaml`)
+4. User config (`~/.atloop/config/atloop.yaml`)
 
 #### Key Configuration Models
-- `TitanConfig`: Main configuration
+- `AtloopConfig`: Main configuration
 - `TaskSpec`: Task specification
 - `Budget`: Execution budget (LLM calls, tool calls, wall time)
 - `SandboxConfig`: Sandbox configuration
@@ -47,7 +47,7 @@ TITAN supports three task types:
 
 ### 4. Budget Management
 
-TITAN tracks and enforces execution budgets:
+atloop tracks and enforces execution budgets:
 
 - **LLM calls**: Maximum number of LLM API calls
 - **Tool calls**: Maximum number of tool executions
@@ -131,32 +131,32 @@ Budget is enforced at runtime, preventing runaway executions.
 
 ### Commands
 
-#### `titan init`
-Initialize TITAN configuration.
+#### `atloop init`
+Initialize atloop configuration.
 
 ```bash
-titan init [--titan-dir DIR]
+atloop init [--atloop-dir DIR]
 ```
 
-#### `titan execute`
+#### `atloop execute`
 Execute a task.
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/workspace \
   --prompt "Fix the bug in calculator.py" \
   [--prompt-file /path/to/prompt.txt] \
   [--sandbox-url http://127.0.0.1:8080] \
   [--local-test] \
   [--session SESSION_ID] \
-  [--titan-dir DIR]
+  [--atloop-dir DIR]
 ```
 
-#### `titan config`
+#### `atloop config`
 Show current configuration.
 
 ```bash
-titan config [--titan-dir DIR]
+atloop config [--atloop-dir DIR]
 ```
 
 ### CLI Design
@@ -173,9 +173,9 @@ The `TaskRunner` class provides a programmatic interface for task execution.
 #### Initialization
 
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
-runner = TaskRunner(titan_dir="/path/to/.titan")  # Optional
+runner = TaskRunner(atloop_dir="/path/to/.atloop")  # Optional
 ```
 
 #### Execution
@@ -214,7 +214,7 @@ else:
 
 ## Configuration Examples
 
-### Basic Configuration (`~/.titan/config/titan.yaml`)
+### Basic Configuration (`~/.atloop/config/atloop.yaml`)
 
 ```yaml
 ai:
@@ -243,9 +243,9 @@ memory:
 ### Environment Variable Overrides
 
 ```bash
-export TITAN__AI__COMPLETION__MODEL="gpt-4-turbo"
-export TITAN__AI__COMPLETION__API_BASE="https://api.openai.com/v1"
-export TITAN__DEFAULT_BUDGET__MAX_LLM_CALLS=100
+export ATLOOP__AI__COMPLETION__MODEL="gpt-4-turbo"
+export ATLOOP__AI__COMPLETION__API_BASE="https://api.openai.com/v1"
+export ATLOOP__DEFAULT_BUDGET__MAX_LLM_CALLS=100
 ```
 
 ## Usage Examples
@@ -253,7 +253,7 @@ export TITAN__DEFAULT_BUDGET__MAX_LLM_CALLS=100
 ### Example 1: Bug Fix
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Fix the division by zero error in calculator.py"
 ```
@@ -261,7 +261,7 @@ titan execute \
 ### Example 2: Feature Implementation
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Add a square root function to calculator.py" \
   --prompt-file /path/to/requirements.txt
@@ -270,7 +270,7 @@ titan execute \
 ### Example 3: Refactoring
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Refactor calculator.py to use a class-based design" \
   --task-type refactor
@@ -279,7 +279,7 @@ titan execute \
 ### Example 4: API Usage
 
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 runner = TaskRunner()
 
@@ -332,7 +332,7 @@ print(f"Status: {result['status']}")
 
 ## Testing
 
-TITAN includes comprehensive tests:
+atloop includes comprehensive tests:
 
 - **Unit tests**: 29 tests
 - **Integration tests**: 32 tests

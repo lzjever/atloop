@@ -54,7 +54,7 @@
 ### Bug Fixes
 
 1. **Fixed CLI argument conflict**
-   - Removed duplicate `--titan-dir` argument from execute parser
+   - Removed duplicate `--atloop-dir` argument from execute parser
    - `add_titan_dir_arg()` already adds it
 
 2. **Fixed directory creation**

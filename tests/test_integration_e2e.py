@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from titan.api.runner import TaskRunner
-from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec
-from titan.orchestrator.coordinator import WorkflowCoordinator
+from atloop.api.runner import TaskRunner
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import Budget, TaskSpec
+from atloop.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ def test_add():
         logger.info("E2E budget exhaustion setup successful ✅")
 
     def test_e2e_state_recovery_setup(
-        self, real_config_file: Path, temp_workspace: Path, temp_titan_dir: Path
+        self, real_config_file: Path, temp_workspace: Path, temp_atloop_dir: Path
     ):
         """Test E2E state recovery after failure."""
         if not real_config_file.exists():
@@ -237,8 +237,8 @@ def test_add():
 
         logger.info("Testing E2E state recovery setup")
 
-        # Setup config with custom titan_dir
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        # Setup config with custom atloop_dir
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -259,7 +259,7 @@ default_budget:
 runs_dir: runs
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         # Create task spec

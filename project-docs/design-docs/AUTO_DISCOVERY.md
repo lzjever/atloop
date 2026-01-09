@@ -7,7 +7,7 @@
 ## 工作原理
 
 ### 1. AST 扫描
-- 自动扫描 `titan/tools/` 目录下的所有 Python 文件
+- 自动扫描 `atloop/tools/` 目录下的所有 Python 文件
 - 使用 AST 解析找到所有继承自 `BaseTool` 的类
 - 跳过 `__init__.py`、`base.py`、`registry.py` 和测试文件
 
@@ -53,9 +53,9 @@
 只需创建工具类，继承 `BaseTool`：
 
 ```python
-# titan/tools/my_category/my_tool.py
-from titan.tools.base import BaseTool, ToolResult
-from titan.runtime.sandbox_adapter import SandboxAdapter
+# atloop/tools/my_category/my_tool.py
+from atloop.tools.base import BaseTool, ToolResult
+from atloop.runtime.sandbox_adapter import SandboxAdapter
 
 class MyTool(BaseTool):
     """Tool for doing something."""
@@ -91,7 +91,7 @@ class MyTool(BaseTool):
 ### 文件结构
 
 ```
-titan/tools/
+atloop/tools/
 ├── auto_discovery.py    # 自动发现逻辑
 ├── registry.py          # 注册表（使用自动发现）
 ├── base.py              # BaseTool 基类
@@ -148,7 +148,7 @@ uv run pytest tests/test_auto_tool_discovery.py -v
    ```
 
 2. **检查文件位置**
-   - 工具文件应在 `titan/tools/` 或其子目录中
+   - 工具文件应在 `atloop/tools/` 或其子目录中
    - 文件名不应包含 "test"
 
 3. **检查模块路径**
@@ -187,7 +187,7 @@ uv run pytest tests/test_auto_tool_discovery.py -v
 **之前**（手动注册）：
 ```python
 def _register_builtin_tools(self):
-    from titan.tools.filesystem.write_file import WriteFileTool
+    from atloop.tools.filesystem.write_file import WriteFileTool
     self.register(WriteFileTool(self.sandbox))
     # ... 更多手动注册
 ```

@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import (
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import (
     Budget,
     MemoryConfig,
     SandboxConfig,
     TaskSpec,
-    TitanConfig,
+    AtloopConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 class TestConfigLoader:
     """Unit tests for ConfigLoader."""
 
-    def test_config_loader_setup_default(self, temp_titan_dir: Path):
+    def test_config_loader_setup_default(self, temp_atloop_dir: Path):
         """Test ConfigLoader.setup() with default directory."""
         # Create minimal config
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -44,11 +44,11 @@ default_budget:
   max_wall_time_sec: 3600
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         assert config is not None
-        assert isinstance(config, TitanConfig)
+        assert isinstance(config, AtloopConfig)
         assert config.ai.completion.model == "test-model"
 
     def test_config_loader_get_returns_valid_config(self, real_config_file: Path):
@@ -60,13 +60,13 @@ default_budget:
         config = ConfigLoader.get()
 
         assert config is not None
-        assert isinstance(config, TitanConfig)
+        assert isinstance(config, AtloopConfig)
         assert config.ai is not None
         assert config.ai.completion is not None
 
-    def test_config_loader_custom_dir(self, temp_titan_dir: Path):
-        """Test ConfigLoader with custom Titan directory."""
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+    def test_config_loader_custom_dir(self, temp_atloop_dir: Path):
+        """Test ConfigLoader with custom atloop directory."""
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -86,16 +86,16 @@ default_budget:
   max_wall_time_sec: 7200
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         assert config.ai.completion.model == "custom-model"
         assert config.ai.completion.api_base == "https://custom.api.com"
         assert config.sandbox.local_test is False
 
-    def test_config_loader_env_override(self, temp_titan_dir: Path):
+    def test_config_loader_env_override(self, temp_atloop_dir: Path):
         """Test ConfigLoader with environment variable overrides."""
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -116,25 +116,25 @@ default_budget:
 """)
 
         # Set environment variable
-        os.environ["TITAN__AI__COMPLETION__MODEL"] = "env-model"
+        os.environ["ATLOOP__AI__COMPLETION__MODEL"] = "env-model"
 
         try:
-            ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+            ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
             config = ConfigLoader.get()
 
             # Environment variable should override file config
             assert config.ai.completion.model == "env-model"
         finally:
             # Clean up
-            os.environ.pop("TITAN__AI__COMPLETION__MODEL", None)
+            os.environ.pop("ATLOOP__AI__COMPLETION__MODEL", None)
 
 
-class TestTitanConfig:
-    """Unit tests for TitanConfig model."""
+class TestAtloopConfig:
+    """Unit tests for AtloopConfig model."""
 
-    def test_titan_config_validation(self, temp_titan_dir: Path):
-        """Test TitanConfig model validation."""
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+    def test_atloop_config_validation(self, temp_atloop_dir: Path):
+        """Test AtloopConfig model validation."""
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -154,7 +154,7 @@ default_budget:
   max_wall_time_sec: 3600
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         # Validate structure
@@ -165,9 +165,9 @@ default_budget:
         assert config.default_budget is not None
         assert config.memory is not None
 
-    def test_titan_config_type_safety(self, temp_titan_dir: Path):
-        """Test TitanConfig type safety (varlord validation)."""
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+    def test_atloop_config_type_safety(self, temp_atloop_dir: Path):
+        """Test AtloopConfig type safety (varlord validation)."""
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -187,11 +187,11 @@ default_budget:
   max_wall_time_sec: 3600
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
-        # Type safety: config should be TitanConfig instance
-        assert isinstance(config, TitanConfig)
+        # Type safety: config should be AtloopConfig instance
+        assert isinstance(config, AtloopConfig)
         assert isinstance(config.ai.completion.model, str)
         assert isinstance(config.default_budget.max_llm_calls, int)
 

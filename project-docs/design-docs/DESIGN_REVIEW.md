@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document reviews the design and implementation of filesystem tools in `titan/tools/filesystem/`. These tools are designed for LLM agents to operate on files in a sandboxed environment.
+This document reviews the design and implementation of filesystem tools in `atloop/tools/filesystem/`. These tools are designed for LLM agents to operate on files in a sandboxed environment.
 
 ## Tools Reviewed
 

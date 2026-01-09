@@ -94,7 +94,7 @@ test:
 	$(PYTHON_CMD) -m pytest tests/ -v
 
 test-cov:
-	$(PYTHON_CMD) -m pytest tests/ --cov=titan --cov-report=html --cov-report=term --cov-report=xml
+	$(PYTHON_CMD) -m pytest tests/ --cov=atloop --cov-report=html --cov-report=term --cov-report=xml
 
 test-unit:
 	$(PYTHON_CMD) -m pytest tests/ -v -k "unit" || $(PYTHON_CMD) -m pytest tests/test_*_unit.py -v
@@ -106,13 +106,13 @@ test-e2e:
 	$(PYTHON_CMD) -m pytest tests/ -v -k "e2e" || $(PYTHON_CMD) -m pytest tests/test_e2e_*.py -v
 
 lint:
-	$(PYTHON_CMD) -m ruff check titan/ tests/ --output-format=concise --no-fix
+	$(PYTHON_CMD) -m ruff check atloop/ tests/ --output-format=concise --no-fix
 
 format:
-	$(PYTHON_CMD) -m ruff format titan/ tests/
+	$(PYTHON_CMD) -m ruff format atloop/ tests/
 
 format-check:
-	$(PYTHON_CMD) -m ruff format --check titan/ tests/ cli/
+	$(PYTHON_CMD) -m ruff format --check atloop/ tests/ cli/
 
 check: lint format-check test
 	@echo "All checks passed!"

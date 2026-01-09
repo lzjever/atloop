@@ -16,14 +16,14 @@
 ### 1.1 Modules Copied ✅
 
 **5 modules successfully copied:**
-- `titan.skills` - Skill loading system
-- `titan.runtime` - Runtime execution layer
-- `titan.retrieval` - Code retrieval system
-- `titan.logging` - Event logging system
-- `titan.memory` - Memory management
+- `atloop.skills` - Skill loading system
+- `atloop.runtime` - Runtime execution layer
+- `atloop.retrieval` - Code retrieval system
+- `atloop.logging` - Event logging system
+- `atloop.memory` - Memory management
 
 **Additional modules:**
-- `titan.tools` - Tool implementations
+- `atloop.tools` - Tool implementations
 
 **Total files added**: ~30+ Python files
 
@@ -31,7 +31,7 @@
 
 **test_config_unit.py** (14 tests) ✅
 - ConfigLoader tests (4 tests)
-- TitanConfig validation (2 tests)
+- AtloopConfig validation (2 tests)
 - TaskSpec tests (3 tests)
 - Budget tests (2 tests)
 - SandboxConfig tests (2 tests)
@@ -127,7 +127,7 @@
 
 ### Functional Coverage
 
-- ✅ **Configuration System**: ConfigLoader, TitanConfig, TaskSpec, Budget, SandboxConfig, MemoryConfig
+- ✅ **Configuration System**: ConfigLoader, AtloopConfig, TaskSpec, Budget, SandboxConfig, MemoryConfig
 - ✅ **Orchestrator**: StateMachine, BudgetManager, StateManager, Phase transitions
 - ✅ **Workflow**: Phase transitions, Budget tracking, State persistence
 - ✅ **CLI**: All commands (init, config, execute), Argument parsing
@@ -154,11 +154,11 @@
    - Fixed string concatenation issues
 
 2. **Fixed import issues**
-   - Updated `titan.llm.__init__.py` to export ActionJSON, parse_action_json, validate_action_json
+   - Updated `atloop.llm.__init__.py` to export ActionJSON, parse_action_json, validate_action_json
    - Fixed StateManager `_save()` -> `save()` method call
 
 3. **Fixed CLI argument conflicts**
-   - Removed duplicate `--titan-dir` argument
+   - Removed duplicate `--atloop-dir` argument
 
 4. **Fixed test API mismatches**
    - Updated BudgetManager tests to use `budget_used` directly
@@ -228,14 +228,14 @@ uv run pytest tests/test_e2e_*.py -v
 ### Running with Coverage
 
 ```bash
-uv run pytest tests/ --cov=titan --cov-report=html
+uv run pytest tests/ --cov=atloop --cov-report=html
 ```
 
 ---
 
 ## Real Configuration Usage
 
-All tests use real configuration from `/home/percy/.titan/config/titan.yaml` when available:
+All tests use real configuration from `/home/percy/.atloop/config/atloop.yaml` when available:
 - AI completion settings (deepseek-chat model)
 - Performance limits (131072 input, 8192 output tokens)
 - Sandbox configuration
@@ -297,7 +297,7 @@ This ensures tests validate against actual production configuration.
 
 **Final Status**: 82/82 tests passing (100%)
 
-The refactored TITAN project is now fully tested and validated. All core functionality is covered by comprehensive tests using real configuration, ensuring reliability and correctness.
+The refactored atloop project is now fully tested and validated. All core functionality is covered by comprehensive tests using real configuration, ensuring reliability and correctness.
 
 ---
 

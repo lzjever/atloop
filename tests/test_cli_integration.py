@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from titan.cli.commands.config import cmd_config
-from titan.cli.commands.init import cmd_init
+from atloop.cli.commands.config import cmd_config
+from atloop.cli.commands.init import cmd_init
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class TestCLIIntegration:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
 
         args = MockArgs()
 
@@ -46,7 +46,7 @@ class TestCLIIntegration:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
 
         args = MockArgs()
 
@@ -59,10 +59,10 @@ class TestCLIIntegration:
             logger.error(f"cmd_init failed: {e}")
             raise
 
-    def test_cmd_config_with_custom_dir(self, temp_titan_dir: Path):
-        """Test config command with custom Titan directory."""
+    def test_cmd_config_with_custom_dir(self, temp_atloop_dir: Path):
+        """Test config command with custom atloop directory."""
         # Create minimal config
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -84,7 +84,7 @@ default_budget:
 
         # Create mock args
         class MockArgs:
-            titan_dir = str(temp_titan_dir)
+            atloop_dir = str(temp_atloop_dir)
 
         args = MockArgs()
 

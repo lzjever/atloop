@@ -3,11 +3,11 @@
 import logging
 from pathlib import Path
 
-from titan.config.models import Budget
-from titan.orchestrator.budget import BudgetManager
-from titan.orchestrator.job_state import JobState
-from titan.orchestrator.state.manager import StateManager
-from titan.orchestrator.state_machine import Phase, StateMachine
+from atloop.config.models import Budget
+from atloop.orchestrator.budget import BudgetManager
+from atloop.orchestrator.job_state import JobState
+from atloop.orchestrator.state.manager import StateManager
+from atloop.orchestrator.state_machine import Phase, StateMachine
 
 logger = logging.getLogger(__name__)
 
@@ -147,10 +147,10 @@ class TestBudgetManager:
 class TestStateManager:
     """Unit tests for StateManager."""
 
-    def test_state_manager_init(self, temp_workspace: Path, temp_titan_dir: Path):
+    def test_state_manager_init(self, temp_workspace: Path, temp_atloop_dir: Path):
         """Test StateManager initialization."""
         # Create state file path
-        state_file = temp_titan_dir / "agent_state.json"
+        state_file = temp_atloop_dir / "agent_state.json"
         job_state = JobState(flow_id="test-flow")
 
         manager = StateManager(state_file, job_state)
@@ -159,10 +159,10 @@ class TestStateManager:
         assert manager.agent_state.step == 0
         assert manager.agent_state.phase == "DISCOVER"
 
-    def test_state_manager_update(self, temp_workspace: Path, temp_titan_dir: Path):
+    def test_state_manager_update(self, temp_workspace: Path, temp_atloop_dir: Path):
         """Test StateManager update."""
         # Create state file path
-        state_file = temp_titan_dir / "agent_state.json"
+        state_file = temp_atloop_dir / "agent_state.json"
         job_state = JobState(flow_id="test-flow")
 
         manager = StateManager(state_file, job_state)
@@ -181,10 +181,10 @@ class TestStateManager:
         assert manager.agent_state.step == 10
         assert manager.agent_state.phase == "ACT"
 
-    def test_state_manager_persistence(self, temp_workspace: Path, temp_titan_dir: Path):
+    def test_state_manager_persistence(self, temp_workspace: Path, temp_atloop_dir: Path):
         """Test StateManager state persistence."""
         # Create state file path
-        state_file = temp_titan_dir / "agent_state.json"
+        state_file = temp_atloop_dir / "agent_state.json"
         job_state = JobState(flow_id="test-flow")
 
         # Create first manager and update state

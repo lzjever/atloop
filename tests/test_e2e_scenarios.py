@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec
-from titan.orchestrator.coordinator import WorkflowCoordinator
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import Budget, TaskSpec
+from atloop.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
 

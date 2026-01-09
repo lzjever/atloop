@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from titan.api.runner import TaskRunner
-from titan.config.loader import ConfigLoader
+from atloop.api.runner import TaskRunner
+from atloop.config.loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class TestAPIE2E:
         logger.info("TaskRunner E2E setup successful ✅")
 
     def test_e2e_custom_config(
-        self, real_config_file: Path, temp_workspace: Path, temp_titan_dir: Path
+        self, real_config_file: Path, temp_workspace: Path, temp_atloop_dir: Path
     ):
         """Test TaskRunner with custom config end-to-end."""
         if not real_config_file.exists():
@@ -53,7 +53,7 @@ class TestAPIE2E:
         logger.info("Testing TaskRunner custom config E2E")
 
         # Create custom config
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -74,9 +74,9 @@ default_budget:
 """)
 
         # Initialize runner with custom dir
-        runner = TaskRunner(titan_dir=str(temp_titan_dir))
+        runner = TaskRunner(atloop_dir=str(temp_atloop_dir))
         assert runner is not None
-        assert runner.titan_dir == str(temp_titan_dir)
+        assert runner.atloop_dir == str(temp_atloop_dir)
 
         # Verify custom config loaded
         config = ConfigLoader.get()

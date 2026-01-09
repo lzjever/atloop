@@ -7,8 +7,8 @@ from typing import Generator
 import pytest
 
 # Use real config from user's home directory
-REAL_CONFIG_DIR = Path.home() / ".titan" / "config"
-REAL_CONFIG_FILE = REAL_CONFIG_DIR / "titan.yaml"
+REAL_CONFIG_DIR = Path.home() / ".atloop" / "config"
+REAL_CONFIG_FILE = REAL_CONFIG_DIR / "atloop.yaml"
 
 
 @pytest.fixture
@@ -33,11 +33,11 @@ def temp_workspace() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def temp_titan_dir() -> Generator[Path, None, None]:
-    """Fixture providing temporary Titan directory for testing."""
+def temp_atloop_dir() -> Generator[Path, None, None]:
+    """Fixture providing temporary atloop directory for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        titan_dir = Path(tmpdir) / ".titan"
-        titan_dir.mkdir(parents=True, exist_ok=True)
-        config_dir = titan_dir / "config"
+        atloop_dir = Path(tmpdir) / ".atloop"
+        atloop_dir.mkdir(parents=True, exist_ok=True)
+        config_dir = atloop_dir / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
-        yield titan_dir
+        yield atloop_dir

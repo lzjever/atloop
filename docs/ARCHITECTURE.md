@@ -1,60 +1,60 @@
-# TITAN Architecture
+# atloop Architecture
 
 ## Overview
 
-TITAN is a task automation system that uses AI agents to execute coding tasks. The architecture follows a clean, layered design with clear separation of concerns.
+atloop is a task automation system that uses AI agents to execute coding tasks. The architecture follows a clean, layered design with clear separation of concerns.
 
 ## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         CLI Layer                            │
-│  (titan/cli/) - Minimal, uses varlord for argument parsing  │
+│  (atloop/cli/) - Minimal, uses varlord for argument parsing  │
 └───────────────────────┬─────────────────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────────────────┐
 │                        API Layer                             │
-│  (titan/api/) - TaskRunner, single execution method         │
+│  (atloop/api/) - TaskRunner, single execution method         │
 └───────────────────────┬─────────────────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────────────────┐
 │                    Core Library                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Orchestrator (titan/orchestrator/)                    │  │
+│  │ Orchestrator (atloop/orchestrator/)                    │  │
 │  │  - AgentLoop: Thin wrapper (39 lines)                │  │
 │  │  - Workflow: DISCOVER → PLAN → ACT → VERIFY          │  │
 │  │  - Coordinator: Manages state, budget, phases        │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Runtime (titan/runtime/)                              │  │
+│  │ Runtime (atloop/runtime/)                              │  │
 │  │  - SandboxAdapter: Sandbox communication             │  │
 │  │  - ToolRuntime: Tool execution                        │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ LLM (titan/llm/)                                      │  │
+│  │ LLM (atloop/llm/)                                      │  │
 │  │  - LLMClient: AI endpoint communication (lexilux)    │  │
 │  │  - ActionJSON: Structured action parsing              │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Retrieval (titan/retrieval/)                          │  │
+│  │ Retrieval (atloop/retrieval/)                          │  │
 │  │  - Indexer: Workspace indexing                        │  │
 │  │  - ProjectProfile: Project analysis                   │  │
 │  │  - ContextPack: Context building                      │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Memory (titan/memory/)                                │  │
+│  │ Memory (atloop/memory/)                                │  │
 │  │  - MemoryManager: State management                    │  │
 │  │  - Summarizer: History compression                     │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Tools (titan/tools/)                                  │  │
+│  │ Tools (atloop/tools/)                                  │  │
 │  │  - Registry: Tool registration                        │  │
 │  │  - Filesystem, Interaction, Search, System tools      │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │ Config (titan/config/)                                │  │
+│  │ Config (atloop/config/)                                │  │
 │  │  - ConfigLoader: Uses varlord for type-safe config    │  │
-│  │  - Models: TitanConfig, TaskSpec, Budget, etc.        │  │
+│  │  - Models: AtloopConfig, TaskSpec, Budget, etc.        │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -83,7 +83,7 @@ TITAN is a task automation system that uses AI agents to execute coding tasks. T
 
 ## Layer Responsibilities
 
-### CLI Layer (`titan/cli/`)
+### CLI Layer (`atloop/cli/`)
 - **Purpose**: User interaction entry point
 - **Responsibilities**:
   - Parse command-line arguments (uses varlord)
@@ -92,7 +92,7 @@ TITAN is a task automation system that uses AI agents to execute coding tasks. T
 - **Size**: 71 lines (92.6% reduction from original)
 - **Dependencies**: varlord (for CLI argument parsing)
 
-### API Layer (`titan/api/`)
+### API Layer (`atloop/api/`)
 - **Purpose**: Programmatic interface
 - **Responsibilities**:
   - Provide `TaskRunner` class
@@ -132,39 +132,39 @@ TITAN is a task automation system that uses AI agents to execute coding tasks. T
 
 ### Phase Details
 
-1. **DISCOVER** (`titan/orchestrator/phases/discover.py`)
+1. **DISCOVER** (`atloop/orchestrator/phases/discover.py`)
    - Index workspace
    - Analyze project structure
    - Understand task requirements
 
-2. **PLAN** (`titan/orchestrator/phases/plan.py`)
+2. **PLAN** (`atloop/orchestrator/phases/plan.py`)
    - Generate execution plan
    - Break down task into steps
    - Identify required tools
 
-3. **ACT** (`titan/orchestrator/phases/act.py`)
+3. **ACT** (`atloop/orchestrator/phases/act.py`)
    - Execute tool calls
    - Monitor execution
    - Handle errors
 
-4. **VERIFY** (`titan/orchestrator/phases/verify.py`)
+4. **VERIFY** (`atloop/orchestrator/phases/verify.py`)
    - Run tests
    - Verify changes
    - Generate report
 
 ## State Management
 
-### StateMachine (`titan/orchestrator/state_machine.py`)
+### StateMachine (`atloop/orchestrator/state_machine.py`)
 - Manages phase transitions
 - Enforces workflow order
 - Handles state persistence
 
-### StateManager (`titan/orchestrator/state/manager.py`)
+### StateManager (`atloop/orchestrator/state/manager.py`)
 - Persists job state
 - Recovers from failures
 - Manages state files
 
-### BudgetManager (`titan/orchestrator/budget.py`)
+### BudgetManager (`atloop/orchestrator/budget.py`)
 - Tracks LLM calls
 - Tracks tool calls
 - Tracks wall time
@@ -175,28 +175,28 @@ TITAN is a task automation system that uses AI agents to execute coding tasks. T
 ### Varlord Integration
 - **CLI**: Uses varlord for CLI argument parsing
 - **API/Lib**: Uses varlord via `ConfigLoader` for type-safe configuration
-- **Centralized models**: All config models in `titan/config/models.py`
+- **Centralized models**: All config models in `atloop/config/models.py`
 - **Multi-source loading**: YAML files, environment variables, .env files
 
-### ConfigLoader (`titan/config/loader.py`)
+### ConfigLoader (`atloop/config/loader.py`)
 - `setup()`: Initialize configuration (call once at startup)
 - `get()`: Get configuration (access from anywhere)
-- Type-safe: Returns `TitanConfig` (validated by varlord)
+- Type-safe: Returns `AtloopConfig` (validated by varlord)
 
 ## Key Components
 
-### AgentLoop (`titan/orchestrator/agent_loop.py`)
+### AgentLoop (`atloop/orchestrator/agent_loop.py`)
 - **Size**: 39 lines (98.3% reduction from original 2344 lines)
 - **Purpose**: Thin wrapper around Workflow
 - **Single method**: `run()` - executes workflow
 
-### WorkflowCoordinator (`titan/orchestrator/coordinator.py`)
+### WorkflowCoordinator (`atloop/orchestrator/coordinator.py`)
 - Manages workflow execution
 - Coordinates phases
 - Handles state transitions
 - Manages budget
 
-### ToolExecutor (`titan/orchestrator/executor/tool_executor.py`)
+### ToolExecutor (`atloop/orchestrator/executor/tool_executor.py`)
 - Executes tool calls
 - Handles tool errors
 - Formats tool output
@@ -216,7 +216,7 @@ TITAN is a task automation system that uses AI agents to execute coding tasks. T
 ## File Organization
 
 ```
-titan/
+atloop/
 ├── api/              # API layer (TaskRunner)
 ├── cli/              # CLI layer (minimal)
 ├── config/           # Configuration (varlord)
@@ -234,7 +234,7 @@ titan/
 
 - **Code**: All in English
 - **Logs**: All in English
-- **Prompts**: English templates in `titan/llm/prompts/en/`
+- **Prompts**: English templates in `atloop/llm/prompts/en/`
 - **Template support**: `PromptLoader` enables language switching
 
 ## Testing

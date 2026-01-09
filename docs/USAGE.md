@@ -1,4 +1,4 @@
-# TITAN Usage Guide
+# atloop Usage Guide
 
 ## Installation
 
@@ -8,25 +8,25 @@
 - `uv` (recommended) or `pip`
 - Sandbox server (for execution)
 
-### Install TITAN
+### Install atloop
 
 ```bash
 # Using uv (recommended)
-uv pip install titan
+uv pip install atloop
 
 # Or with CLI support
-uv pip install titan[cli]
+uv pip install atloop[cli]
 
 # Using pip
-pip install titan
-pip install titan[cli]  # With CLI support
+pip install atloop
+pip install atloop[cli]  # With CLI support
 ```
 
 ### Development Installation
 
 ```bash
 git clone <repository>
-cd titanx
+cd atloop
 make dev-install  # Or: uv sync --all-extras
 ```
 
@@ -35,14 +35,14 @@ make dev-install  # Or: uv sync --all-extras
 ### 1. Initialize Configuration
 
 ```bash
-titan init
+atloop init
 ```
 
-This creates `~/.titan/config/titan.yaml` with default settings.
+This creates `~/.atloop/config/atloop.yaml` with default settings.
 
 ### 2. Configure AI Endpoint
 
-Edit `~/.titan/config/titan.yaml`:
+Edit `~/.atloop/config/atloop.yaml`:
 
 ```yaml
 ai:
@@ -62,7 +62,7 @@ ai:
 ### 4. Execute a Task
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/your/project \
   --prompt "Fix the bug in src/main.py"
 ```
@@ -71,19 +71,19 @@ titan execute \
 
 ### Command: `init`
 
-Initialize TITAN configuration.
+Initialize atloop configuration.
 
 ```bash
-titan init [--titan-dir DIR]
+atloop init [--atloop-dir DIR]
 ```
 
 **Options:**
-- `--titan-dir DIR`: Custom Titan directory (for testing)
+- `--atloop-dir DIR`: Custom atloop directory (for testing)
 
 **Example:**
 ```bash
-titan init
-titan init --titan-dir /tmp/test-titan
+atloop init
+atloop init --atloop-dir /tmp/test-atloop
 ```
 
 ### Command: `execute`
@@ -91,14 +91,14 @@ titan init --titan-dir /tmp/test-titan
 Execute a task.
 
 ```bash
-titan execute \
+atloop execute \
   --workspace DIR \
   [--prompt TEXT] \
   [--prompt-file FILE] \
   [--sandbox-url URL] \
   [--local-test] \
   [--session SESSION_ID] \
-  [--titan-dir DIR]
+  [--atloop-dir DIR]
 ```
 
 **Required Options:**
@@ -110,29 +110,29 @@ titan execute \
 - `--sandbox-url URL`: Sandbox base URL (default: `http://127.0.0.1:8080`)
 - `--local-test`: Use local test mode (no sandbox server)
 - `--session SESSION_ID`: Session ID for resuming
-- `--titan-dir DIR`: Custom Titan directory
+- `--atloop-dir DIR`: Custom atloop directory
 
 **Examples:**
 
 ```bash
 # Simple bug fix
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Fix the division by zero error in calculator.py"
 
 # Feature implementation with prompt file
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt-file requirements.txt
 
 # Custom sandbox URL
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Add logging to all functions" \
   --sandbox-url http://localhost:9000
 
 # Local test mode (no sandbox)
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Format code" \
   --local-test
@@ -143,16 +143,16 @@ titan execute \
 Show current configuration.
 
 ```bash
-titan config [--titan-dir DIR]
+atloop config [--atloop-dir DIR]
 ```
 
 **Options:**
-- `--titan-dir DIR`: Custom Titan directory
+- `--atloop-dir DIR`: Custom atloop directory
 
 **Example:**
 ```bash
-titan config
-titan config --titan-dir /tmp/test-titan
+atloop config
+atloop config --atloop-dir /tmp/test-atloop
 ```
 
 ## API Usage
@@ -160,7 +160,7 @@ titan config --titan-dir /tmp/test-titan
 ### Basic Usage
 
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 # Initialize runner
 runner = TaskRunner()
@@ -182,10 +182,10 @@ else:
 ### Advanced Usage
 
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 # Initialize with custom config directory
-runner = TaskRunner(titan_dir="/path/to/.titan")
+runner = TaskRunner(atloop_dir="/path/to/.atloop")
 
 # Execute with full configuration
 result = runner.execute(
@@ -248,7 +248,7 @@ sandbox = {
 
 ### Configuration File
 
-Location: `~/.titan/config/titan.yaml`
+Location: `~/.atloop/config/atloop.yaml`
 
 ```yaml
 ai:
@@ -279,17 +279,17 @@ memory:
 Override configuration using environment variables:
 
 ```bash
-export TITAN__AI__COMPLETION__MODEL="gpt-4-turbo"
-export TITAN__AI__COMPLETION__API_BASE="https://api.openai.com/v1"
-export TITAN__DEFAULT_BUDGET__MAX_LLM_CALLS=100
+export ATLOOP__AI__COMPLETION__MODEL="gpt-4-turbo"
+export ATLOOP__AI__COMPLETION__API_BASE="https://api.openai.com/v1"
+export ATLOOP__DEFAULT_BUDGET__MAX_LLM_CALLS=100
 ```
 
 ### Configuration Priority
 
-1. Environment variables (`TITAN__*`)
+1. Environment variables (`ATLOOP__*`)
 2. `.env` file (in current directory)
-3. Project config (`./.titan/config/titan.yaml`)
-4. User config (`~/.titan/config/titan.yaml`)
+3. Project config (`./.atloop/config/atloop.yaml`)
+4. User config (`~/.atloop/config/atloop.yaml`)
 
 ## Examples
 
@@ -297,14 +297,14 @@ export TITAN__DEFAULT_BUDGET__MAX_LLM_CALLS=100
 
 **CLI:**
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Fix the division by zero error in calculator.py"
 ```
 
 **API:**
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 runner = TaskRunner()
 result = runner.execute({
@@ -318,14 +318,14 @@ result = runner.execute({
 
 **CLI:**
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Add a square root function to calculator.py"
 ```
 
 **API:**
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 runner = TaskRunner()
 result = runner.execute({
@@ -339,14 +339,14 @@ result = runner.execute({
 
 **CLI:**
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Refactor calculator.py to use a class-based design"
 ```
 
 **API:**
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 runner = TaskRunner()
 result = runner.execute({
@@ -364,14 +364,14 @@ result = runner.execute({
 
 **CLI:**
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Add error handling to all Python files in src/"
 ```
 
 **API:**
 ```python
-from titan.api import TaskRunner
+from atloop.api import TaskRunner
 
 runner = TaskRunner()
 result = runner.execute({
@@ -387,11 +387,11 @@ result = runner.execute({
 
 #### 1. Configuration Not Found
 
-**Error:** `KeyError: 'titan'` or configuration not loading
+**Error:** `KeyError: 'atloop'` or configuration not loading
 
 **Solution:**
-- Run `titan init` to create default configuration
-- Check that `~/.titan/config/titan.yaml` exists
+- Run `atloop init` to create default configuration
+- Check that `~/.atloop/config/atloop.yaml` exists
 - Verify file permissions
 
 #### 2. Sandbox Connection Error
@@ -417,7 +417,7 @@ result = runner.execute({
 **Error:** `ModuleNotFoundError` or import errors
 
 **Solution:**
-- Ensure TITAN is installed: `pip install titan`
+- Ensure atloop is installed: `pip install atloop`
 - Check Python version (3.10+)
 - Verify virtual environment is activated
 
@@ -433,7 +433,7 @@ logging.basicConfig(level=logging.DEBUG)
 Or set environment variable:
 
 ```bash
-export TITAN_LOG_LEVEL=DEBUG
+export ATLOOP_LOG_LEVEL=DEBUG
 ```
 
 ## Best Practices
@@ -465,7 +465,7 @@ export TITAN_LOG_LEVEL=DEBUG
 Use project-specific configuration:
 
 ```bash
-# Create ./.titan/config/titan.yaml
+# Create ./.atloop/config/atloop.yaml
 # This overrides user config
 ```
 
@@ -474,7 +474,7 @@ Use project-specific configuration:
 Resume interrupted tasks:
 
 ```bash
-titan execute \
+atloop execute \
   --workspace /path/to/project \
   --prompt "Continue previous task" \
   --session PREVIOUS_SESSION_ID
@@ -482,7 +482,7 @@ titan execute \
 
 ### Custom Tools
 
-Extend TITAN with custom tools (see tool development documentation).
+Extend atloop with custom tools (see tool development documentation).
 
 ### Custom Skills
 

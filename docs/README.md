@@ -1,10 +1,10 @@
-# TITAN Documentation
+# atloop Documentation
 
 **Tool-Integrated Task Automation Node** - AI-powered autonomous code execution system
 
 ## Overview
 
-TITAN is an AI-powered task automation system that autonomously executes coding tasks in isolated sandbox environments. It can understand task requirements, analyze code, generate solutions, execute changes, and verify results—all while maintaining complete audit trails.
+atloop is an AI-powered task automation system that autonomously executes coding tasks in isolated sandbox environments. It can understand task requirements, analyze code, generate solutions, execute changes, and verify results—all while maintaining complete audit trails.
 
 ## Quick Navigation
 
@@ -19,8 +19,8 @@ TITAN is an AI-powered task automation system that autonomously executes coding 
 ```mermaid
 graph TB
     subgraph UI["User Interface Layer"]
-        CLI[CLI<br/>titan/cli/]
-        API[API<br/>titan/api/<br/>TaskRunner]
+        CLI[CLI<br/>atloop/cli/]
+        API[API<br/>atloop/api/<br/>TaskRunner]
     end
     
     subgraph Core["Core Orchestration Layer"]
@@ -211,15 +211,15 @@ stateDiagram-v2
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install TITAN
-cd titan
+# Install atloop
+cd atloop
 make dev-install
 ```
 
 ### Using pip
 
 ```bash
-pip install titan
+pip install atloop
 ```
 
 ## Quick Start Examples
@@ -227,7 +227,7 @@ pip install titan
 ### Example 1: Fix a Bug
 
 ```bash
-titan execute \
+atloop execute \
   --workspace ./my-project \
   --prompt "Fix the failing test in tests/test_math.py" \
   --local-test
@@ -236,7 +236,7 @@ titan execute \
 ### Example 2: Implement a Feature
 
 ```bash
-titan execute \
+atloop execute \
   --workspace ./my-project \
   --prompt "Add user authentication with login and logout endpoints" \
   --sandbox-url http://127.0.0.1:8080
@@ -245,7 +245,7 @@ titan execute \
 ### Example 3: Using API
 
 ```python
-from titan.api.runner import TaskRunner
+from atloop.api.runner import TaskRunner
 
 # Initialize runner
 runner = TaskRunner()
@@ -269,9 +269,9 @@ print(f"Report: {result.get('report', '')}")
 ### Example 4: Custom Budget
 
 ```python
-from titan.api.runner import TaskRunner, load_task_spec
-from titan.config.models import SandboxConfig
-from titan.orchestrator import AgentLoop
+from atloop.api.runner import TaskRunner, load_task_spec
+from atloop.config.models import SandboxConfig
+from atloop.orchestrator import AgentLoop
 
 # Load task with custom budget
 task = load_task_spec(
@@ -292,7 +292,7 @@ sandbox_config = SandboxConfig(
 )
 
 # Run agent
-from titan.config.loader import ConfigLoader
+from atloop.config.loader import ConfigLoader
 ConfigLoader.setup()
 config = ConfigLoader.get()
 
@@ -303,7 +303,7 @@ report = loop.run()
 ### Example 5: Local Testing Mode
 
 ```python
-from titan.api.runner import TaskRunner
+from atloop.api.runner import TaskRunner
 
 runner = TaskRunner()
 
@@ -326,7 +326,7 @@ result = runner.execute(task_config, console=True)
 #!/usr/bin/env python3
 """Complete example: Create and test a Python module."""
 
-from titan.api.runner import TaskRunner
+from atloop.api.runner import TaskRunner
 from pathlib import Path
 
 # Initialize runner
@@ -366,7 +366,7 @@ else:
 ### Example 7: Event Replay
 
 ```python
-from titan.logging import EventReplay
+from atloop.logging import EventReplay
 from pathlib import Path
 
 # Replay execution history
@@ -379,7 +379,7 @@ print(f"Steps: {summary['steps']}")
 ### Example 8: Generate Report
 
 ```python
-from titan.logging import ReportGenerator
+from atloop.logging import ReportGenerator
 from pathlib import Path
 
 # Generate markdown report
@@ -391,10 +391,10 @@ markdown = generator.generate_markdown_report(report, Path("report.md"))
 ### Example 9: Bug Fix with Constraints
 
 ```python
-from titan.api.runner import TaskRunner, load_task_spec
-from titan.config.models import SandboxConfig
-from titan.orchestrator import AgentLoop
-from titan.config.loader import ConfigLoader
+from atloop.api.runner import TaskRunner, load_task_spec
+from atloop.config.models import SandboxConfig
+from atloop.orchestrator import AgentLoop
+from atloop.config.loader import ConfigLoader
 
 # Setup configuration
 ConfigLoader.setup()
@@ -443,7 +443,7 @@ Implement a REST API endpoint for user registration:
 EOF
 
 # Execute with prompt file
-titan execute \
+atloop execute \
   --workspace ./my-api-project \
   --prompt-file task_prompt.txt \
   --local-test
@@ -452,8 +452,8 @@ titan execute \
 ## Project Structure
 
 ```
-titan/
-├── titan/                    # Core library
+atloop/
+├── atloop/                    # Core library
 │   ├── api/                  # API layer (TaskRunner)
 │   ├── cli/                  # CLI layer (minimal, varlord)
 │   ├── config/               # Configuration (varlord)
@@ -497,18 +497,18 @@ titan/
 
 ## Configuration
 
-TITAN uses **varlord** for type-safe configuration management:
+atloop uses **varlord** for type-safe configuration management:
 
 ### Configuration Sources (Priority Order)
 
-1. Environment variables (`TITAN__*`)
+1. Environment variables (`ATLOOP__*`)
 2. `.env` file (in current directory)
-3. Project config (`./.titan/config/titan.yaml`)
-4. User config (`~/.titan/config/titan.yaml`)
+3. Project config (`./.atloop/config/atloop.yaml`)
+4. User config (`~/.atloop/config/atloop.yaml`)
 
 ### Key Configuration Models
 
-- `TitanConfig`: Main configuration
+- `AtloopConfig`: Main configuration
 - `TaskSpec`: Task specification
 - `Budget`: Execution budget limits
 - `SandboxConfig`: Sandbox configuration
@@ -552,7 +552,7 @@ make test-cov
 
 ## Integration with noxrunner v2.0.0
 
-TITAN integrates with **noxrunner v2.0.0** for sandbox execution:
+atloop integrates with **noxrunner v2.0.0** for sandbox execution:
 
 - **Unified Interface**: `NoxRunnerClient` provides consistent API
 - **Automatic File Sync**: `download_workspace()` handles file synchronization

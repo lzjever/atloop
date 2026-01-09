@@ -2,14 +2,14 @@
 
 ## Overview
 
-Integration tests created for the refactored TITAN project using real configuration from `/home/percy/.titan/config/titan.yaml`.
+Integration tests created for the refactored atloop project using real configuration from `/home/percy/.atloop/config/atloop.yaml`.
 
 ## Test Files Created
 
 1. **test_config_loader_integration.py** - Tests for ConfigLoader with real config
    - `test_load_real_config` - Loads and validates real configuration
    - `test_config_loader_singleton` - Verifies config consistency
-   - `test_config_loader_with_custom_dir` - Tests custom Titan directory
+   - `test_config_loader_with_custom_dir` - Tests custom atloop directory
 
 2. **test_api_runner_integration.py** - Tests for API layer (TaskRunner)
    - `test_task_runner_config_loading` - Config loading validation
@@ -29,7 +29,7 @@ Integration tests created for the refactored TITAN project using real configurat
 ## Real Configuration Used
 
 Tests use the actual configuration from:
-- `/home/percy/.titan/config/titan.yaml`
+- `/home/percy/.atloop/config/atloop.yaml`
 
 Configuration includes:
 - AI completion settings (deepseek-chat model)
@@ -59,7 +59,7 @@ All integration tests for ConfigLoader, API runner config, and workflow componen
 
 1. **ConfigLoader**
    - Real config loading from user home directory
-   - Custom Titan directory support
+   - Custom atloop directory support
    - Config validation and type safety
 
 2. **TaskRunner API**
@@ -80,11 +80,11 @@ All integration tests for ConfigLoader, API runner config, and workflow componen
 ### ⚠️ Pending (Requires Additional Modules)
 
 Some tests require additional modules that need to be copied from the original project:
-- `titan.skills` - EnhancedSkillLoader
-- `titan.runtime` - SandboxAdapter, ToolRuntime
-- `titan.retrieval` - WorkspaceIndexer, ProjectProfileDetector, ContextPackBuilder
-- `titan.logging` - EventLogger
-- `titan.memory` - MemoryManager, MemorySummarizer, AgentState
+- `atloop.skills` - EnhancedSkillLoader
+- `atloop.runtime` - SandboxAdapter, ToolRuntime
+- `atloop.retrieval` - WorkspaceIndexer, ProjectProfileDetector, ContextPackBuilder
+- `atloop.logging` - EventLogger
+- `atloop.memory` - MemoryManager, MemorySummarizer, AgentState
 
 These modules will be integrated in subsequent phases.
 

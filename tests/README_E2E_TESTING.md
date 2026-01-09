@@ -1,14 +1,14 @@
-# End-to-End Testing for Titan CLI
+# End-to-End Testing for atloop CLI
 
 ## Overview
 
-The end-to-end tests in `test_e2e_cli_subprocess.py` test the Titan CLI by executing the actual command as a subprocess, matching the user's exact usage pattern.
+The end-to-end tests in `test_e2e_cli_subprocess.py` test the atloop CLI by executing the actual command as a subprocess, matching the user's exact usage pattern.
 
 ## Test Command Format
 
 The tests use the exact command format:
 ```bash
-timeout 120 uv run python -m titan.cli.main execute \
+timeout 120 uv run python -m atloop.cli.main execute \
   --workspace ./test_ws/w1 \
   --prompt "write some arbitrary python code" \
   --local-test

@@ -3,7 +3,7 @@
 ## 一、已实现的基础优化
 
 ### ✅ 1. 记忆压缩机制
-- **文件**: `titan/memory/compressor.py`
+- **文件**: `atloop/memory/compressor.py`
 - **功能**: 自动压缩旧的 attempts 和 decisions，防止无限增长
 - **配置**: 
   - `ATTEMPTS_KEEP_RECENT = 10`
@@ -11,12 +11,12 @@
 - **触发**: 每步自动检查并压缩
 
 ### ✅ 2. 重要性评分器
-- **文件**: `titan/memory/scorer.py`
+- **文件**: `atloop/memory/scorer.py`
 - **功能**: 为决策、里程碑、经验等评分（0.0-1.0）
 - **用途**: 未来可用于优先保留高分记忆
 
 ### ✅ 3. 智能截断
-- **改进**: `titan/memory/summarizer.py`
+- **改进**: `atloop/memory/summarizer.py`
 - **策略**: 优先保留长期记忆和最后错误信息
 
 ---
@@ -30,7 +30,7 @@
 
 **实施**:
 ```python
-# titan/memory/plan.py
+# atloop/memory/plan.py
 @dataclass
 class PlanStep:
     id: str

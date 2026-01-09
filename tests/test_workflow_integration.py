@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import Budget, TaskSpec
 
 logger = logging.getLogger(__name__)
 

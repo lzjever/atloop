@@ -1,6 +1,6 @@
 # Limits 配置完整文档
 
-本文档详细说明 `titan/config/limits.py` 中所有配置项的含义、用途和影响。
+本文档详细说明 `atloop/config/limits.py` 中所有配置项的含义、用途和影响。
 
 ## 概述
 
@@ -31,7 +31,7 @@
 - 当命令输出超过此限制时，会被截断以避免占用过多 token
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 处理工具执行结果时
+- `atloop/orchestrator/agent_loop.py` - 处理工具执行结果时
 
 **影响**：
 - ✅ **太小**：可能丢失重要错误信息，导致 LLM 无法诊断问题
@@ -55,7 +55,7 @@ stdout = result.stdout[:STDOUT_STDERR_LIMIT_NORMAL]  # 只保留前 5KB
 - 需要更大的限制以确保 LLM 能看到完整的文件内容来修复错误
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 检测到文件查看命令时使用此限制
+- `atloop/orchestrator/agent_loop.py` - 检测到文件查看命令时使用此限制
 
 **影响**：
 - ✅ **为什么需要 40KB**：文件内容通常比命令输出大得多，需要足够空间来显示完整文件
@@ -81,7 +81,7 @@ else:
 - 这些工具的输出通常很短（成功/失败消息），不需要太多空间
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 处理非 run 工具的输出时
+- `atloop/orchestrator/agent_loop.py` - 处理非 run 工具的输出时
 
 **影响**：
 - ✅ **为什么只需要 2KB**：文件操作工具的输出通常是简单的确认消息，不需要太多空间
@@ -99,7 +99,7 @@ else:
 - 比 stdout/stderr 限制大，因为错误信息需要更完整
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 构建错误摘要时
+- `atloop/orchestrator/agent_loop.py` - 构建错误摘要时
 
 **影响**：
 - ✅ **为什么需要 15KB**：错误信息通常包含完整的 traceback，需要足够空间
@@ -122,7 +122,7 @@ error_summary = format_error(result)[:ERROR_SUMMARY_LIMIT_NORMAL]  # 最多 15KB
 - 文件查看命令的错误可能包含文件内容，需要更大空间
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 检测到文件查看命令时使用此限制
+- `atloop/orchestrator/agent_loop.py` - 检测到文件查看命令时使用此限制
 
 **影响**：
 - ✅ **为什么需要 30KB**：文件查看命令的错误可能包含文件片段，需要更大空间
@@ -140,7 +140,7 @@ error_summary = format_error(result)[:ERROR_SUMMARY_LIMIT_NORMAL]  # 最多 15KB
 - 用于详细错误分析，通常错误信息在 stderr 的末尾
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 提取 stderr 尾部时
+- `atloop/orchestrator/agent_loop.py` - 提取 stderr 尾部时
 
 **影响**：
 - ✅ **为什么需要尾部**：很多错误信息（如 Python traceback）在输出的末尾
@@ -165,7 +165,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 用于普通错误（不包含文件内容）
 
 **使用位置**：
-- `titan/retrieval/context_pack.py` - 构建上下文包时
+- `atloop/retrieval/context_pack.py` - 构建上下文包时
 
 **影响**：
 - ✅ **为什么需要 10KB**：需要足够空间显示完整的错误信息
@@ -183,7 +183,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 文件内容通常比纯错误信息大得多
 
 **使用位置**：
-- `titan/retrieval/context_pack.py` - 检测到包含文件内容的错误时使用此限制
+- `atloop/retrieval/context_pack.py` - 检测到包含文件内容的错误时使用此限制
 
 **影响**：
 - ✅ **为什么需要 25KB**：包含文件内容的错误需要更大空间
@@ -201,7 +201,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 传递给 LLM 以便了解文件修改历史
 
 **使用位置**：
-- `titan/retrieval/context_pack.py` - 构建 diff 信息时
+- `atloop/retrieval/context_pack.py` - 构建 diff 信息时
 
 **影响**：
 - ✅ **为什么需要 5KB**：diff 信息通常不会太长，5KB 足够显示大部分变更
@@ -219,7 +219,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 用于传递给 LLM 以便了解测试结果
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 处理测试结果时
+- `atloop/orchestrator/agent_loop.py` - 处理测试结果时
 
 **影响**：
 - ✅ **为什么需要 8KB**：测试输出可能包含多个测试用例的结果，需要足够空间
@@ -237,7 +237,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 比 `TEST_RESULTS_LIMIT` 小，因为 context pack 需要包含更多其他信息
 
 **使用位置**：
-- `titan/retrieval/context_pack.py` - 构建上下文包时
+- `atloop/retrieval/context_pack.py` - 构建上下文包时
 
 **影响**：
 - ✅ **为什么比 agent_loop 中的小**：context pack 需要包含更多信息，所以测试结果限制更小
@@ -255,7 +255,7 @@ stderr_tail = result.stderr[-STDERR_TAIL_LIMIT:]  # 最后 5KB
 - 防止上下文包过大导致 prompt 超过 API 限制
 
 **使用位置**：
-- `titan/retrieval/context_pack.py` - 构建上下文包时检查总大小
+- `atloop/retrieval/context_pack.py` - 构建上下文包时检查总大小
 
 **影响**：
 - ✅ **为什么需要 100KB**：上下文包包含多个部分（错误、diff、测试结果等），需要足够空间
@@ -282,8 +282,8 @@ if total_size > CONTEXT_PACK_MAX_SIZE:
 - 这是传递给 LLM 的长期记忆摘要的最大大小
 
 **使用位置**：
-- `titan/orchestrator/agent_loop.py` - 调用 `MemorySummarizer.summarize()` 时
-- `titan/memory/summarizer.py` - 生成记忆摘要时
+- `atloop/orchestrator/agent_loop.py` - 调用 `MemorySummarizer.summarize()` 时
+- `atloop/memory/summarizer.py` - 生成记忆摘要时
 
 **影响**：
 - ✅ **为什么需要 32KB**：长期记忆可能包含很多信息（计划、决策、里程碑等），需要足够空间
@@ -306,7 +306,7 @@ memory_summary = MemorySummarizer.summarize(state, max_length=32000)
 - 即使设置了较小的 `max_length`，也会至少保留这么多字符
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 智能截断时确保至少保留此大小
+- `atloop/memory/summarizer.py` - 智能截断时确保至少保留此大小
 
 **影响**：
 - ✅ **为什么需要 8KB**：需要确保工具执行结果等重要信息不会被完全截断
@@ -329,7 +329,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 比普通输出限制大，因为记忆摘要需要保留更多上下文
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 生成记忆摘要时显示工具执行结果
+- `atloop/memory/summarizer.py` - 生成记忆摘要时显示工具执行结果
 
 **影响**：
 - ✅ **为什么需要 8KB**：记忆摘要需要保留足够的工具执行结果，以便 LLM 了解历史操作
@@ -347,7 +347,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 比 shell 命令小，因为其他工具的输出通常更短
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 生成记忆摘要时显示工具执行结果
+- `atloop/memory/summarizer.py` - 生成记忆摘要时显示工具执行结果
 
 **影响**：
 - ✅ **为什么只需要 2KB**：非 shell 工具的输出通常是简单的确认消息
@@ -365,7 +365,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 比 `STDERR_TAIL_LIMIT` 小，因为记忆摘要需要包含更多其他信息
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 生成记忆摘要时显示最后错误
+- `atloop/memory/summarizer.py` - 生成记忆摘要时显示最后错误
 
 **影响**：
 - ✅ **为什么只需要 2KB**：记忆摘要需要包含很多其他信息，所以 stderr 尾部限制较小
@@ -383,7 +383,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 比普通输出限制大，因为最后错误通常是最重要的
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 生成记忆摘要时显示最后错误
+- `atloop/memory/summarizer.py` - 生成记忆摘要时显示最后错误
 
 **影响**：
 - ✅ **为什么需要 8KB**：最后错误通常是最重要的，需要足够空间显示完整信息
@@ -401,7 +401,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 与 shell 命令相同，因为最后错误同样重要
 
 **使用位置**：
-- `titan/memory/summarizer.py` - 生成记忆摘要时显示最后错误
+- `atloop/memory/summarizer.py` - 生成记忆摘要时显示最后错误
 
 **影响**：
 - ✅ **为什么需要 8KB**：最后错误通常是最重要的，需要足够空间显示完整信息
@@ -421,7 +421,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 需要足够大以包含完整的 ImportError traceback
 
 **使用位置**：
-- `titan/orchestrator/verifier.py` - 提取验证错误时
+- `atloop/orchestrator/verifier.py` - 提取验证错误时
 
 **影响**：
 - ✅ **为什么需要 8KB**：Python traceback 可能很长，需要足够空间
@@ -439,7 +439,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 限制提取的行数，避免提取过多无关内容
 
 **使用位置**：
-- `titan/orchestrator/verifier.py` - 提取错误行时
+- `atloop/orchestrator/verifier.py` - 提取错误行时
 
 **影响**：
 - ✅ **为什么需要 30 行**：通常错误信息在 traceback 的前 30 行内
@@ -457,7 +457,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 错误签名通常是一行，但可能很长
 
 **使用位置**：
-- `titan/orchestrator/verifier.py` - 提取错误签名时
+- `atloop/orchestrator/verifier.py` - 提取错误签名时
 
 **影响**：
 - ✅ **为什么需要 200 字符**：错误签名可能包含长路径和函数名
@@ -477,7 +477,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 事件日志用于记录和调试，不需要完整输出
 
 **使用位置**：
-- `titan/logging/event_logger.py` - 记录工具输出时
+- `atloop/logging/event_logger.py` - 记录工具输出时
 
 **影响**：
 - ✅ **为什么需要 8KB**：需要足够空间记录关键输出，但不需要完整输出
@@ -495,7 +495,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 只存储 prompt 的开头部分，用于调试
 
 **使用位置**：
-- `titan/logging/event_logger.py` - 记录 prompt 预览时
+- `atloop/logging/event_logger.py` - 记录 prompt 预览时
 
 **影响**：
 - ✅ **为什么只需要 2KB**：prompt 预览只需要显示开头部分，用于调试
@@ -515,7 +515,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 报告通常不需要完整的 diff，只需要关键变更
 
 **使用位置**：
-- `titan/logging/report.py` - 生成报告时
+- `atloop/logging/report.py` - 生成报告时
 
 **影响**：
 - ✅ **为什么需要 5KB**：需要足够空间显示关键变更
@@ -533,7 +533,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 报告通常只需要测试结果的摘要
 
 **使用位置**：
-- `titan/logging/report.py` - 生成报告时
+- `atloop/logging/report.py` - 生成报告时
 
 **影响**：
 - ✅ **为什么只需要 2KB**：报告只需要测试结果的摘要，不需要完整输出
@@ -551,7 +551,7 @@ effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)  # �
 - 报告通常只需要 stderr 的摘要
 
 **使用位置**：
-- `titan/logging/report.py` - 生成报告时
+- `atloop/logging/report.py` - 生成报告时
 
 **影响**：
 - ✅ **为什么只需要 1KB**：报告只需要 stderr 的摘要，不需要完整输出

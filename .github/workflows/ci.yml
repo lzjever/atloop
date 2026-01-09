@@ -9,6 +9,6 @@ jobs:
     - uses: actions/checkout@v4
     - uses: astral-sh/setup-uv@v3
     - run: uv sync --dev
-    - run: uv run pytest tests/ -v --cov=titan
-    - run: uv run ruff check titan/
-    - run: uv run mypy titan/
+    - run: uv run pytest tests/ -v --cov=atloop
+    - run: uv run ruff check atloop/
+    - run: uv run mypy atloop/

@@ -1,12 +1,12 @@
-# TITAN Testing and Validation Plan
+# atloop Testing and Validation Plan
 
 ## Overview
 
-This document outlines a comprehensive testing and validation plan for the refactored TITAN project. The plan covers unit tests, integration tests, end-to-end tests, performance tests, and validation criteria.
+This document outlines a comprehensive testing and validation plan for the refactored atloop project. The plan covers unit tests, integration tests, end-to-end tests, performance tests, and validation criteria.
 
 **Target Coverage**: >80%  
 **Test Framework**: pytest  
-**Real Configuration**: Uses `/home/percy/.titan/config/titan.yaml`
+**Real Configuration**: Uses `/home/percy/.atloop/config/atloop.yaml`
 
 ---
 
@@ -16,44 +16,44 @@ This document outlines a comprehensive testing and validation plan for the refac
 
 **Priority: HIGH** - These modules are required for full functionality:
 
-1. **titan.skills** - Skill loading system
+1. **atloop.skills** - Skill loading system
    - `EnhancedSkillLoader` class
    - Skill directory management
    - Skill file reading
 
-2. **titan.runtime** - Runtime execution layer
+2. **atloop.runtime** - Runtime execution layer
    - `SandboxAdapter` - Sandbox communication
    - `ToolRuntime` - Tool execution wrapper
    - Tool implementations (read_file, write_file, edit_file, etc.)
 
-3. **titan.retrieval** - Code retrieval system
+3. **atloop.retrieval** - Code retrieval system
    - `WorkspaceIndexer` - Workspace indexing
    - `ProjectProfileDetector` - Project type detection
    - `ContextPackBuilder` - Context packaging
 
-4. **titan.logging** - Event logging system
+4. **atloop.logging** - Event logging system
    - `EventLogger` - Event recording
    - `EventReplay` - Event replay functionality
    - `ReportGenerator` - Report generation
 
-5. **titan.memory** - Memory management
+5. **atloop.memory** - Memory management
    - `MemoryManager` - Memory management
    - `MemorySummarizer` - Memory summarization
    - `AgentState` - Agent state model
 
 ### 1.2 Unit Tests by Module
 
-#### A. Configuration Module (`titan/config/`)
+#### A. Configuration Module (`atloop/config/`)
 
 **File**: `tests/test_config_unit.py`
 
 **Test Cases**:
 - [ ] `test_config_loader_setup` - ConfigLoader.setup() with real config
 - [ ] `test_config_loader_get` - ConfigLoader.get() returns valid config
-- [ ] `test_config_loader_custom_dir` - Custom Titan directory support
+- [ ] `test_config_loader_custom_dir` - Custom atloop directory support
 - [ ] `test_config_loader_env_override` - Environment variable overrides
 - [ ] `test_config_loader_priority` - Config source priority (env > project > user)
-- [ ] `test_titan_config_validation` - TitanConfig model validation
+- [ ] `test_titan_config_validation` - AtloopConfig model validation
 - [ ] `test_task_spec_creation` - TaskSpec creation and validation
 - [ ] `test_budget_creation` - Budget model creation
 - [ ] `test_sandbox_config_creation` - SandboxConfig model creation
@@ -66,7 +66,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Real config file loads correctly
 - Custom directories work correctly
 
-#### B. LLM Client Module (`titan/llm/`)
+#### B. LLM Client Module (`atloop/llm/`)
 
 **File**: `tests/test_llm_client_unit.py`
 
@@ -90,7 +90,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Error handling is robust
 - Token limits are enforced
 
-#### C. Orchestrator Module (`titan/orchestrator/`)
+#### C. Orchestrator Module (`atloop/orchestrator/`)
 
 **File**: `tests/test_orchestrator_unit.py`
 
@@ -121,7 +121,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Budget tracking is accurate
 - Phases execute in correct order
 
-#### D. Runtime Module (`titan/runtime/`)
+#### D. Runtime Module (`atloop/runtime/`)
 
 **File**: `tests/test_runtime_unit.py`
 
@@ -146,7 +146,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Error handling is robust
 - Timeouts are handled properly
 
-#### E. Retrieval Module (`titan/retrieval/`)
+#### E. Retrieval Module (`atloop/retrieval/`)
 
 **File**: `tests/test_retrieval_unit.py`
 
@@ -167,7 +167,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Project types are detected accurately
 - Context packs are built correctly
 
-#### F. Memory Module (`titan/memory/`)
+#### F. Memory Module (`atloop/memory/`)
 
 **File**: `tests/test_memory_unit.py`
 
@@ -189,7 +189,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Compression reduces memory size
 - Summarization maintains important information
 
-#### G. Logging Module (`titan/logging/`)
+#### G. Logging Module (`atloop/logging/`)
 
 **File**: `tests/test_logging_unit.py`
 
@@ -212,7 +212,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Event replay works accurately
 - Reports are generated correctly
 
-#### H. Skills Module (`titan/skills/`)
+#### H. Skills Module (`atloop/skills/`)
 
 **File**: `tests/test_skills_unit.py`
 
@@ -227,7 +227,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Skills load from all directories
 - Skill files are read correctly
 
-#### I. CLI Module (`titan/cli/`)
+#### I. CLI Module (`atloop/cli/`)
 
 **File**: `tests/test_cli_unit.py`
 
@@ -245,7 +245,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 - Error messages are clear
 - Input validation works
 
-#### J. API Module (`titan/api/`)
+#### J. API Module (`atloop/api/`)
 
 **File**: `tests/test_api_unit.py`
 
@@ -431,11 +431,11 @@ This document outlines a comprehensive testing and validation plan for the refac
 - [x] `real_config_dir` - Real config directory
 - [x] `real_config_file` - Real config file path
 - [x] `temp_workspace` - Temporary workspace
-- [x] `temp_titan_dir` - Temporary Titan directory
+- [x] `temp_titan_dir` - Temporary atloop directory
 - [ ] `mock_sandbox` - Mock sandbox adapter
 - [ ] `mock_llm_client` - Mock LLM client
 - [ ] `sample_task_spec` - Sample TaskSpec
-- [ ] `sample_config` - Sample TitanConfig
+- [ ] `sample_config` - Sample AtloopConfig
 
 ### 6.2 Test Data
 
@@ -466,7 +466,7 @@ This document outlines a comprehensive testing and validation plan for the refac
 
 ```bash
 # Run all tests
-uv run pytest tests/ -v --cov=titan --cov-report=html
+uv run pytest tests/ -v --cov=atloop --cov-report=html
 
 # Run unit tests only
 uv run pytest tests/test_*_unit.py -v
@@ -613,7 +613,7 @@ uv run pytest tests/test_stress.py -v -m stress
 
 ## Notes
 
-- All tests use real configuration from `/home/percy/.titan/config/titan.yaml` when possible
+- All tests use real configuration from `/home/percy/.atloop/config/atloop.yaml` when possible
 - Tests are designed to be strict and not accommodate bugs
 - Tests validate both structure and values
 - Custom directory tests use temporary directories to avoid side effects

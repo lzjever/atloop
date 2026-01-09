@@ -13,7 +13,7 @@ class TestCodeQualityValidation:
 
     def test_validation_agent_loop_size(self):
         """Test AgentLoop size < 50 lines."""
-        agent_loop_file = Path("titan/orchestrator/agent_loop.py")
+        agent_loop_file = Path("atloop/orchestrator/agent_loop.py")
         assert agent_loop_file.exists(), "agent_loop.py should exist"
 
         with open(agent_loop_file, encoding="utf-8") as f:
@@ -28,7 +28,7 @@ class TestCodeQualityValidation:
 
     def test_validation_cli_main_size(self):
         """Test CLI main < 100 lines."""
-        cli_main_file = Path("titan/cli/main.py")
+        cli_main_file = Path("atloop/cli/main.py")
         assert cli_main_file.exists(), "cli/main.py should exist"
 
         with open(cli_main_file, encoding="utf-8") as f:
@@ -42,11 +42,11 @@ class TestCodeQualityValidation:
 
     def test_validation_module_sizes(self):
         """Test all modules < 300 lines."""
-        titan_dir = Path("titan")
-        assert titan_dir.exists(), "titan directory should exist"
+        atloop_dir = Path("atloop")
+        assert atloop_dir.exists(), "atloop directory should exist"
 
         large_files = []
-        for py_file in titan_dir.rglob("*.py"):
+        for py_file in atloop_dir.rglob("*.py"):
             # Skip __init__.py and test files
             if py_file.name == "__init__.py" or "test" in py_file.name:
                 continue
@@ -70,13 +70,13 @@ class TestCodeQualityValidation:
 
     def test_validation_no_chinese_text(self):
         """Test no Chinese text in code."""
-        titan_dir = Path("titan")
-        assert titan_dir.exists(), "titan directory should exist"
+        atloop_dir = Path("atloop")
+        assert atloop_dir.exists(), "atloop directory should exist"
 
         chinese_pattern = re.compile(r"[\u4e00-\u9fff]")
         files_with_chinese = []
 
-        for py_file in titan_dir.rglob("*.py"):
+        for py_file in atloop_dir.rglob("*.py"):
             # Skip prompt files (they may have Chinese examples)
             if "prompt" in str(py_file) or "skill" in str(py_file).lower():
                 continue
@@ -106,13 +106,13 @@ class TestCodeQualityValidation:
 
     def test_validation_english_logs(self):
         """Test all log messages are in English."""
-        titan_dir = Path("titan")
-        assert titan_dir.exists(), "titan directory should exist"
+        atloop_dir = Path("atloop")
+        assert atloop_dir.exists(), "atloop directory should exist"
 
         chinese_pattern = re.compile(r"[\u4e00-\u9fff]")
         files_with_chinese_logs = []
 
-        for py_file in titan_dir.rglob("*.py"):
+        for py_file in atloop_dir.rglob("*.py"):
             with open(py_file, encoding="utf-8") as f:
                 content = f.read()
                 lines = content.split("\n")
@@ -129,14 +129,14 @@ class TestCodeQualityValidation:
 
     def test_validation_type_hints(self):
         """Test type hints coverage (basic check)."""
-        titan_dir = Path("titan")
-        assert titan_dir.exists(), "titan directory should exist"
+        atloop_dir = Path("atloop")
+        assert atloop_dir.exists(), "atloop directory should exist"
 
         # Check a few key files for type hints
         key_files = [
-            "titan/orchestrator/agent_loop.py",
-            "titan/api/runner.py",
-            "titan/cli/main.py",
+            "atloop/orchestrator/agent_loop.py",
+            "atloop/api/runner.py",
+            "atloop/cli/main.py",
         ]
 
         for file_path in key_files:
@@ -165,14 +165,14 @@ class TestCodeQualityValidation:
 
     def test_validation_docstrings(self):
         """Test docstring coverage (basic check)."""
-        titan_dir = Path("titan")
-        assert titan_dir.exists(), "titan directory should exist"
+        atloop_dir = Path("atloop")
+        assert atloop_dir.exists(), "atloop directory should exist"
 
         # Check key files for docstrings
         key_files = [
-            "titan/orchestrator/agent_loop.py",
-            "titan/api/runner.py",
-            "titan/cli/main.py",
+            "atloop/orchestrator/agent_loop.py",
+            "atloop/api/runner.py",
+            "atloop/cli/main.py",
         ]
 
         for file_path in key_files:
@@ -206,7 +206,7 @@ class TestFunctionalityValidation:
 
     def test_validation_single_workflow(self):
         """Test only one workflow implementation."""
-        workflow_files = list(Path("titan/orchestrator").rglob("*workflow*.py"))
+        workflow_files = list(Path("atloop/orchestrator").rglob("*workflow*.py"))
         # Should have only one workflow implementation
         assert len(workflow_files) >= 1, "Should have at least one workflow file"
         logger.info(f"Workflow files: {[str(f) for f in workflow_files]}")
@@ -215,7 +215,7 @@ class TestFunctionalityValidation:
     def test_validation_single_execution_method(self):
         """Test only one execution method."""
         # Check AgentLoop has only one run method
-        agent_loop_file = Path("titan/orchestrator/agent_loop.py")
+        agent_loop_file = Path("atloop/orchestrator/agent_loop.py")
         with open(agent_loop_file, encoding="utf-8") as f:
             content = f.read()
 
@@ -227,7 +227,7 @@ class TestFunctionalityValidation:
     def test_validation_varlord_usage(self):
         """Test varlord usage in lib/api."""
         # Check ConfigLoader uses varlord
-        loader_file = Path("titan/config/loader.py")
+        loader_file = Path("atloop/config/loader.py")
         with open(loader_file, encoding="utf-8") as f:
             content = f.read()
 
@@ -237,7 +237,7 @@ class TestFunctionalityValidation:
 
     def test_validation_prompt_templates(self):
         """Test prompt templates exist (English version)."""
-        prompt_dir = Path("titan/llm/prompts/en")
+        prompt_dir = Path("atloop/llm/prompts/en")
         assert prompt_dir.exists(), "English prompts directory should exist"
 
         system_prompt = prompt_dir / "system.txt"
@@ -251,8 +251,8 @@ class TestFunctionalityValidation:
         """Test rich debug logging exists."""
         # Check a few key files for debug logging
         key_files = [
-            "titan/orchestrator/workflow/workflow.py",
-            "titan/orchestrator/coordinator.py",
+            "atloop/orchestrator/workflow/workflow.py",
+            "atloop/orchestrator/coordinator.py",
         ]
 
         for file_path in key_files:
@@ -272,7 +272,7 @@ class TestFunctionalityValidation:
     def test_validation_config_loader_usage(self):
         """Test ConfigLoader usage pattern."""
         # Check that ConfigLoader provides get() and setup() methods
-        loader_file = Path("titan/config/loader.py")
+        loader_file = Path("atloop/config/loader.py")
         with open(loader_file, encoding="utf-8") as f:
             content = f.read()
 

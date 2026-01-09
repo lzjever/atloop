@@ -1,16 +1,16 @@
-# TITAN Refactoring - Final Status Report
+# atloop Refactoring - Final Status Report
 
 ## 🎉 Project Status: REFACTORING COMPLETE
 
 ### Executive Summary
 
-The TITAN project has been successfully refactored from `/titan` to `/titanx` with:
+The atloop project has been successfully refactored from `/atloop` to `/titanx` with:
 - ✅ **Code simplification**: AgentLoop reduced from 2344 lines to 39 lines (98.3% reduction)
 - ✅ **CLI simplification**: CLI main reduced from 954 lines to 71 lines (92.6% reduction)
 - ✅ **Unified workflow**: Single workflow implementation (DISCOVER -> PLAN -> ACT -> VERIFY)
 - ✅ **All code in English**: Code, logs, and prompts translated to English
 - ✅ **Comprehensive testing**: 82+ tests, 100% pass rate
-- ✅ **Real configuration**: All tests use actual config from `/home/percy/.titan/config/titan.yaml`
+- ✅ **Real configuration**: All tests use actual config from `/home/percy/.atloop/config/atloop.yaml`
 
 ---
 
@@ -92,7 +92,7 @@ The TITAN project has been successfully refactored from `/titan` to `/titanx` wi
 ### 4. Configuration Management ✅
 
 - **Varlord integration**: Used in both lib/api and CLI
-- **Centralized models**: All config models in `titan/config/models.py`
+- **Centralized models**: All config models in `atloop/config/models.py`
 - **Type safety**: varlord validates config at load time
 - **Multi-source loading**: YAML, environment variables, .env files
 
@@ -109,7 +109,7 @@ The TITAN project has been successfully refactored from `/titan` to `/titanx` wi
 
 ```
 titanx/
-├── titan/                    # Core library
+├── atloop/                    # Core library
 │   ├── api/                  # API layer (TaskRunner)
 │   ├── cli/                  # CLI (minimal, uses varlord)
 │   ├── config/               # Configuration (varlord)
@@ -194,10 +194,10 @@ titanx/
 ## Files Created
 
 ### Core Code
-- All refactored modules in `titan/`
-- Simplified CLI in `titan/cli/`
-- Unified API in `titan/api/`
-- Unified workflow in `titan/orchestrator/`
+- All refactored modules in `atloop/`
+- Simplified CLI in `atloop/cli/`
+- Unified API in `atloop/api/`
+- Unified workflow in `atloop/orchestrator/`
 
 ### Tests
 - 11 test files with 82+ tests
@@ -216,7 +216,7 @@ titanx/
 
 ## Conclusion
 
-**The TITAN refactoring is complete and successful!**
+**The atloop refactoring is complete and successful!**
 
 All core objectives have been achieved:
 - ✅ Code simplified and organized

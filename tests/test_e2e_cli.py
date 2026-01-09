@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from titan.cli.commands.config import cmd_config
-from titan.cli.commands.execute import cmd_execute
-from titan.cli.commands.init import cmd_init
+from atloop.cli.commands.config import cmd_config
+from atloop.cli.commands.execute import cmd_execute
+from atloop.cli.commands.init import cmd_init
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
 
         args = MockArgs()
 
@@ -42,7 +42,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
 
         args = MockArgs()
 
@@ -60,7 +60,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
             workspace = str(temp_workspace)
             prompt = "Create a simple hello.py file"
             prompt_file = None
@@ -96,7 +96,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
             workspace = str(temp_workspace)
             prompt = None
             prompt_file = str(prompt_file_path)
@@ -124,7 +124,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
             workspace = str(temp_workspace)
             prompt = "Test task"
             prompt_file = None
@@ -148,7 +148,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
             workspace = str(temp_workspace)
             prompt = "Test task"
             prompt_file = None
@@ -171,7 +171,7 @@ class TestCLIE2E:
 
         # Create mock args
         class MockArgs:
-            titan_dir = None
+            atloop_dir = None
 
         args = MockArgs()
 
@@ -186,7 +186,7 @@ class TestCLIArgumentParsing:
 
     def test_cli_parser_init(self):
         """Test CLI parser for init command."""
-        from titan.cli.main import create_parser
+        from atloop.cli.main import create_parser
 
         parser = create_parser()
         args = parser.parse_args(["init"])
@@ -196,7 +196,7 @@ class TestCLIArgumentParsing:
 
     def test_cli_parser_execute(self):
         """Test CLI parser for execute command."""
-        from titan.cli.main import create_parser
+        from atloop.cli.main import create_parser
 
         parser = create_parser()
         args = parser.parse_args(
@@ -218,7 +218,7 @@ class TestCLIArgumentParsing:
 
     def test_cli_parser_config(self):
         """Test CLI parser for config command."""
-        from titan.cli.main import create_parser
+        from atloop.cli.main import create_parser
 
         parser = create_parser()
         args = parser.parse_args(["config"])

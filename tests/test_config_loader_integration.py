@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import TitanConfig
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import AtloopConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class TestConfigLoaderIntegration:
 
         # Verify config is loaded
         assert config is not None
-        assert isinstance(config, TitanConfig)
+        assert isinstance(config, AtloopConfig)
 
         # Verify AI config
         assert config.ai is not None
@@ -79,10 +79,10 @@ class TestConfigLoaderIntegration:
         assert config1.ai.completion.api_base == config2.ai.completion.api_base
         assert config1.default_budget.max_llm_calls == config2.default_budget.max_llm_calls
 
-    def test_config_loader_with_custom_dir(self, temp_titan_dir: Path):
-        """Test ConfigLoader with custom Titan directory."""
+    def test_config_loader_with_custom_dir(self, temp_atloop_dir: Path):
+        """Test ConfigLoader with custom atloop directory."""
         # Create a minimal config file
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -103,7 +103,7 @@ default_budget:
 """)
 
         # Setup with custom dir
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         # Verify custom config loaded

@@ -1,14 +1,14 @@
-# TITAN Testing Checklist
+# atloop Testing Checklist
 
 Quick reference checklist for testing progress tracking.
 
 ## Module Completion Status
 
-- [ ] **titan.skills** - EnhancedSkillLoader
-- [ ] **titan.runtime** - SandboxAdapter, ToolRuntime
-- [ ] **titan.retrieval** - WorkspaceIndexer, ProjectProfileDetector, ContextPackBuilder
-- [ ] **titan.logging** - EventLogger, EventReplay, ReportGenerator
-- [ ] **titan.memory** - MemoryManager, MemorySummarizer, AgentState
+- [ ] **atloop.skills** - EnhancedSkillLoader
+- [ ] **atloop.runtime** - SandboxAdapter, ToolRuntime
+- [ ] **atloop.retrieval** - WorkspaceIndexer, ProjectProfileDetector, ContextPackBuilder
+- [ ] **atloop.logging** - EventLogger, EventReplay, ReportGenerator
+- [ ] **atloop.memory** - MemoryManager, MemorySummarizer, AgentState
 
 ## Unit Tests Status
 

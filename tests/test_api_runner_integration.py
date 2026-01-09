@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
+from atloop.config.loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,10 @@ class TestTaskRunnerIntegration:
         assert config is not None
         logger.info(f"Config loaded: {config.ai.completion.model}")
 
-    def test_task_runner_with_custom_dir(self, temp_titan_dir: Path, temp_workspace: Path):
-        """Test config loading with custom Titan directory."""
+    def test_task_runner_with_custom_dir(self, temp_atloop_dir: Path, temp_workspace: Path):
+        """Test config loading with custom atloop directory."""
         # Create minimal config
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -50,7 +50,7 @@ default_budget:
 """)
 
         # Setup config with custom dir
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
         assert config.ai.completion.model == "test-model"
 

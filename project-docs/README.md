@@ -1,6 +1,6 @@
 # Project Documentation
 
-This directory contains process-related documentation and design documents from the TITAN refactoring project.
+This directory contains process-related documentation and design documents from the atloop refactoring project.
 
 ## Structure
 

@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "titan"
+name = "atloop"
 dynamic = ["version"]
 description = "Tool-Integrated Task Automation Node - Automated agent for code tasks in sandbox environments"
 readme = "README.md"
 requires-python = ">=3.8,<3.15"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "TITAN Team"}
+    {name = "atloop Team"}
 ]
 keywords = ["agent", "automation", "code-fix", "sandbox", "llm", "ai", "development-tools"]
 classifiers = [
@@ -66,16 +66,16 @@ docs = [
 ]
 
 [project.scripts]
-titanc = "titan.cli.main:main"
+atloopc = "atloop.cli.main:main"
 
 [project.urls]
-Homepage = "https://github.com/lzjever/titan"
-Documentation = "https://titan.readthedocs.io"
-Repository = "https://github.com/lzjever/titan"
-Issues = "https://github.com/lzjever/titan/issues"
+Homepage = "https://github.com/lzjever/atloop"
+Documentation = "https://atloop.readthedocs.io"
+Repository = "https://github.com/lzjever/atloop"
+Issues = "https://github.com/lzjever/atloop/issues"
 
 [tool.setuptools.packages.find]
-include = ["titan*", "bin*"]
+include = ["atloop*", "bin*"]
 exclude = [
     "tests*",
     "examples*",
@@ -84,10 +84,10 @@ exclude = [
 ]
 
 [tool.setuptools.dynamic]
-version = {attr = "titan.__version__"}
+version = {attr = "atloop.__version__"}
 
 [tool.setuptools.package-data]
-titan = ["py.typed"]
+atloop = ["py.typed"]
 
 [tool.ruff]
 line-length = 100
@@ -127,7 +127,7 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["titan"]
+source = ["atloop"]
 omit = ["*/tests/*", "*/test_*.py"]
 
 [tool.coverage.report]

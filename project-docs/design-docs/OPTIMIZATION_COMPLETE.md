@@ -118,16 +118,16 @@
 ## 📝 修改的文件
 
 1. **新增文件**：
-   - `titan/memory/plan.py` - 结构化 Plan 管理
-   - `titan/memory/compressor.py` - 记忆压缩
-   - `titan/memory/scorer.py` - 重要性评分
+   - `atloop/memory/plan.py` - 结构化 Plan 管理
+   - `atloop/memory/compressor.py` - 记忆压缩
+   - `atloop/memory/scorer.py` - 重要性评分
    - `tests/test_memory_optimizations.py` - 优化测试
    - `tests/test_memory_integration.py` - 集成测试
 
 2. **修改文件**：
-   - `titan/memory/state.py` - 支持结构化 plan
-   - `titan/memory/summarizer.py` - 重要性排序、智能截断
-   - `titan/orchestrator/agent_loop.py` - 使用 PlanManager、自动压缩
+   - `atloop/memory/state.py` - 支持结构化 plan
+   - `atloop/memory/summarizer.py` - 重要性排序、智能截断
+   - `atloop/orchestrator/agent_loop.py` - 使用 PlanManager、自动压缩
 
 ## 🔄 向后兼容性
 

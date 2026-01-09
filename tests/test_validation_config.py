@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import TitanConfig
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import AtloopConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class TestConfigValidation:
         config = ConfigLoader.get()
 
         # Validate structure
-        assert isinstance(config, TitanConfig)
+        assert isinstance(config, AtloopConfig)
         assert config.ai is not None
         assert config.ai.completion is not None
         assert config.ai.performance is not None
@@ -117,14 +117,14 @@ class TestConfigValidation:
 
         logger.info("Config value ranges validation successful ✅")
 
-    def test_validation_config_env_overrides(self, real_config_file: Path, temp_titan_dir: Path):
+    def test_validation_config_env_overrides(self, real_config_file: Path, temp_atloop_dir: Path):
         """Test environment variable overrides."""
         import os
 
         logger.info("Testing environment variable overrides")
 
         # Create minimal config
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -145,10 +145,10 @@ default_budget:
 """)
 
         # Set environment variable
-        os.environ["TITAN__AI__COMPLETION__MODEL"] = "env-model"
+        os.environ["ATLOOP__AI__COMPLETION__MODEL"] = "env-model"
 
         try:
-            ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+            ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
             config = ConfigLoader.get()
 
             # Environment variable should override file config
@@ -156,4 +156,4 @@ default_budget:
             logger.info("Environment variable overrides validation successful ✅")
         finally:
             # Clean up
-            os.environ.pop("TITAN__AI__COMPLETION__MODEL", None)
+            os.environ.pop("ATLOOP__AI__COMPLETION__MODEL", None)

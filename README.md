@@ -1,299 +1,481 @@
-# TITAN Agent
+# atloop 🤖
 
-**Tool-Integrated Task Automation Node** - 自动化代码修复和开发工具
+[![PyPI version](https://img.shields.io/pypi/v/atloop.svg)](https://pypi.org/project/atloop/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Documentation](https://readthedocs.org/projects/atloop/badge/?version=latest)](https://atloop.readthedocs.io)
+[![CI](https://github.com/lzjever/atloop/workflows/CI/badge.svg)](https://github.com/lzjever/atloop/actions)
 
-## 简介
+> **Tool-Integrated Task Automation Node** - Autonomous AI agent for code tasks in sandbox environments.
 
-TITAN Agent 是一个能够在沙箱环境中自主检索、修改、运行、验证代码的自动化工具。它能够理解任务需求，分析代码问题，生成修复方案，并验证修复结果，最终产出可审计的改动（diff/patch）与结果报告。
+**atloop** is an AI-powered task automation system that autonomously executes coding tasks in isolated sandbox environments. It understands task requirements, analyzes code, generates solutions, executes changes, and verifies results—all while maintaining complete auditability through structured logging and reporting.
 
-## 核心特性
+## 🎯 The Problem We Solve
 
-- ✅ **自动代码修复**: 自动识别并修复代码中的bug
-- ✅ **自动功能实现**: 根据需求自动实现新功能
-- ✅ **代码重构**: 在保持行为不变的前提下重构代码
-- ✅ **智能检索**: 基于关键词和错误信息的智能代码检索
-- ✅ **项目类型检测**: 自动识别Python、Node.js、Go等项目类型
-- ✅ **事件日志**: 完整记录所有操作，支持回放和审计
-- ✅ **报告生成**: 生成详细的执行报告（Markdown格式）
-- ✅ **预算管理**: 支持LLM调用、工具调用和时间预算限制
+### Real-World Development Challenges
 
-## 文档
+Every developer faces these time-consuming scenarios:
 
-- **[架构设计](docs/ARCHITECTURE.md)** - 系统架构和设计原则
-- **[功能文档](docs/FEATURES.md)** - 完整功能说明
-- **[使用指南](docs/USAGE.md)** - CLI 和 API 使用说明
+#### ❌ **Repetitive Bug Fixes**
+> "The same type of bug appears in multiple files. I have to manually fix each one, test, and verify."
 
-开发相关文档请查看 [project-docs/](project-docs/)。
+#### ❌ **Test-Driven Development Overhead**
+> "I need to write tests first, then implement, then fix tests, then refactor... This takes hours."
 
-## 快速开始
+#### ❌ **Code Review Backlog**
+> "Simple fixes pile up in PR reviews. I wish I could automate the straightforward ones."
 
-### 安装
+#### ❌ **Legacy Code Maintenance**
+> "This old codebase needs refactoring, but I'm afraid to touch it without breaking things."
 
-#### 使用 uv (推荐)
+#### ❌ **Multi-File Changes**
+> "This feature requires changes across 10 files. I have to keep track of all dependencies manually."
+
+### ✅ **atloop's Solution**
+
+**Autonomous execution. Sandbox isolation. Complete auditability. Structured workflow.**
+
+```python
+from atloop.api import TaskRunner
+from atloop.config.models import TaskSpec, Budget
+
+# Create task specification
+task = TaskSpec(
+    task_id="fix-test-failure",
+    goal="Fix the failing test_add function in test_math.py",
+    workspace_root="/path/to/project",
+    budget=Budget(max_llm_calls=20, max_tool_calls=100, max_wall_time_sec=600),
+)
+
+# Execute - atloop handles everything
+runner = TaskRunner()
+result = runner.execute(task)
+
+# Review results
+if result["status"] == "success":
+    print(f"✅ Task completed in {result['step']} steps")
+    print(f"📝 Diff:\n{result['diff']}")
+    print(f"📊 Budget used: {result['budget_used']}")
+else:
+    print(f"❌ Task failed: {result['reason']}")
+```
+
+**What just happened?**
+
+1. **✅ Autonomous Execution**: atloop analyzed the codebase, identified the issue, and fixed it
+2. **✅ Sandbox Isolation**: All changes executed in isolated environment—your workspace stays safe
+3. **✅ Automatic Verification**: Tests run automatically after changes
+4. **✅ Complete Audit Trail**: Every action logged with full context
+5. **✅ Structured Output**: Clean diff, test results, and execution report
+
+**Try it:**
 
 ```bash
-# 安装 uv
+# CLI usage
+atloopc execute \
+  --goal "Fix the failing test_add function" \
+  --workspace /path/to/project \
+  --task-type bugfix
+
+# Or use Python API
+python -c "
+from atloop.api import TaskRunner
+from atloop.config.models import TaskSpec, Budget
+
+task = TaskSpec(
+    task_id='quick-fix',
+    goal='Fix the syntax error in main.py',
+    workspace_root='./my-project',
+    budget=Budget(max_llm_calls=10, max_tool_calls=50),
+)
+
+runner = TaskRunner()
+result = runner.execute(task)
+print(f'Status: {result[\"status\"]}')
+"
+```
+
+---
+
+## 🌟 Why atloop?
+
+### 🎯 **Core Value Propositions**
+
+| Problem | atloop Solution | Impact |
+|---------|----------------|--------|
+| **Manual repetitive fixes** | Autonomous execution in sandbox | Save hours on routine tasks |
+| **Fear of breaking code** | Isolated sandbox execution | Safe experimentation |
+| **No audit trail** | Complete event logging | Full transparency |
+| **Complex multi-step tasks** | Structured workflow (DISCOVER→PLAN→ACT→VERIFY) | Reliable execution |
+| **Budget overruns** | Built-in budget management | Cost control |
+| **Context loss** | Intelligent memory management | Maintains awareness across steps |
+
+### 💡 **Key Differentiators**
+
+1. **🎯 Structured Workflow**: DISCOVER → PLAN → ACT → VERIFY cycle ensures reliable execution
+2. **🔒 Sandbox Isolation**: All changes execute in isolated environments—your workspace is never touched until you review
+3. **📊 Complete Observability**: Every action logged with full context for audit and debugging
+4. **🧠 Intelligent Memory**: Automatic compression and summarization for long-running tasks
+5. **🛠️ Rich Tool Ecosystem**: Auto-discovered tools for filesystem, search, execution, and more
+6. **⚡ Production Ready**: Battle-tested architecture with budget management and error recovery
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Using pip
+pip install atloop
+
+# Using uv (recommended for development)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 安装 TITAN
-make dev-install
+uv pip install atloop
 ```
 
-#### 使用 pip
+### Development Setup
 
 ```bash
-pip install titan
-```
+# Clone repository
+git clone https://github.com/lzjever/atloop.git
+cd atloop
 
-#### 开发模式
-
-```bash
-# 使用 uv (推荐)
+# Install with uv (recommended)
 make dev-install
 
-# 或使用 pip
+# Or using pip
 pip install -e ".[dev]"
 ```
 
-#### 本地依赖 (开发时)
+### Configuration
 
-如果使用本地版本的依赖 (varlord, lexilux, routilux, noxrunner)，需要设置 PYTHONPATH:
+Create `~/.atloop/config/atloop.yaml`:
+
+```yaml
+ai:
+  completion:
+    model: "deepseek-chat"
+    api_base: "https://api.deepseek.com"
+    api_key: "${DEEPSEEK_API_KEY}"
+  embedding:
+    model: "text-embedding-ada-002"
+    api_base: "https://api.openai.com/v1"
+    api_key: "${OPENAI_API_KEY}"
+
+sandbox:
+  base_url: "http://127.0.0.1:8080"
+  local_test: false
+
+memory:
+  summary_max_length: 64000
+  llm_compression_enabled: true
+```
+
+### Basic Usage (30 seconds)
+
+**CLI:**
 
 ```bash
-export PYTHONPATH=/path/to/varlord:/path/to/lexilux:/path/to/routilux:/path/to/noxrunner:$PYTHONPATH
+# Fix a failing test
+atloopc execute \
+  --goal "Fix the failing test_add function" \
+  --workspace /path/to/project \
+  --task-type bugfix
+
+# Implement a new feature
+atloopc execute \
+  --goal "Add user authentication with JWT tokens" \
+  --workspace /path/to/project \
+  --task-type feature
 ```
 
-### 配置
-
-创建 `ai_infra_endpoints.json`:
-
-```json
-{
-  "completion": {
-    "model": "deepseek-chat",
-    "api_base": "https://api.deepseek.com",
-    "api_key": "your-api-key"
-  },
-  "embedding": {
-    "model": "qwen3-embedding-0.6b",
-    "api_base": "http://192.168.0.220:20553/v1",
-    "api_key": "20552055"
-  },
-  "reranker": {
-    "model": "qwen3-reranker-0.6b",
-    "api_base": "http://192.168.0.220:20551/v1",
-    "api_key": "20552055",
-    "mode": "openai"
-  }
-}
-```
-
-### 基本使用
+**Python API:**
 
 ```python
-from titan.config import load_config, load_task_spec
-from titan.config.models import SandboxConfig
-from titan.orchestrator import AgentLoop
+from atloop.api import TaskRunner
+from atloop.config.models import TaskSpec, Budget
 
-# 加载配置
-config = load_config("ai_infra_endpoints.json")
-
-# 创建任务
-task = load_task_spec(
-    task_id="my_task",
-    goal="修复test_add测试失败的问题",
-    workspace_root="/path/to/workspace",
-    task_type="bugfix",
-)
-
-# 配置沙箱
-sandbox_config = SandboxConfig(
-    base_url="http://127.0.0.1:8080",
-    local_test=False,
-)
-
-# 运行Agent
-loop = AgentLoop(task, config, sandbox_config)
-report = loop.run()
-
-# 查看结果
-print(f"状态: {report['status']}")
-if report["status"] == "success":
-    print(f"Diff:\n{report.get('diff', '')}")
-```
-
-## 项目结构
-
-```
-titan/
-├── titan/                    # 核心代码
-│   ├── config/              # 配置管理
-│   ├── runtime/             # 运行时层
-│   ├── llm/                 # LLM客户端
-│   ├── retrieval/           # 检索系统
-│   ├── memory/              # 记忆系统
-│   ├── orchestrator/        # 编排器
-│   └── logging/             # 日志系统
-├── tests/                    # 测试
-├── examples/                # 示例
-├── docs/                     # 文档
-└── runs/                     # 运行日志
-```
-
-## 文档
-
-### Sphinx 文档（推荐）
-
-构建并查看完整的 Sphinx 文档：
-
-```bash
-cd docs && make html
-# 打开 docs/build/html/index.html
-```
-
-### Markdown 参考文档
-
-- [架构设计文档](docs/markdown/ARCHITECTURE.md) - 系统架构和设计
-- [功能文档](docs/markdown/FEATURES.md) - 功能特性说明
-- [API文档](docs/markdown/API.md) - API参考
-- [用户使用手册](docs/markdown/USER_GUIDE.md) - 详细使用指南
-- [设计文档](docs/markdown/DESIGN.md) - 设计决策和算法
-- [快速开始](docs/markdown/QUICK_START.md) - 快速开始指南
-
-## 功能模块
-
-### 1. 配置系统 (config)
-
-- 多源配置加载（文件、环境变量、CLI）
-- 类型安全的配置模型
-- 任务规范定义
-
-### 2. 运行时层 (runtime)
-
-- 沙箱适配器
-- 工具运行时
-- 统一的工具接口
-
-### 3. LLM客户端 (llm)
-
-- LLM调用封装
-- Action JSON解析和验证
-- Prompt模板管理
-
-### 4. 检索系统 (retrieval)
-
-- 工作区索引
-- 项目类型检测
-- 上下文打包
-
-### 5. 记忆系统 (memory)
-
-- Agent状态管理
-- 记忆摘要
-- 状态持久化
-
-### 6. 编排器 (orchestrator)
-
-- Agent主循环
-- 状态机管理
-- 预算管理
-- 验证器
-
-### 7. 日志系统 (logging)
-
-- 事件日志记录
-- 事件回放
-- 报告生成
-
-## 示例
-
-### 修复失败的测试
-
-```python
-task = load_task_spec(
-    task_id="fix_test",
-    goal="修复test_add测试失败的问题",
+# Create task
+task = TaskSpec(
+    task_id="my-task",
+    goal="Fix the bug in calculate_total() function",
     workspace_root="/path/to/project",
-    task_type="bugfix",
-    constraints=["必须通过pytest"],
+    budget=Budget(max_llm_calls=20, max_tool_calls=100),
 )
 
-loop = AgentLoop(task, config, sandbox_config)
-report = loop.run()
+# Execute
+runner = TaskRunner()
+result = runner.execute(task)
+
+# Check results
+print(f"Status: {result['status']}")
+if result["status"] == "success":
+    print(f"Steps: {result['step']}")
+    print(f"Diff:\n{result.get('diff', '')}")
 ```
 
-### 实现新功能
+---
 
+## 💼 Real-World Use Cases
+
+### Use Case 1: Automated Bug Fixes
+
+**Problem**: Multiple test failures across the codebase need fixing.
+
+**Solution**:
 ```python
-task = load_task_spec(
-    task_id="add_feature",
-    goal="实现用户登录功能并添加测试",
-    workspace_root="/path/to/project",
+task = TaskSpec(
+    task_id="fix-tests",
+    goal="Fix all failing tests in the test suite",
+    workspace_root="./project",
+    task_type="bugfix",
+    constraints=["All tests must pass", "No breaking changes"],
+    budget=Budget(max_llm_calls=50, max_tool_calls=200),
+)
+
+runner = TaskRunner()
+result = runner.execute(task)
+# atloop automatically: analyzes failures, fixes code, runs tests, verifies
+```
+
+**Benefits**:
+- ✅ Handles multiple files automatically
+- ✅ Runs tests after each change
+- ✅ Stops when all tests pass
+- ✅ Provides complete diff for review
+
+### Use Case 2: Feature Implementation
+
+**Problem**: Need to implement a new feature with tests and documentation.
+
+**Solution**:
+```python
+task = TaskSpec(
+    task_id="add-auth",
+    goal="Implement user authentication with JWT tokens, including tests and API docs",
+    workspace_root="./api-server",
     task_type="feature",
     definition_of_done=[
-        "新增测试覆盖关键逻辑",
-        "所有测试通过",
+        "All unit tests pass",
+        "Integration tests added",
+        "API documentation updated",
     ],
+)
+
+runner = TaskRunner()
+result = runner.execute(task)
+```
+
+**Benefits**:
+- ✅ Creates multiple files in correct structure
+- ✅ Implements tests alongside code
+- ✅ Updates documentation automatically
+- ✅ Verifies completion criteria
+
+### Use Case 3: Code Refactoring
+
+**Problem**: Legacy code needs refactoring while maintaining behavior.
+
+**Solution**:
+```python
+task = TaskSpec(
+    task_id="refactor-legacy",
+    goal="Refactor the legacy payment module to use dependency injection",
+    workspace_root="./payment-service",
+    task_type="refactor",
+    constraints=[
+        "All existing tests must still pass",
+        "No changes to public API",
+        "Improve code readability",
+    ],
+)
+
+runner = TaskRunner()
+result = runner.execute(task)
+```
+
+**Benefits**:
+- ✅ Maintains test coverage
+- ✅ Preserves functionality
+- ✅ Improves code structure
+- ✅ Complete audit trail
+
+---
+
+## 🎨 Key Features
+
+### 1. **Structured Workflow**
+
+atloop uses a unified 4-phase workflow:
+
+```
+DISCOVER → PLAN → ACT → VERIFY
+   ↓        ↓      ↓      ↓
+Analyze  Generate Execute Verify
+Context  Actions  Tools  Results
+```
+
+- **DISCOVER**: Analyzes workspace, retrieves relevant context
+- **PLAN**: LLM generates execution plan and actions
+- **ACT**: Executes tools (run commands, edit files, etc.)
+- **VERIFY**: Runs tests, validates results
+
+### 2. **Rich Tool Ecosystem**
+
+Auto-discovered tools for comprehensive task execution:
+
+- **Filesystem**: `read_file`, `write_file`, `edit_file`, `append_file`, `glob`
+- **System**: `run` (execute shell commands)
+- **Search**: `search` (regex search with context)
+- **Interaction**: `todo_write`, `todo_read`, `skill` (load knowledge)
+
+### 3. **Intelligent Memory Management**
+
+- **Automatic Compression**: Compresses old history when context grows
+- **Smart Summarization**: LLM-powered summarization for long tasks
+- **Selective Retention**: Keeps important decisions and milestones
+
+### 4. **Budget Management**
+
+```python
+budget = Budget(
+    max_llm_calls=50,      # Limit LLM API calls
+    max_tool_calls=200,    # Limit tool executions
+    max_wall_time_sec=600, # Limit execution time
 )
 ```
 
-### 查看执行历史
+### 5. **Complete Observability**
+
+- **Event Logging**: Every action logged with full context
+- **Event Replay**: Replay execution history step-by-step
+- **Report Generation**: Markdown reports with diff, test results, budget usage
+
+### 6. **Sandbox Isolation**
+
+- **Safe Execution**: All changes in isolated sandbox
+- **File Synchronization**: Automatic sync between sandbox and workspace
+- **Local Testing Mode**: Test without remote sandbox backend
+
+---
+
+## 📚 Documentation
+
+- **📖 Full Documentation**: [https://atloop.readthedocs.io](https://atloop.readthedocs.io)
+- **🚀 Quick Start Guide**: [docs/USAGE.md](docs/USAGE.md)
+- **🏗️ Architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- **✨ Features**: [docs/FEATURES.md](docs/FEATURES.md)
+- **🎯 API Reference**: [docs/](docs/)
+
+---
+
+## 🧠 Memory Aids (Quick Reference)
+
+### The atloop Workflow
+
+> **"DISCOVER context → PLAN actions → ACT on tools → VERIFY results → Repeat until done."**
+
+### Task Types
+
+- **`bugfix`**: Fix bugs, ensure tests pass
+- **`feature`**: Implement new features with tests
+- **`refactor`**: Improve code structure, maintain behavior
+
+### Budget Guidelines
 
 ```python
-from titan.logging import EventReplay
-from pathlib import Path
+# Small fixes
+Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=300)
 
-replay = EventReplay(Path("runs/task_id/events.jsonl"))
-summary = replay.replay_to_step(10)
-print(f"回放到step 10: {summary['total_events']}个事件")
+# Medium tasks
+Budget(max_llm_calls=30, max_tool_calls=150, max_wall_time_sec=900)
+
+# Large features
+Budget(max_llm_calls=80, max_tool_calls=300, max_wall_time_sec=1800)
 ```
 
-### 生成报告
+---
 
-```python
-from titan.logging import ReportGenerator
+## 🏢 Production Proven
 
-generator = ReportGenerator(Path("runs/task_id/events.jsonl"))
-report = generator.generate_success_report("task_id", "goal")
-markdown = generator.generate_markdown_report(report, Path("report.md"))
-```
+**atloop** is part of the **Agentsmith** ecosystem, battle-tested in production environments:
 
-## 开发状态
+- ✅ Used for automated code fixes in production codebases
+- ✅ Handles complex multi-file refactoring tasks
+- ✅ Manages long-running tasks with intelligent memory compression
+- ✅ Provides complete audit trails for compliance
 
-### 已完成
+### 🌟 Agentsmith Open-Source Projects
 
-- ✅ Milestone 1: 基础组件
-- ✅ Milestone 2: Agent核心功能
-- ✅ Milestone 3: 事件日志与回放
+- **[Varlord](https://github.com/lzjever/varlord)** ⚙️ - Configuration management library
+- **[Routilux](https://github.com/lzjever/routilux)** ⚡ - Event-driven workflow orchestration
+- **[Serilux](https://github.com/lzjever/serilux)** 📦 - Flexible serialization framework
+- **[Lexilux](https://github.com/lzjever/lexilux)** 🚀 - Unified LLM API client
+- **[NoxRunner](https://github.com/lzjever/noxrunner)** 🏃 - Sandbox execution backend client
+- **[atloop](https://github.com/lzjever/atloop)** 🤖 - Autonomous task automation agent (this project)
 
-### 进行中
+These projects work together to provide a complete AI agent development platform.
 
-- 🔄 Milestone 4: 任务类型与质量门禁
-- 🔄 Milestone 5: 工程化完善
+---
 
-## 测试
-
-运行测试：
+## 🧪 Testing
 
 ```bash
-# 运行所有测试
-pytest tests/
+# Run all unit tests
+make test
 
-# 运行特定测试
-pytest tests/test_e2e_agent.py
+# Run with coverage
+make test-cov
 
-# 运行完整工作流测试
-python tests/test_complete_workflow.py
+# Run linting
+make lint
+
+# Format code
+make format
 ```
 
-## 贡献
+---
 
-欢迎贡献代码和提出建议！
+## 🤝 Contributing
 
-## 许可证
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-[待定]
+## 📄 License
 
-## 联系方式
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
-[待定]
+---
+
+## 🎯 TL;DR
+
+**atloop automates coding tasks autonomously:**
+
+1. ✅ **Define your task** - goal, workspace, constraints
+2. ✅ **Set budget** - control LLM calls, tool calls, time
+3. ✅ **Execute** - atloop handles discovery, planning, execution, verification
+4. ✅ **Review results** - diff, test results, execution report
+
+**No manual file editing. No test running. No diff generation. atloop does it all.**
+
+```python
+# Before: Hours of manual work
+# After: One function call
+task = TaskSpec(goal="Fix failing tests", workspace_root="./project")
+result = TaskRunner().execute(task)
+```
+
+**That's the atloop promise. 🤖**
+
+---
+
+## 🔗 Links
+
+- **📦 PyPI**: [pypi.org/project/atloop](https://pypi.org/project/atloop)
+- **📚 Documentation**: [atloop.readthedocs.io](https://atloop.readthedocs.io)
+- **🐙 GitHub**: [github.com/lzjever/atloop](https://github.com/lzjever/atloop)
+- **📋 Issues**: [github.com/lzjever/atloop/issues](https://github.com/lzjever/atloop/issues)
+
+---
+
+**Built with ❤️ by the atloop Team**

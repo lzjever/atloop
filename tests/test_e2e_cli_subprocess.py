@@ -59,7 +59,7 @@ class TestCLIE2ESubprocess:
             "run",
             "python",
             "-m",
-            "titan.cli.main",
+            "atloop.cli.main",
             "execute",
             "--workspace",
             str(workspace),

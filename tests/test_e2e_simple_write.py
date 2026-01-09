@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec
-from titan.orchestrator.coordinator import WorkflowCoordinator
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import Budget, TaskSpec
+from atloop.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class TestE2ESimpleWrite:
         coordinator = WorkflowCoordinator(task_spec, config)
 
         # Test tool execution via registry
-        from titan.orchestrator.executor.tool_executor import ToolExecutor
+        from atloop.orchestrator.executor.tool_executor import ToolExecutor
 
         executor = ToolExecutor(coordinator)
 
@@ -127,7 +127,7 @@ class TestE2ESimpleWrite:
         )
 
         # Mock sandbox to avoid actual execution
-        with patch("titan.runtime.sandbox_adapter.SandboxAdapter") as mock_sandbox:
+        with patch("atloop.runtime.sandbox_adapter.SandboxAdapter") as mock_sandbox:
             mock_sandbox_instance = MagicMock()
             mock_sandbox.return_value = mock_sandbox_instance
 

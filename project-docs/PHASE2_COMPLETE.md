@@ -76,7 +76,7 @@
    - Added `mkdir(parents=True, exist_ok=True)` for nested directories
 
 2. **All tests use real configuration**
-   - Tests use `/home/percy/.titan/config/titan.yaml` when available
+   - Tests use `/home/percy/.atloop/config/atloop.yaml` when available
    - Fallback to temporary configs for isolated testing
 
 ### Project Statistics

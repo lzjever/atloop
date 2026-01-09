@@ -6,26 +6,26 @@
 
 **All 5 missing modules successfully copied:**
 
-1. **titan.skills** (3 Python files)
+1. **atloop.skills** (3 Python files)
    - `enhanced_loader.py` - EnhancedSkillLoader
    - `loader.py` - SkillLoader
    - `builtin/` - Builtin skills directory
 
-2. **titan.runtime** (3 Python files)
+2. **atloop.runtime** (3 Python files)
    - `sandbox_adapter.py` - SandboxAdapter
    - `tool_runtime.py` - ToolRuntime
 
-3. **titan.retrieval** (4 Python files)
+3. **atloop.retrieval** (4 Python files)
    - `context_pack.py` - ContextPack, ContextPackBuilder
    - `indexer.py` - WorkspaceIndexer
    - `project_profile.py` - ProjectProfile, ProjectProfileDetector
 
-4. **titan.logging** (4 Python files)
+4. **atloop.logging** (4 Python files)
    - `event_logger.py` - EventLogger
    - `replay.py` - EventReplay
    - `report.py` - ReportGenerator
 
-5. **titan.memory** (7 Python files)
+5. **atloop.memory** (7 Python files)
    - `state.py` - AgentState, Memory, Artifacts, etc.
    - `summarizer.py` - MemorySummarizer
    - `memory_manager.py` - MemoryManager
@@ -34,7 +34,7 @@
    - `plan.py` - Plan management
 
 **Additional modules copied:**
-- **titan.tools** - Tool implementations (base, registry, filesystem, interaction, search, system)
+- **atloop.tools** - Tool implementations (base, registry, filesystem, interaction, search, system)
 
 **Total Python files added**: ~30+ files
 
@@ -44,7 +44,7 @@
 
 1. **test_config_unit.py** (14 tests) ✅
    - ConfigLoader tests (4 tests)
-   - TitanConfig validation tests (2 tests)
+   - AtloopConfig validation tests (2 tests)
    - TaskSpec tests (3 tests)
    - Budget tests (2 tests)
    - SandboxConfig tests (2 tests)
@@ -75,7 +75,7 @@
    - Fixed string concatenation issues
 
 2. **Fixed import issues**
-   - Updated `titan.llm.__init__.py` to export ActionJSON, parse_action_json, validate_action_json
+   - Updated `atloop.llm.__init__.py` to export ActionJSON, parse_action_json, validate_action_json
    - Fixed StateManager `_save()` -> `save()` method call
 
 3. **Fixed test API mismatches**

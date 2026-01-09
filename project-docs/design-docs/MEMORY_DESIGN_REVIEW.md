@@ -338,7 +338,7 @@ class SmartTruncator:
 - 使用 LLM 总结旧记忆，保存到 `learnings`
 - 只保留最近的 N 个详细记录
 
-**代码位置**：`titan/memory/compressor.py`
+**代码位置**：`atloop/memory/compressor.py`
 
 #### 2. 添加重要性评分
 **目标**：优先保留重要记忆
@@ -348,7 +348,7 @@ class SmartTruncator:
 - 在截断时优先保留高分记忆
 - 可以基于规则或 LLM 评分
 
-**代码位置**：`titan/memory/scorer.py`
+**代码位置**：`atloop/memory/scorer.py`
 
 #### 3. 结构化 Plan
 **目标**：跟踪计划步骤状态
@@ -358,7 +358,7 @@ class SmartTruncator:
 - 跟踪每个步骤的状态（pending/in_progress/completed）
 - 在摘要中显示进度
 
-**代码位置**：修改 `titan/memory/state.py`
+**代码位置**：修改 `atloop/memory/state.py`
 
 ### 🟡 中优先级
 
@@ -369,7 +369,7 @@ class SmartTruncator:
 - 基于关键词的简单检索（初期）
 - 可选：基于 embedding 的语义检索（后期）
 
-**代码位置**：`titan/memory/retriever.py`
+**代码位置**：`atloop/memory/retriever.py`
 
 #### 5. 智能截断
 **目标**：避免丢失关键信息
@@ -379,7 +379,7 @@ class SmartTruncator:
 - 优先保留关键部分
 - 压缩而非简单截断
 
-**代码位置**：修改 `titan/memory/summarizer.py`
+**代码位置**：修改 `atloop/memory/summarizer.py`
 
 #### 6. 记忆去重
 **目标**：避免存储重复信息
@@ -389,7 +389,7 @@ class SmartTruncator:
 - 合并重复项
 - 使用内容哈希或相似度计算
 
-**代码位置**：`titan/memory/deduplicator.py`
+**代码位置**：`atloop/memory/deduplicator.py`
 
 ### 🟢 低优先级
 
@@ -439,7 +439,7 @@ class SmartTruncator:
 ### 5.1 添加记忆压缩
 
 ```python
-# titan/memory/compressor.py
+# atloop/memory/compressor.py
 class MemoryCompressor:
     """记忆压缩器"""
     
@@ -508,7 +508,7 @@ class MemoryCompressor:
 ### 5.2 添加重要性评分
 
 ```python
-# titan/memory/scorer.py
+# atloop/memory/scorer.py
 class ImportanceScorer:
     """重要性评分器"""
     
@@ -554,7 +554,7 @@ class ImportanceScorer:
 ### 5.3 结构化 Plan
 
 ```python
-# titan/memory/plan.py
+# atloop/memory/plan.py
 @dataclass
 class PlanStep:
     """计划步骤"""

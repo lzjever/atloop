@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec
-from titan.orchestrator.coordinator import WorkflowCoordinator
-from titan.orchestrator.state_machine import Phase
-from titan.orchestrator.workflow.workflow import Workflow
+from atloop.config.loader import ConfigLoader
+from atloop.config.models import Budget, TaskSpec
+from atloop.orchestrator.coordinator import WorkflowCoordinator
+from atloop.orchestrator.state_machine import Phase
+from atloop.orchestrator.workflow.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -327,7 +327,7 @@ class TestWorkflowStatePersistence:
     """Integration tests for state persistence across workflow phases."""
 
     def test_workflow_state_persistence(
-        self, real_config_file: Path, temp_workspace: Path, temp_titan_dir: Path
+        self, real_config_file: Path, temp_workspace: Path, temp_atloop_dir: Path
     ):
         """Test state persistence across phases."""
         if not real_config_file.exists():
@@ -335,8 +335,8 @@ class TestWorkflowStatePersistence:
 
         logger.info("Testing workflow state persistence")
 
-        # Setup config with custom titan_dir
-        config_file = temp_titan_dir / "config" / "titan.yaml"
+        # Setup config with custom atloop_dir
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
         config_file.parent.mkdir(parents=True, exist_ok=True)
         config_file.write_text("""
 ai:
@@ -357,7 +357,7 @@ default_budget:
 runs_dir: runs
 """)
 
-        ConfigLoader.setup(titan_dir=str(temp_titan_dir))
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         config = ConfigLoader.get()
 
         # Create task spec

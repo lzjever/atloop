@@ -147,7 +147,7 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# TITAN specific
+# atloop specific
 runs/
 *.jsonl
 ai_infra_endpoints.json

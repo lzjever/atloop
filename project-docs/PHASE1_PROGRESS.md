@@ -7,30 +7,30 @@
 #### 1. Module Copying ✅
 All missing modules have been successfully copied:
 
-- **titan.skills** (3 Python files)
+- **atloop.skills** (3 Python files)
   - `__init__.py` - Updated with proper exports
   - `enhanced_loader.py` - EnhancedSkillLoader class
   - `loader.py` - SkillLoader class
   - `builtin/` - Builtin skills directory
 
-- **titan.runtime** (3 Python files)
+- **atloop.runtime** (3 Python files)
   - `__init__.py` - Updated with proper exports
   - `sandbox_adapter.py` - SandboxAdapter class
   - `tool_runtime.py` - ToolRuntime class
 
-- **titan.retrieval** (4 Python files)
+- **atloop.retrieval** (4 Python files)
   - `__init__.py` - Updated with proper exports
   - `context_pack.py` - ContextPack and ContextPackBuilder
   - `indexer.py` - WorkspaceIndexer
   - `project_profile.py` - ProjectProfile and ProjectProfileDetector
 
-- **titan.logging** (4 Python files)
+- **atloop.logging** (4 Python files)
   - `__init__.py` - Updated with proper exports
   - `event_logger.py` - EventLogger class
   - `replay.py` - EventReplay class
   - `report.py` - ReportGenerator class
 
-- **titan.memory** (7 Python files)
+- **atloop.memory** (7 Python files)
   - `__init__.py` - Updated with proper exports
   - `state.py` - AgentState, Memory, Artifacts, etc.
   - `summarizer.py` - MemorySummarizer class
@@ -54,7 +54,7 @@ All missing modules have been successfully copied:
    - This is expected and will be resolved when running tests in uv environment
 
 2. **Module Dependencies**
-   - Some modules may have dependencies on `titan.tools` which needs to be checked
+   - Some modules may have dependencies on `atloop.tools` which needs to be checked
    - Runtime module has fallback for ToolResult if tools module not available
 
 ### Next Steps

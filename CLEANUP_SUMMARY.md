@@ -14,10 +14,10 @@
 
 #### Created `project-docs/design-docs/` Directory
 - Moved design documents from code directories:
-  - `titan/config/*.md` → `project-docs/design-docs/`
-  - `titan/memory/*.md` → `project-docs/design-docs/`
-  - `titan/tools/*.md` → `project-docs/design-docs/`
-  - `titan/tools/filesystem/*.md` → `project-docs/design-docs/`
+  - `atloop/config/*.md` → `project-docs/design-docs/`
+  - `atloop/memory/*.md` → `project-docs/design-docs/`
+  - `atloop/tools/*.md` → `project-docs/design-docs/`
+  - `atloop/tools/filesystem/*.md` → `project-docs/design-docs/`
 
 #### Created User Documentation
 - `docs/ARCHITECTURE.md` - Architecture overview and design
@@ -27,9 +27,9 @@
 ### 2. Code Cleanup ✅
 
 #### Removed Unused Files
-- `titan/config/calculator.py` - Not used (logic in models.py)
-- `titan/config/setup.py` - Not used (replaced by loader.py)
-- `titan/config/limits_optimized_128k.py` - Old version (using limits.py)
+- `atloop/config/calculator.py` - Not used (logic in models.py)
+- `atloop/config/setup.py` - Not used (replaced by loader.py)
+- `atloop/config/limits_optimized_128k.py` - Old version (using limits.py)
 
 #### Removed Scripts Directory
 - `scripts/` - Removed (using Makefile instead)
@@ -64,9 +64,9 @@ titanx/
 ## File Changes
 
 ### Removed Files
-- `titan/config/calculator.py`
-- `titan/config/setup.py`
-- `titan/config/limits_optimized_128k.py`
+- `atloop/config/calculator.py`
+- `atloop/config/setup.py`
+- `atloop/config/limits_optimized_128k.py`
 - `scripts/build.sh`
 - `scripts/setup.sh`
 - `scripts/test.sh`
