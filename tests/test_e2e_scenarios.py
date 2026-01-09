@@ -2,14 +2,11 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from titan.api.runner import TaskRunner
 from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec, TitanConfig
-from titan.orchestrator import AgentLoop
+from titan.config.models import Budget, TaskSpec
 from titan.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
@@ -18,9 +15,7 @@ logger = logging.getLogger(__name__)
 class TestE2ECalculatorBugfix:
     """E2E test for calculator bugfix scenario."""
 
-    def test_e2e_calculator_bugfix_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_calculator_bugfix_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E calculator bugfix scenario setup."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -80,9 +75,7 @@ def test_subtract():
 class TestE2EPythonProjectSetup:
     """E2E test for Python project setup scenario."""
 
-    def test_e2e_python_project_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_python_project_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E Python project setup scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -131,9 +124,7 @@ class TestE2EPythonProjectSetup:
 class TestE2ENodeJSProjectSetup:
     """E2E test for Node.js project setup scenario."""
 
-    def test_e2e_nodejs_project_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_nodejs_project_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E Node.js project setup scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -149,9 +140,7 @@ class TestE2ENodeJSProjectSetup:
         (temp_workspace / "src" / "index.js").write_text(
             "function add(a, b) { return a + b; }\nmodule.exports = { add };\n"
         )
-        (temp_workspace / "package.json").write_text(
-            '{"name": "myapp", "version": "1.0.0"}\n'
-        )
+        (temp_workspace / "package.json").write_text('{"name": "myapp", "version": "1.0.0"}\n')
 
         # Create task spec
         task_spec = TaskSpec(
@@ -175,9 +164,7 @@ class TestE2ENodeJSProjectSetup:
 class TestE2EGoProjectSetup:
     """E2E test for Go project setup scenario."""
 
-    def test_e2e_go_project_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_go_project_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E Go project setup scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -217,9 +204,7 @@ class TestE2EGoProjectSetup:
 class TestE2EMultiLanguageProject:
     """E2E test for multi-language project scenario."""
 
-    def test_e2e_multi_language_project(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_multi_language_project(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E multi-language project scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -260,9 +245,7 @@ class TestE2EMultiLanguageProject:
 class TestE2ELargeCodebase:
     """E2E test for large codebase scenario."""
 
-    def test_e2e_large_codebase(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_large_codebase(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E large codebase scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -275,9 +258,7 @@ class TestE2ELargeCodebase:
 
         # Create large codebase (many files)
         for i in range(20):
-            (temp_workspace / f"module_{i}.py").write_text(
-                f"def func_{i}(): return {i}\n"
-            )
+            (temp_workspace / f"module_{i}.py").write_text(f"def func_{i}(): return {i}\n")
 
         # Create task spec
         task_spec = TaskSpec(
@@ -300,9 +281,7 @@ class TestE2ELargeCodebase:
 class TestE2EComplexRefactoring:
     """E2E test for complex refactoring scenario."""
 
-    def test_e2e_complex_refactoring(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_complex_refactoring(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E complex refactoring scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")

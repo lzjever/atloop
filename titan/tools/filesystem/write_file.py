@@ -10,24 +10,24 @@ from titan.tools.base import BaseTool, ToolResult
 class WriteFileTool(BaseTool):
     """
     Tool for writing files (creates new files or completely overwrites existing files).
-    
+
     **⚠️ Important Usage Guidelines:**
     - **Use for**: Creating new files or completely rewriting existing files
     - **Do NOT use for**: Modifying parts of existing files (use `edit_file` instead)
     - **Character limit**: Maximum 6,000 characters per turn
     - **Directory creation**: Automatically creates parent directories if they don't exist
-    
+
     **When to use write_file vs edit_file:**
     - ✅ Creating a new file → use `write_file`
     - ✅ Completely rewriting a file → use `write_file`
     - ❌ Modifying a function/class → use `edit_file` (more precise and safer)
     - ❌ Adding/removing a few lines → use `edit_file` (more precise and safer)
-    
+
     **File content handling:**
     - Uses placeholder mechanism: content should be `FILE_CONTENT_#1`, `FILE_CONTENT_#2`, etc.
     - Actual content follows the JSON output, delimited by `---(FILE_CONTENT_#1)---`
     - This prevents JSON parsing issues with large content
-    
+
     **Trailing newline behavior:**
     - Files always end with exactly one newline character
     - Input content's trailing newline is normalized automatically
@@ -123,6 +123,7 @@ class WriteFileTool(BaseTool):
 
         # Ensure directory exists - create parent directories if needed
         import os
+
         dir_path = os.path.dirname(path)
         if dir_path:
             dir_path_escaped = shlex.quote(dir_path)

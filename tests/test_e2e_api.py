@@ -2,7 +2,6 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -27,7 +26,7 @@ class TestAPIE2E:
         assert runner is not None
 
         # Create task config
-        task_config = {
+        {
             "goal": "Test task",
             "workspace_root": str(temp_workspace),
             "sandbox": {
@@ -84,9 +83,7 @@ default_budget:
         assert config.ai.completion.model == "test-model"
         logger.info("TaskRunner custom config E2E successful ✅")
 
-    def test_e2e_sandbox_override(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_sandbox_override(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner with sandbox override end-to-end."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -94,7 +91,7 @@ default_budget:
         logger.info("Testing TaskRunner sandbox override E2E")
 
         # Initialize runner
-        runner = TaskRunner()
+        TaskRunner()
 
         # Create task config with sandbox override
         task_config = {
@@ -111,9 +108,7 @@ default_budget:
         assert task_config["sandbox"]["local_test"] is True
         logger.info("TaskRunner sandbox override E2E successful ✅")
 
-    def test_e2e_error_handling(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_error_handling(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner error handling end-to-end."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -121,10 +116,9 @@ default_budget:
         logger.info("Testing TaskRunner error handling E2E")
 
         # Initialize runner
-        runner = TaskRunner()
+        TaskRunner()
 
         # Test with invalid task config (missing required fields)
-        invalid_config = {"goal": "Test"}  # Missing workspace_root
 
         # TaskRunner should handle this gracefully
         # (Actual execution would fail, but setup should work)

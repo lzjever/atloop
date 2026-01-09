@@ -1,7 +1,6 @@
 """VERIFY phase implementation."""
 
 import logging
-from typing import Dict
 
 from titan.config.limits import ERROR_SUMMARY_LIMIT_NORMAL, TEST_RESULTS_LIMIT
 from titan.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
@@ -16,10 +15,10 @@ class VerifyPhase(BasePhase):
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
         Execute VERIFY phase.
-        
+
         Args:
             context: Phase execution context
-            
+
         Returns:
             Phase execution result
         """
@@ -28,9 +27,11 @@ class VerifyPhase(BasePhase):
 
         try:
             # Run verification
-            logger.debug(f"[VerifyPhase] Running verification")
+            logger.debug("[VerifyPhase] Running verification")
             verification_result = self.coordinator.verifier.verify()
-            logger.debug(f"[VerifyPhase] Verification result: success={verification_result.success}, command={verification_result.command}")
+            logger.debug(
+                f"[VerifyPhase] Verification result: success={verification_result.success}, command={verification_result.command}"
+            )
 
             # Log verification result
             self.coordinator.event_logger.log_verification(
@@ -52,15 +53,19 @@ class VerifyPhase(BasePhase):
 
             if test_output:
                 state.artifacts.test_results = test_output[:TEST_RESULTS_LIMIT]
-                logger.debug(f"[VerifyPhase] Test results stored: {len(test_output)} chars (limited to {TEST_RESULTS_LIMIT})")
+                logger.debug(
+                    f"[VerifyPhase] Test results stored: {len(test_output)} chars (limited to {TEST_RESULTS_LIMIT})"
+                )
 
             # Update last error if verification failed
             if not verification_result.success and verification_result.command:
-                logger.debug(f"[VerifyPhase] Verification failed, updating error state")
+                logger.debug("[VerifyPhase] Verification failed, updating error state")
                 error_msg_parts = []
                 if verification_result.error_summary:
-                    error_msg_parts.append(f"Verification error summary:\n{verification_result.error_summary}")
-                
+                    error_msg_parts.append(
+                        f"Verification error summary:\n{verification_result.error_summary}"
+                    )
+
                 test_output = ""
                 if verification_result.stdout:
                     test_output += verification_result.stdout
@@ -68,25 +73,34 @@ class VerifyPhase(BasePhase):
                     if test_output:
                         test_output += "\n\n=== STDERR ===\n"
                     test_output += verification_result.stderr
-                
-                if test_output:
-                    error_msg_parts.append(f"\nFull test output:\n{test_output[:TEST_RESULTS_LIMIT]}")
 
-                error_summary_text = "\n".join(error_msg_parts) if error_msg_parts else "Verification failed"
+                if test_output:
+                    error_msg_parts.append(
+                        f"\nFull test output:\n{test_output[:TEST_RESULTS_LIMIT]}"
+                    )
+
+                error_summary_text = (
+                    "\n".join(error_msg_parts) if error_msg_parts else "Verification failed"
+                )
                 state.last_error.summary = error_summary_text[:ERROR_SUMMARY_LIMIT_NORMAL]
                 state.last_error.repro_cmd = verification_result.command
-                logger.debug(f"[VerifyPhase] Error state updated: summary length={len(state.last_error.summary)}")
+                logger.debug(
+                    f"[VerifyPhase] Error state updated: summary length={len(state.last_error.summary)}"
+                )
 
             # Store verification result
             state.artifacts.verification_success = verification_result.success
-            logger.debug(f"[VerifyPhase] Verification success stored: {verification_result.success}")
+            logger.debug(
+                f"[VerifyPhase] Verification success stored: {verification_result.success}"
+            )
 
             # Task completion detection: Check if task goal is achieved
             task_goal = self.coordinator.task_spec.goal.lower()
             if state.memory.created_files and task_goal:
                 # Simple heuristic: if goal contains "write" and "code" and file exists, task might be complete
-                if ('write' in task_goal or 'create' in task_goal) and \
-                   ('code' in task_goal or 'file' in task_goal or 'python' in task_goal):
+                if ("write" in task_goal or "create" in task_goal) and (
+                    "code" in task_goal or "file" in task_goal or "python" in task_goal
+                ):
                     logger.info(
                         f"[VerifyPhase] Task completion detected: "
                         f"goal='{self.coordinator.task_spec.goal}', "
@@ -98,13 +112,13 @@ class VerifyPhase(BasePhase):
                         f"Task goal '{self.coordinator.task_spec.goal}' appears to be achieved. "
                         f"Consider setting stop_reason='done' if task is complete."
                     )
-                    logger.info(f"[VerifyPhase] Added task completion hint to memory.notes")
+                    logger.info("[VerifyPhase] Added task completion hint to memory.notes")
 
             # Transition to DISCOVER (let LLM decide in PLAN phase)
-            logger.debug(f"[VerifyPhase] Transitioning to DISCOVER phase")
+            logger.debug("[VerifyPhase] Transitioning to DISCOVER phase")
             self._transition(Phase.DISCOVER)
             self.coordinator.state_manager.update(phase="DISCOVER")
-            logger.info(f"[VerifyPhase] Successfully transitioned to DISCOVER phase")
+            logger.info("[VerifyPhase] Successfully transitioned to DISCOVER phase")
 
             return PhaseResult(
                 success=True,

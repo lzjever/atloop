@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from titan.config.loader import ConfigLoader  # Uses varlord internally
-from titan.config.models import SandboxConfig, TaskSpec, Budget
+from titan.config.models import Budget, SandboxConfig, TaskSpec
 from titan.orchestrator import AgentLoop
 
 logger = logging.getLogger(__name__)
@@ -19,27 +19,27 @@ def load_task_spec(
 ) -> TaskSpec:
     """
     Load task specification.
-    
+
     Args:
         goal: Task goal
         workspace_root: Workspace root directory
         task_type: Task type (bugfix, feature, refactor)
         constraints: Task constraints
         budget: Budget dictionary
-        
+
     Returns:
         TaskSpec instance
     """
     import uuid
     from pathlib import Path
-    
+
     task_id = str(uuid.uuid4())
     constraints = constraints or []
-    
+
     # Get default budget from config
     config = ConfigLoader.get()
     default_budget = config.default_budget
-    
+
     # Override with provided budget
     if budget:
         budget_obj = Budget(
@@ -49,7 +49,7 @@ def load_task_spec(
         )
     else:
         budget_obj = default_budget
-    
+
     return TaskSpec(
         task_id=task_id,
         goal=goal,
@@ -69,28 +69,28 @@ class TaskRunner:
         self.titan_dir = titan_dir
         # Setup config once
         ConfigLoader.setup(titan_dir=titan_dir)
-        logger.debug(f"[TaskRunner] Config setup complete")
+        logger.debug("[TaskRunner] Config setup complete")
 
     def execute(self, task_config: Dict[str, Any], console: bool = False) -> Dict[str, Any]:
         """
         Execute task - single method.
-        
+
         Args:
             task_config: Task configuration
             console: Whether to show console output
-            
+
         Returns:
             Execution result
         """
         logger.debug(f"[TaskRunner] Execute called with config: {task_config}, console: {console}")
-        
+
         try:
             # Get config (uses varlord global config)
             config = ConfigLoader.get()
             logger.debug(f"[TaskRunner] Config loaded: ai={config.ai.completion.model}")
 
             # Create task spec
-            logger.debug(f"[TaskRunner] Creating task spec")
+            logger.debug("[TaskRunner] Creating task spec")
             task_spec = load_task_spec(
                 goal=task_config["goal"],
                 workspace_root=task_config["workspace_root"],
@@ -108,11 +108,12 @@ class TaskRunner:
                 )
                 # Update config with sandbox override
                 from dataclasses import replace
+
                 config = replace(config, sandbox=sandbox_config)
                 logger.debug(f"[TaskRunner] Sandbox config overridden: {sandbox_config}")
 
             # Execute
-            logger.info(f"[TaskRunner] Starting agent loop")
+            logger.info("[TaskRunner] Starting agent loop")
             loop = AgentLoop(task_spec, config)
             report = loop.run()
             logger.info(f"[TaskRunner] Agent loop completed: status={report.get('status')}")
@@ -122,21 +123,25 @@ class TaskRunner:
             # need to be downloaded to local workspace. noxrunner 2.0.0+ provides unified
             # download_workspace() that works correctly for all backends.
             try:
-                logger.info(f"[TaskRunner] Syncing files from sandbox to workspace")
+                logger.info("[TaskRunner] Syncing files from sandbox to workspace")
                 # AgentLoop -> WorkflowCoordinator -> SandboxAdapter (always present)
                 sandbox_adapter = loop.coordinator.sandbox
                 # Ensure sandbox is initialized (may not be if loop.run() failed early)
                 if not sandbox_adapter._initialized:
                     sandbox_adapter.initialize()
-                
+
                 success = sandbox_adapter.download_workspace(task_spec.workspace_root)
                 if success:
-                    logger.info(f"[TaskRunner] Files synced successfully from sandbox to {task_spec.workspace_root}")
+                    logger.info(
+                        f"[TaskRunner] Files synced successfully from sandbox to {task_spec.workspace_root}"
+                    )
                 else:
-                    logger.warning(f"[TaskRunner] File sync failed, but continuing")
+                    logger.warning("[TaskRunner] File sync failed, but continuing")
             except Exception as e:
                 logger.error(f"[TaskRunner] Error syncing files from sandbox: {e}")
-                logger.debug(f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True)
+                logger.debug(
+                    f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True
+                )
                 # Don't fail the task if sync fails, but log the error
 
             return {

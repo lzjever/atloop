@@ -1,8 +1,8 @@
 """Action JSON schema definition and validation."""
 
 import json
-import re
 import logging
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 # Try to import optional JSON repair libraries
 try:
     from json_repair import repair_json
+
     JSON_REPAIR_AVAILABLE = True
 except ImportError:
     JSON_REPAIR_AVAILABLE = False
@@ -17,6 +18,7 @@ except ImportError:
 
 try:
     import json5
+
     JSON5_AVAILABLE = True
 except ImportError:
     JSON5_AVAILABLE = False
@@ -428,7 +430,7 @@ def parse_action_json(
 ) -> Tuple[Optional[ActionJSON], Optional[str], Dict[str, str]]:
     """
     Parse Action JSON from text with improved error handling.
-    
+
     Also extracts file contents from placeholders (FILE_CONTENT_#1, FILE_CONTENT_#2, etc.)
     that follow the JSON in the format:
     ---(FILE_CONTENT_#1)---
@@ -458,7 +460,7 @@ def parse_action_json(
 
     # Extract file contents from placeholders (e.g., ---(FILE_CONTENT_#1)--- ... ---(FILE_CONTENT_#2)---)
     file_contents = _extract_file_contents(text)
-    
+
     # Remove file content sections from text to get pure JSON
     json_text = _remove_file_content_sections(text)
 
@@ -552,60 +554,60 @@ def parse_action_json(
 def _fix_json_errors(json_str: str) -> Optional[str]:
     """
     Fix common JSON errors in LLM output, especially for long text content.
-    
+
     Fixes:
     1. Unescaped quotes in strings (especially in long text content)
     2. Unescaped newlines, tabs, and control characters
     3. Trailing commas
     4. Missing commas
     5. Single quotes (convert to double quotes where safe)
-    
+
     Args:
         json_str: JSON string that may contain errors
-    
+
     Returns:
         Fixed JSON string, or None if fixing is not possible
     """
     if not json_str or not json_str.strip():
         return None
-    
+
     try:
         # Quick check: if already valid, return as-is
         json.loads(json_str)
         return json_str
     except json.JSONDecodeError:
         pass
-    
+
     # Try to fix common errors
     fixed = json_str
-    
+
     # 1. Remove comments (single-line and multi-line)
-    lines = fixed.split('\n')
+    lines = fixed.split("\n")
     fixed_lines = []
     for line in lines:
-        if '//' in line:
+        if "//" in line:
             # Only remove comment if we're not inside a string
             quote_count = line.count('"') - line.count('\\"')
             if quote_count % 2 == 0:  # Even number of quotes = not in string
-                line = line.split('//')[0].rstrip()
+                line = line.split("//")[0].rstrip()
         fixed_lines.append(line)
-    fixed = '\n'.join(fixed_lines)
-    fixed = re.sub(r'/\*.*?\*/', '', fixed, flags=re.DOTALL)
-    
+    fixed = "\n".join(fixed_lines)
+    fixed = re.sub(r"/\*.*?\*/", "", fixed, flags=re.DOTALL)
+
     # 2. Fix trailing commas
-    fixed = re.sub(r',\s*}', '}', fixed)
-    fixed = re.sub(r',\s*]', ']', fixed)
-    
+    fixed = re.sub(r",\s*}", "}", fixed)
+    fixed = re.sub(r",\s*]", "]", fixed)
+
     # 3. Fix missing commas between objects/arrays
-    fixed = re.sub(r'}\s*{', '}, {', fixed)
-    fixed = re.sub(r']\s*{', '], {', fixed)
+    fixed = re.sub(r"}\s*{", "}, {", fixed)
+    fixed = re.sub(r"]\s*{", "], {", fixed)
     fixed = re.sub(r'}\s*"', '}, "', fixed)
     fixed = re.sub(r']\s*"', '], "', fixed)
-    
+
     # 4. Most critical: Fix unescaped control characters in strings
     # This is the main issue with long text content (newlines, tabs, etc.)
     fixed = _escape_control_chars_safe(fixed)
-    
+
     # 5. Try to fix unescaped quotes in strings (very carefully, conservative approach)
     # This is risky, so we do it last and only if the JSON is still invalid
     # Only fix quotes that are clearly inside string values and clearly problematic
@@ -616,7 +618,7 @@ def _fix_json_errors(json_str: str) -> Optional[str]:
     except json.JSONDecodeError:
         # Still invalid, try fixing quotes (but be very conservative)
         fixed = _fix_unescaped_quotes_in_strings(fixed)
-    
+
     # Verify the fix worked
     try:
         json.loads(fixed)
@@ -629,13 +631,13 @@ def _fix_json_errors(json_str: str) -> Optional[str]:
 def _escape_control_chars_safe(text: str) -> str:
     """
     Safely escape control characters in JSON strings.
-    
+
     Only escapes control characters that are inside string values,
     not in keys or outside strings.
-    
+
     Args:
         text: JSON text
-    
+
     Returns:
         Text with control characters escaped
     """
@@ -643,62 +645,62 @@ def _escape_control_chars_safe(text: str) -> str:
     i = 0
     in_string = False
     escape_next = False
-    
+
     while i < len(text):
         char = text[i]
-        
+
         if escape_next:
             result.append(char)
             escape_next = False
             i += 1
             continue
-        
-        if char == '\\':
+
+        if char == "\\":
             result.append(char)
             escape_next = True
             i += 1
             continue
-        
+
         if char == '"':
             in_string = not in_string
             result.append(char)
             i += 1
             continue
-        
+
         if in_string:
             # Inside a string: escape control characters
-            if char == '\n':
-                result.append('\\n')
-            elif char == '\t':
-                result.append('\\t')
-            elif char == '\r':
-                result.append('\\r')
+            if char == "\n":
+                result.append("\\n")
+            elif char == "\t":
+                result.append("\\t")
+            elif char == "\r":
+                result.append("\\r")
             elif ord(char) < 32:  # Other control characters
-                result.append(f'\\u{ord(char):04x}')
+                result.append(f"\\u{ord(char):04x}")
             else:
                 result.append(char)
         else:
             # Outside string: keep as-is
             result.append(char)
-        
+
         i += 1
-    
-    return ''.join(result)
+
+    return "".join(result)
 
 
 def _fix_unescaped_quotes_in_strings(text: str) -> str:
     """
     Fix unescaped quotes inside string values.
-    
+
     This is very tricky - we need to be conservative to avoid breaking valid JSON.
     Only fix quotes that are clearly inside string values and clearly unescaped.
-    
+
     Strategy: When we encounter a quote inside a string, check if it's followed
     by valid JSON structure. If not, it's likely an unescaped quote in content.
-    
+
     Args:
         text: JSON text
-    
+
     Returns:
         Text with unescaped quotes in strings fixed (conservatively)
     """
@@ -706,22 +708,22 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
     i = 0
     in_string = False
     escape_next = False
-    
+
     while i < len(text):
         char = text[i]
-        
+
         if escape_next:
             result.append(char)
             escape_next = False
             i += 1
             continue
-        
-        if char == '\\':
+
+        if char == "\\":
             result.append(char)
             escape_next = True
             i += 1
             continue
-        
+
         if char == '"':
             if not in_string:
                 # Starting a new string
@@ -730,21 +732,21 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
             else:
                 # Inside a string - check if this is the closing quote
                 # Look ahead to see if this is followed by valid JSON structure
-                lookahead = text[i+1:].lstrip()
-                
+                lookahead = text[i + 1 :].lstrip()
+
                 # Check for common patterns that indicate this is a closing quote:
                 # - Followed by : (key-value separator)
                 # - Followed by , (array/object separator)
                 # - Followed by } or ] (structure end)
                 # - Followed by whitespace then one of the above
                 is_closing_quote = (
-                    lookahead.startswith(':') or
-                    lookahead.startswith(',') or
-                    lookahead.startswith('}') or
-                    lookahead.startswith(']') or
-                    not lookahead  # End of text
+                    lookahead.startswith(":")
+                    or lookahead.startswith(",")
+                    or lookahead.startswith("}")
+                    or lookahead.startswith("]")
+                    or not lookahead  # End of text
                 )
-                
+
                 if is_closing_quote:
                     # This is a closing quote
                     in_string = False
@@ -753,7 +755,7 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
                     # This might be an unescaped quote inside the string
                     # But be conservative - only escape if it's clearly wrong
                     # Check if next non-whitespace char is a letter/digit (likely content)
-                    next_char = lookahead[0] if lookahead else ''
+                    next_char = lookahead[0] if lookahead else ""
                     if next_char.isalnum() or next_char in ".,;:!?":
                         # Likely an unescaped quote in content - escape it
                         result.append('\\"')
@@ -762,11 +764,11 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
                         result.append(char)
             i += 1
             continue
-        
+
         result.append(char)
         i += 1
-    
-    return ''.join(result)
+
+    return "".join(result)
 
 
 def _extract_file_contents(text: str) -> Dict[str, str]:
@@ -777,61 +779,61 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
     ---(FILE_CONTENT_#2)---
     <file content>
     ...
-    
+
     For edit_file, the content format is:
     ---(FILE_CONTENT_#N)---
     <old>old_string</old><new>new_string</new>
-    
+
     Args:
         text: Full text containing JSON and file contents
-    
+
     Returns:
         Dictionary mapping placeholder names (e.g., "FILE_CONTENT_#1") to content
     """
     file_contents = {}
-    
+
     # Pattern to match: ---(FILE_CONTENT_#N)---
-    pattern = r'---\(FILE_CONTENT_#(\d+)\)---'
-    
+    pattern = r"---\(FILE_CONTENT_#(\d+)\)---"
+
     matches = list(re.finditer(pattern, text))
-    
+
     for i, match in enumerate(matches):
         placeholder = f"FILE_CONTENT_#{match.group(1)}"
         start_pos = match.end()
-        
+
         # Find the end position (next placeholder or end of text)
         if i + 1 < len(matches):
             end_pos = matches[i + 1].start()
         else:
             end_pos = len(text)
-        
+
         # Extract content (strip leading/trailing whitespace)
         content = text[start_pos:end_pos].strip()
         file_contents[placeholder] = content
-    
+
     return file_contents
 
 
 def _remove_file_content_sections(text: str) -> str:
     """
     Remove file content sections from text, leaving only JSON.
-    
+
     Removes sections like:
     ---(FILE_CONTENT_#1)---
     <content>
     ---(FILE_CONTENT_#2)---
     <content>
-    
+
     Args:
         text: Full text containing JSON and file contents
-    
+
     Returns:
         Text with file content sections removed
     """
     # Pattern to match: ---(FILE_CONTENT_#N)--- ... (until next placeholder or end)
-    pattern = r'---\(FILE_CONTENT_#\d+\)---.*?(?=---\(FILE_CONTENT_#\d+\)---|$)'
-    
+    pattern = r"---\(FILE_CONTENT_#\d+\)---.*?(?=---\(FILE_CONTENT_#\d+\)---|$)"
+
     # Remove all file content sections
-    result = re.sub(pattern, '', text, flags=re.DOTALL)
-    
+    result = re.sub(pattern, "", text, flags=re.DOTALL)
+
     return result.strip()

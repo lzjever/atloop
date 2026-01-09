@@ -37,9 +37,7 @@ class ToolRegistry:
         """
         try:
             stats = auto_register_tools(
-                registry=self,
-                sandbox=self.sandbox,
-                skill_loader=self.skill_loader
+                registry=self, sandbox=self.sandbox, skill_loader=self.skill_loader
             )
             self._registration_stats = stats
 
@@ -50,9 +48,7 @@ class ToolRegistry:
 
             if stats["registered"] > 0:
                 tool_names = [t["name"] for t in stats["tools"]]
-                logger.info(
-                    f"[ToolRegistry] Registered tools: {', '.join(sorted(tool_names))}"
-                )
+                logger.info(f"[ToolRegistry] Registered tools: {', '.join(sorted(tool_names))}")
 
             if stats["failed"] > 0:
                 logger.warning(

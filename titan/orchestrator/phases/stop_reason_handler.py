@@ -47,18 +47,29 @@ class StopReasonHandler:
         """
         if stop_reason == "done":
             return StopReasonHandler._handle_done(
-                actions, action_json, verification_success, step,
-                event_logger, state_manager, state_machine, job_state
+                actions,
+                action_json,
+                verification_success,
+                step,
+                event_logger,
+                state_manager,
+                state_machine,
+                job_state,
             )
         elif stop_reason == "fail":
             return StopReasonHandler._handle_fail(
-                action_json, verification_success, step,
-                event_logger, state_manager, state_machine
+                action_json, verification_success, step, event_logger, state_manager, state_machine
             )
         else:  # continue
             return StopReasonHandler._handle_continue(
-                actions, action_json, verification_success, step,
-                event_logger, state_manager, state_machine, job_state
+                actions,
+                action_json,
+                verification_success,
+                step,
+                event_logger,
+                state_manager,
+                state_machine,
+                job_state,
             )
 
     @staticmethod
@@ -73,9 +84,7 @@ class StopReasonHandler:
         job_state,
     ) -> Tuple[Optional[Phase], Optional[str], PhaseResult]:
         """Handle stop_reason='done'."""
-        logger.info(
-            f"[StopReasonHandler] Task done (Step {step}), actions={len(actions)}"
-        )
+        logger.info(f"[StopReasonHandler] Task done (Step {step}), actions={len(actions)}")
 
         if not actions:
             # No actions: stop immediately
@@ -173,16 +182,12 @@ class StopReasonHandler:
             )
         else:
             # Has actions: execute them
-            logger.info(
-                f"[StopReasonHandler] Has {len(actions)} actions, proceeding to ACT"
-            )
+            logger.info(f"[StopReasonHandler] Has {len(actions)} actions, proceeding to ACT")
             StopReasonHandler._store_actions_for_act(actions, action_json, job_state)
             state_manager.update(phase="ACT")
             transition_result = state_machine.transition(Phase.ACT)
             if not transition_result:
-                logger.error(
-                    f"[StopReasonHandler] State transition failed: PLAN -> ACT"
-                )
+                logger.error("[StopReasonHandler] State transition failed: PLAN -> ACT")
                 state_manager.agent_state.last_error.summary = (
                     "State transition failed: PLAN -> ACT"
                 )
@@ -217,9 +222,7 @@ class StopReasonHandler:
             result_message=action_json.result_message,
         )
         job_state.shared_data["actions"] = action_json_with_replaced.to_dict()
-        logger.debug(
-            f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase"
-        )
+        logger.debug(f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase")
 
     @staticmethod
     def apply_pending_stop_reason(
@@ -245,9 +248,7 @@ class StopReasonHandler:
             PhaseResult with appropriate next_phase
         """
         if pending_stop_reason == "done":
-            logger.info(
-                f"[StopReasonHandler] Applying pending stop_reason='done' (Step {step})"
-            )
+            logger.info(f"[StopReasonHandler] Applying pending stop_reason='done' (Step {step})")
             event_logger.log_decision(
                 step=step,
                 stop_reason="done",
@@ -259,9 +260,7 @@ class StopReasonHandler:
             return PhaseResult(success=True, data={}, next_phase=Phase.DONE)
 
         elif pending_stop_reason == "fail":
-            logger.info(
-                f"[StopReasonHandler] Applying pending stop_reason='fail' (Step {step})"
-            )
+            logger.info(f"[StopReasonHandler] Applying pending stop_reason='fail' (Step {step})")
             event_logger.log_decision(
                 step=step,
                 stop_reason="fail",

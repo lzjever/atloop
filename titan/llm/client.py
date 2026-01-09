@@ -7,9 +7,9 @@ import traceback
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from lexilux import Chat, ChatHistory, ChatResult, ChatContinue, ChatParams
-# Note: ChatHistory is kept for backward compatibility but no longer used
+from lexilux import Chat, ChatContinue, ChatHistory, ChatParams, ChatResult
 
+# Note: ChatHistory is kept for backward compatibility but no longer used
 from titan.config.models import TitanConfig
 from titan.llm.prompts import PromptLoader
 from titan.llm.schema import (
@@ -42,7 +42,7 @@ class LLMClient:
         )
 
         # Initialize prompt loader (default to English)
-        language = getattr(config, 'prompt_language', 'en')
+        language = getattr(config, "prompt_language", "en")
         self.prompt_loader = PromptLoader(language=language)
         logger.debug(f"[LLMClient] Initialized PromptLoader with language: {language}")
 
@@ -63,15 +63,19 @@ class LLMClient:
         self.system_prompt = system_template.replace("{TOOL_SCHEMA}", tool_schema)
         if skills_info:
             self.system_prompt += f"\n\n⚠️ Available Skills:\n{skills_info}\n\n**Important**: If a task matches a Skill description, you must immediately use the 'skill' tool to load the Skill's detailed content. Skills provide professional domain knowledge and best practice guidance."
-            logger.info(f"[LLMClient] Added {len(self.skill_loader.skills) if self.skill_loader else 0} skills to system prompt")
+            logger.info(
+                f"[LLMClient] Added {len(self.skill_loader.skills) if self.skill_loader else 0} skills to system prompt"
+            )
             logger.debug(f"[LLMClient] Skills list:\n{skills_info}")
         else:
-            logger.warning(f"[LLMClient] No skills found (skill_loader={self.skill_loader is not None})")
+            logger.warning(
+                f"[LLMClient] No skills found (skill_loader={self.skill_loader is not None})"
+            )
 
     def generate_tool_schema(self) -> str:
         """
         Generate tool schema description for prompt.
-        
+
         Automatically extracts descriptions from tool classes instead of hardcoding.
 
         Returns:
@@ -82,22 +86,26 @@ class LLMClient:
         try:
             from titan.runtime.sandbox_adapter import SandboxAdapter
             from titan.tools.registry import ToolRegistry
-            
+
             dummy_sandbox = SandboxAdapter(self.config.sandbox, "dummy")
             registry = ToolRegistry(dummy_sandbox, skill_loader=self.skill_loader)
-            
+
             tool_descriptions = {}
             for tool_name, tool in registry.tools.items():
                 tool_descriptions[tool_name] = tool.description
-            
-            logger.debug(f"[LLMClient] Auto-extracted descriptions for {len(tool_descriptions)} tools")
+
+            logger.debug(
+                f"[LLMClient] Auto-extracted descriptions for {len(tool_descriptions)} tools"
+            )
         except Exception as e:
-            logger.warning(f"[LLMClient] Failed to auto-extract tool descriptions: {e}. Using fallback.")
+            logger.warning(
+                f"[LLMClient] Failed to auto-extract tool descriptions: {e}. Using fallback."
+            )
             tool_descriptions = {}
 
         priority_tools = ["edit_file", "append_file"]
         other_tools = sorted([t for t in VALID_TOOLS if t not in priority_tools])
-        
+
         for tool in priority_tools + other_tools:
             desc = tool_descriptions.get(tool, "No description")
             tools_desc.append(f"- {tool}: {desc}")
@@ -209,8 +217,10 @@ class LLMClient:
 {completion_reminder}
 """
 
-        logger.debug(f"[LLMClient] build_user_message: state_summary length={len(state_summary) if state_summary else 0}")
-        
+        logger.debug(
+            f"[LLMClient] build_user_message: state_summary length={len(state_summary) if state_summary else 0}"
+        )
+
         replacements = {
             "{GOAL}": goal,
             "{CONSTRAINTS}": "\n".join(f"- {c}" for c in constraints) if constraints else "None",
@@ -227,13 +237,15 @@ class LLMClient:
 
         for placeholder, value in replacements.items():
             if placeholder == "{STATE_SUMMARY}":
-                logger.debug(f"[LLMClient] Replacing {{STATE_SUMMARY}}: length={len(str(value))}, preview={str(value)[:100] if value else 'None'}...")
+                logger.debug(
+                    f"[LLMClient] Replacing {{STATE_SUMMARY}}: length={len(str(value))}, preview={str(value)[:100] if value else 'None'}..."
+                )
             developer_prompt = developer_prompt.replace(placeholder, str(value))
-        
+
         if "{STATE_SUMMARY}" in developer_prompt:
-            logger.error(f"[LLMClient] Error: {{STATE_SUMMARY}} placeholder was not replaced!")
+            logger.error("[LLMClient] Error: {STATE_SUMMARY} placeholder was not replaced!")
         else:
-            logger.debug(f"[LLMClient] {{STATE_SUMMARY}} placeholder successfully replaced")
+            logger.debug("[LLMClient] {STATE_SUMMARY} placeholder successfully replaced")
 
         return developer_prompt
 
@@ -311,7 +323,7 @@ class LLMClient:
         """
         if not user_message or not user_message.strip():
             raise ValueError("user_message is required and cannot be empty (no history mode)")
-        
+
         usage_info = {"total_tokens": 0, "input_tokens": 0, "output_tokens": 0}
         full_output = ""
         error = None
@@ -328,17 +340,17 @@ class LLMClient:
                     max_tokens=self.config.ai.performance.max_tokens_output,
                 )
 
-                initial_result = self._stream_initial_response(current_message, chat_params, stream_callback)
-                
-                result = self._handle_truncation(
-                    initial_result, current_message, stream_callback
+                initial_result = self._stream_initial_response(
+                    current_message, chat_params, stream_callback
                 )
+
+                result = self._handle_truncation(initial_result, current_message, stream_callback)
 
                 usage_info["total_tokens"] = result.usage.total_tokens
                 usage_info["input_tokens"] = result.usage.input_tokens
                 usage_info["output_tokens"] = result.usage.output_tokens
                 full_output = result.text
-                
+
                 self._log_final_output(full_output, initial_result)
 
                 action_json, error, file_contents = parse_action_json(full_output)
@@ -447,22 +459,24 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         except Exception as stream_error:
             logger.error(f"[LLMClient] Error during streaming: {stream_error}")
             logger.debug(f"[LLMClient] Exception traceback: {traceback.format_exc()}")
-        
-        logger.debug(f"[LLMClient] Streaming stats: {chunk_count} chunks, total delta length: {total_delta_length} chars")
-        
+
+        logger.debug(
+            f"[LLMClient] Streaming stats: {chunk_count} chunks, total delta length: {total_delta_length} chars"
+        )
+
         if stream_callback:
             print()
         else:
             print("Done")
 
         initial_result = stream_iterator.result.to_chat_result()
-        
+
         logger.info(
             f"[LLMClient] Initial streaming result: finish_reason={initial_result.finish_reason}, "
             f"length={len(initial_result.text)} chars, chunks={chunk_count}, "
             f"delta_total_length={total_delta_length}"
         )
-        
+
         if len(initial_result.text) == 0:
             logger.error(
                 f"[LLMClient] Critical error: Initial result text is empty! "
@@ -474,9 +488,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                 f"does not match delta total length ({total_delta_length})!"
             )
         else:
-            preview = initial_result.text[:100].replace('\n', '\\n')
+            preview = initial_result.text[:100].replace("\n", "\\n")
             logger.debug(f"[LLMClient] Initial result preview: {preview}...")
-        
+
         return initial_result
 
     def _handle_truncation(
@@ -489,7 +503,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         if initial_result.finish_reason == "length":
             max_continue_attempts = 5
             if stream_callback:
-                print(f"    [Truncation detected, continuing generation...] ", end="", flush=True)
+                print("    [Truncation detected, continuing generation...] ", end="", flush=True)
             try:
                 result = self._continue_with_streaming(
                     self.chat,
@@ -500,14 +514,18 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                 )
                 if stream_callback:
                     print()
-                logger.info(f"[LLMClient] Continue generation successful, final result length: {len(result.text)} chars")
+                logger.info(
+                    f"[LLMClient] Continue generation successful, final result length: {len(result.text)} chars"
+                )
             except Exception as continue_error:
                 logger.error(f"[LLMClient] Error during continue generation: {continue_error}")
                 logger.warning(
                     f"[LLMClient] Using initial result (may be incomplete), length: {len(initial_result.text)} chars"
                 )
                 result = initial_result
-                placeholders_in_initial = re.findall(r'---\(FILE_CONTENT_#\d+\)---', initial_result.text)
+                placeholders_in_initial = re.findall(
+                    r"---\(FILE_CONTENT_#\d+\)---", initial_result.text
+                )
                 if placeholders_in_initial:
                     logger.warning(
                         f"[LLMClient] Initial result contains placeholders {placeholders_in_initial}, "
@@ -515,7 +533,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     )
         else:
             result = initial_result
-        
+
         return result
 
     def _log_final_output(self, full_output: str, initial_result: ChatResult) -> None:
@@ -524,7 +542,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             f"[LLMClient] Final full_output length: {len(full_output)} chars, "
             f"finish_reason={initial_result.finish_reason}"
         )
-        
+
         if len(full_output) == 0:
             logger.error(
                 f"[LLMClient] Critical error: Final full_output is empty! "
@@ -535,10 +553,12 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                 f"[LLMClient] Warning: Final full_output ({len(full_output)} chars) "
                 f"is shorter than initial result ({len(initial_result.text)} chars)!"
             )
-        
+
         if initial_result.finish_reason == "length":
-            logger.info(f"[LLMClient] Continued after truncation, final full_output length: {len(full_output)} chars")
-            placeholders_found = re.findall(r'---\(FILE_CONTENT_#\d+\)---', full_output)
+            logger.info(
+                f"[LLMClient] Continued after truncation, final full_output length: {len(full_output)} chars"
+            )
+            placeholders_found = re.findall(r"---\(FILE_CONTENT_#\d+\)---", full_output)
             logger.info(f"[LLMClient] Found FILE_CONTENT placeholders: {placeholders_found}")
 
     def _log_file_contents_extraction(
@@ -548,7 +568,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         full_output: str,
     ) -> None:
         """Log file contents extraction results.
-        
+
         File contents (---(FILE_CONTENT_#N)--- blocks) are only expected when the LLM
         uses write_file/append_file/edit_file tools with FILE_CONTENT_#N placeholders.
         For run/read_file/etc. actions, empty file_contents is normal - not a warning.
@@ -561,7 +581,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     content = action.get("args", {}).get("content", "")
                     if isinstance(content, str) and content.startswith("FILE_CONTENT_#"):
                         expected_placeholders.append(content)
-        
+
         if file_contents:
             logger.info(
                 f"[LLMClient] Extracted {len(file_contents)} file content placeholders: {list(file_contents.keys())}"
@@ -595,7 +615,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
     ) -> ChatResult:
         """
         Continue generation with streaming output when response is truncated.
-        
+
         Simple approach: construct a one-round history (user prompt + AI response),
         then use a continue prompt to ask LLM to continue output.
 
@@ -605,37 +625,45 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             max_continues: Maximum number of continuation attempts
             original_user_message: Original user message with full context
             stream_callback: Optional callback function to receive streaming output chunks
-        
+
         Returns:
             Merged complete result
         """
         start_time = time.time()
-        continue_prompt = "Your output was truncated. Please continue outputting the remaining content."
-        
+        continue_prompt = (
+            "Your output was truncated. Please continue outputting the remaining content."
+        )
+
         all_results = [initial_result]
         current_result = initial_result
         continue_count = 0
         accumulated_text = initial_result.text
-        
-        logger.info(f"[LLMClient] Starting streaming continue generation (max {max_continues} attempts)...")
-        
+
+        logger.info(
+            f"[LLMClient] Starting streaming continue generation (max {max_continues} attempts)..."
+        )
+
         while current_result.finish_reason == "length" and continue_count < max_continues:
             continue_count += 1
             logger.info(f"[LLMClient] Starting continue generation attempt {continue_count}...")
-            
+
             if stream_callback:
-                print(f"\n    [Continue generation {continue_count}/{max_continues}] ", end="", flush=True)
-            
+                print(
+                    f"\n    [Continue generation {continue_count}/{max_continues}] ",
+                    end="",
+                    flush=True,
+                )
+
             continue_history = ChatHistory()
             continue_history.add_user(original_user_message)
             continue_history.add_assistant(accumulated_text)
             continue_history.add_user(continue_prompt)
-            
+
             chat_params = ChatParams(
                 temperature=0.3,
                 max_tokens=self.config.ai.performance.max_tokens_output,
             )
-            
+
             try:
                 continue_stream = chat.stream_with_history(
                     continue_history,
@@ -643,7 +671,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     include_usage=True,
                     params=chat_params,
                 )
-                
+
                 for chunk in continue_stream:
                     if chunk.delta:
                         if stream_callback:
@@ -651,40 +679,48 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                             stream_callback(chunk.delta)
                     if chunk.done:
                         break
-                
+
                 continue_result = continue_stream.result.to_chat_result()
                 all_results.append(continue_result)
                 current_result = continue_result
                 accumulated_text += continue_result.text
-                
+
                 logger.info(
                     f"[LLMClient] Continue generation attempt {continue_count} completed, "
                     f"length: {len(continue_result.text)} chars, "
                     f"finish_reason: {continue_result.finish_reason}, "
                     f"accumulated text length: {len(accumulated_text)} chars"
                 )
-                
-                placeholders_in_continue = re.findall(r'---\(FILE_CONTENT_#\d+\)---', continue_result.text)
+
+                placeholders_in_continue = re.findall(
+                    r"---\(FILE_CONTENT_#\d+\)---", continue_result.text
+                )
                 if placeholders_in_continue:
-                    logger.info(f"[LLMClient] Continue result contains placeholders: {placeholders_in_continue}")
-                
-                partial_pattern = r'---\(FILE_CONTENT_#\d+\)?---?'
+                    logger.info(
+                        f"[LLMClient] Continue result contains placeholders: {placeholders_in_continue}"
+                    )
+
+                partial_pattern = r"---\(FILE_CONTENT_#\d+\)?---?"
                 partial_matches = re.findall(partial_pattern, continue_result.text)
                 if partial_matches:
-                    logger.warning(f"[LLMClient] Continue result may contain partial placeholders: {partial_matches}")
-                
+                    logger.warning(
+                        f"[LLMClient] Continue result may contain partial placeholders: {partial_matches}"
+                    )
+
             except Exception as e:
-                logger.error(f"[LLMClient] Continue generation attempt {continue_count} failed: {e}")
+                logger.error(
+                    f"[LLMClient] Continue generation attempt {continue_count} failed: {e}"
+                )
                 logger.error(f"[LLMClient] Exception details: {type(e).__name__}: {e}")
                 logger.debug(f"[LLMClient] Exception traceback: {traceback.format_exc()}")
-                
+
                 if len(all_results) > 1:
                     merged = ChatContinue.merge_results(*all_results)
                     logger.warning(
                         f"[LLMClient] Continue failed, returning partial merged result (may be incomplete), "
                         f"length: {len(merged.text)} chars, contains {len(all_results)} results"
                     )
-                    placeholders_in_merged = re.findall(r'---\(FILE_CONTENT_#\d+\)---', merged.text)
+                    placeholders_in_merged = re.findall(r"---\(FILE_CONTENT_#\d+\)---", merged.text)
                     if placeholders_in_merged:
                         logger.warning(
                             f"[LLMClient] Partial result contains placeholders {placeholders_in_merged}, "
@@ -697,7 +733,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                         f"returning initial result (may be incomplete), length: {len(initial_result.text)} chars"
                     )
                     return initial_result
-        
+
         if len(all_results) == 1:
             full_result = all_results[0]
         else:
@@ -708,18 +744,18 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             )
             for i, r in enumerate(all_results):
                 logger.debug(
-                    f"[LLMClient] Result {i+1}: {len(r.text)} chars, finish_reason: {r.finish_reason}"
+                    f"[LLMClient] Result {i + 1}: {len(r.text)} chars, finish_reason: {r.finish_reason}"
                 )
-        
+
         elapsed_time = time.time() - start_time
         logger.info(
             f"[LLMClient] Streaming continue generation completed, elapsed: {elapsed_time:.2f}s, "
             f"total length: {len(full_result.text)} chars, {continue_count} continues"
         )
-        
-        all_placeholders = re.findall(r'---\(FILE_CONTENT_#\d+\)---', full_result.text)
+
+        all_placeholders = re.findall(r"---\(FILE_CONTENT_#\d+\)---", full_result.text)
         logger.info(f"[LLMClient] Merged complete text contains placeholders: {all_placeholders}")
-        
+
         return full_result
 
     def reset_history(self):

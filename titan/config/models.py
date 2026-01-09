@@ -175,71 +175,62 @@ class TaskSpec:
 @dataclass(frozen=True)
 class MemoryConfig:
     """Memory configuration for managing agent memory."""
-    
+
     # Memory Summary size limits
     summary_max_length: int = field(
         default=96000,  # 96KB (approximately 24k tokens, 18.75% of 128k)
-        metadata={"description": "Maximum memory summary length in characters"}
+        metadata={"description": "Maximum memory summary length in characters"},
     )
     summary_min_effective_length: int = field(
         default=24000,  # 24KB
-        metadata={"description": "Minimum effective memory summary length"}
+        metadata={"description": "Minimum effective memory summary length"},
     )
-    
+
     # Compression thresholds
     compression_threshold: int = field(
         default=80000,  # 80KB - trigger compression when exceeded
-        metadata={"description": "Memory size threshold to trigger compression"}
+        metadata={"description": "Memory size threshold to trigger compression"},
     )
     compression_target: int = field(
         default=60000,  # 60KB - target size after compression
-        metadata={"description": "Target memory size after compression"}
+        metadata={"description": "Target memory size after compression"},
     )
-    
+
     # Retention policies (rule-based)
     attempts_keep_recent: int = field(
-        default=15,
-        metadata={"description": "Number of recent attempts to keep"}
+        default=15, metadata={"description": "Number of recent attempts to keep"}
     )
     decisions_keep_recent: int = field(
-        default=10,
-        metadata={"description": "Number of recent decisions to keep"}
+        default=10, metadata={"description": "Number of recent decisions to keep"}
     )
     important_decisions_keep: int = field(
-        default=30,
-        metadata={"description": "Number of important decisions to keep"}
+        default=30, metadata={"description": "Number of important decisions to keep"}
     )
     milestones_keep: int = field(
-        default=30,
-        metadata={"description": "Number of milestones to keep"}
+        default=30, metadata={"description": "Number of milestones to keep"}
     )
-    learnings_keep: int = field(
-        default=20,
-        metadata={"description": "Number of learnings to keep"}
-    )
-    
+    learnings_keep: int = field(default=20, metadata={"description": "Number of learnings to keep"})
+
     # LLM compression configuration
     llm_compression_enabled: bool = field(
-        default=True,
-        metadata={"description": "Enable LLM-based memory compression"}
+        default=True, metadata={"description": "Enable LLM-based memory compression"}
     )
     llm_compression_threshold: int = field(
         default=100000,  # 100KB - use LLM compression when exceeded
-        metadata={"description": "Memory size threshold to trigger LLM compression"}
+        metadata={"description": "Memory size threshold to trigger LLM compression"},
     )
     llm_compression_target: int = field(
         default=70000,  # 70KB - target size after LLM compression
-        metadata={"description": "Target memory size after LLM compression"}
+        metadata={"description": "Target memory size after LLM compression"},
     )
-    
+
     # Deduplication configuration
     deduplication_enabled: bool = field(
-        default=True,
-        metadata={"description": "Enable memory deduplication"}
+        default=True, metadata={"description": "Enable memory deduplication"}
     )
     deduplication_similarity_threshold: float = field(
         default=0.85,  # Similarity threshold (0-1)
-        metadata={"description": "Similarity threshold for deduplication (0-1)"}
+        metadata={"description": "Similarity threshold for deduplication (0-1)"},
     )
 
 

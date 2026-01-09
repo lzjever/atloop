@@ -10,18 +10,18 @@ from titan.tools.base import BaseTool, ToolResult
 class TodoWriteTool(BaseTool):
     """
     Tool for creating and managing task lists in TODO.md format.
-    
+
     **Use cases:**
     - Tracking progress on complex, multi-step tasks
     - Managing task status (pending, in_progress, completed)
     - Organizing work into manageable chunks
     - Providing visibility into current work status
-    
+
     **Task statuses:**
     - `pending`: Task not yet started
     - `in_progress`: Task currently being worked on
     - `completed`: Task finished
-    
+
     **Best practices:**
     - At least one task should be in_progress at any time
     - Use activeForm to describe what's happening (e.g., "Running tests")
@@ -109,7 +109,7 @@ class TodoWriteTool(BaseTool):
                     "status": "pending"
                 }
             ])
-            
+
             # Update TODO list (replaces entire list)
             todo_write(todos=[
                 {
@@ -134,13 +134,13 @@ class TodoWriteTool(BaseTool):
         The tool generates markdown format:
         ```markdown
         # TODO
-        
+
         ## In Progress
         - [ ] Task 1 (Running task 1)
-        
+
         ## Pending
         - [ ] Task 2 (Will run task 2)
-        
+
         ## Completed
         - [x] Task 3
         ```

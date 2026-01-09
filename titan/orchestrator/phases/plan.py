@@ -1,14 +1,7 @@
 """PLAN phase implementation."""
 
 import logging
-from typing import Dict, Optional
 
-from titan.config.limits import (
-    ERROR_SUMMARY_LIMIT_FILE_VIEW,
-    ERROR_SUMMARY_LIMIT_NORMAL,
-    is_file_view_command,
-)
-from titan.llm import ActionJSON
 from titan.memory.summarizer import MemorySummarizer
 from titan.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from titan.orchestrator.phases.stop_reason_handler import StopReasonHandler
@@ -23,10 +16,10 @@ class PlanPhase(BasePhase):
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
         Execute PLAN phase.
-        
+
         Args:
             context: Phase execution context
-            
+
         Returns:
             Phase execution result
         """
@@ -35,22 +28,27 @@ class PlanPhase(BasePhase):
 
         try:
             # Rebuild context pack with latest state
-            logger.debug(f"[PlanPhase] Building context pack with latest state")
-            memory_config = getattr(self.coordinator.config, 'memory', None)
+            logger.debug("[PlanPhase] Building context pack with latest state")
+            memory_config = getattr(self.coordinator.config, "memory", None)
             if memory_config:
                 memory_summary_max_length = getattr(
-                    self.coordinator, '_memory_summary_max_length',
-                    memory_config.summary_max_length
+                    self.coordinator, "_memory_summary_max_length", memory_config.summary_max_length
                 )
-                logger.debug(f"[PlanPhase] Using memory config: max_length={memory_summary_max_length}")
+                logger.debug(
+                    f"[PlanPhase] Using memory config: max_length={memory_summary_max_length}"
+                )
             else:
                 memory_summary_max_length = getattr(
-                    self.coordinator, '_memory_summary_max_length', 64000
+                    self.coordinator, "_memory_summary_max_length", 64000
                 )
-                logger.debug(f"[PlanPhase] Using default memory summary max length: {memory_summary_max_length}")
-            
+                logger.debug(
+                    f"[PlanPhase] Using default memory summary max length: {memory_summary_max_length}"
+                )
+
             memory_summary = MemorySummarizer.summarize(
-                state, max_length=memory_summary_max_length, task_goal=self.coordinator.task_spec.goal
+                state,
+                max_length=memory_summary_max_length,
+                task_goal=self.coordinator.task_spec.goal,
             )
             logger.debug(
                 f"[PlanPhase] Memory summary length: {len(memory_summary)} chars "
@@ -58,12 +56,12 @@ class PlanPhase(BasePhase):
             )
 
             # Extract keywords
-            logger.debug(f"[PlanPhase] Extracting keywords")
+            logger.debug("[PlanPhase] Extracting keywords")
             keywords = self._extract_keywords()
             logger.debug(f"[PlanPhase] Extracted {len(keywords)} keywords: {keywords[:5]}")
 
             # Build context pack
-            logger.debug(f"[PlanPhase] Building context pack")
+            logger.debug("[PlanPhase] Building context pack")
             context_pack = self.coordinator.context_builder.build(
                 goal=self.coordinator.task_spec.goal,
                 constraints=self.coordinator.task_spec.constraints,
@@ -74,10 +72,12 @@ class PlanPhase(BasePhase):
                 memory_summary=memory_summary,
                 keywords=keywords,
             )
-            logger.debug(f"[PlanPhase] Context pack built: project_profile={context_pack.project_profile}")
+            logger.debug(
+                f"[PlanPhase] Context pack built: project_profile={context_pack.project_profile}"
+            )
 
             # Build user message
-            logger.debug(f"[PlanPhase] Building user message")
+            logger.debug("[PlanPhase] Building user message")
             user_message = self.coordinator.llm_client.build_user_message(
                 goal=self.coordinator.task_spec.goal,
                 constraints=self.coordinator.task_spec.constraints,
@@ -93,29 +93,29 @@ class PlanPhase(BasePhase):
             logger.debug(f"[PlanPhase] User message built: length={len(user_message)} chars")
 
             # Log LLM call
-            full_prompt_for_log = (
-                f"{self.coordinator.llm_client.system_prompt}\n\n{user_message}"
-            )
+            full_prompt_for_log = f"{self.coordinator.llm_client.system_prompt}\n\n{user_message}"
             self.coordinator.event_logger.log_llm_call(
                 step=state.step,
                 prompt=full_prompt_for_log,
                 tokens_in=None,
                 model=self.coordinator.config.ai.completion.model,
             )
-            logger.debug(f"[PlanPhase] LLM call logged")
+            logger.debug("[PlanPhase] LLM call logged")
 
             # Call LLM
             def stream_callback(delta: str):
                 pass
 
-            logger.debug(f"[PlanPhase] Calling LLM")
+            logger.debug("[PlanPhase] Calling LLM")
             action_json, error, usage, full_output, file_contents = (
                 self.coordinator.llm_client.plan_and_act(
                     user_message,
                     stream_callback=stream_callback,
                 )
             )
-            logger.debug(f"[PlanPhase] LLM call completed: action_json={action_json is not None}, error={error}")
+            logger.debug(
+                f"[PlanPhase] LLM call completed: action_json={action_json is not None}, error={error}"
+            )
 
             # Update budget
             state.budget_used.llm_calls += 1
@@ -127,17 +127,19 @@ class PlanPhase(BasePhase):
                 logger.warning(f"[PlanPhase] LLM call failed: {error}")
                 # Check if it's a 400 Bad Request
                 if "400" in error and "Bad Request" in error:
-                    logger.warning(f"[PlanPhase] 400 Bad Request detected, attempting to reduce memory summary size")
-                    memory_config = getattr(self.coordinator.config, 'memory', None)
+                    logger.warning(
+                        "[PlanPhase] 400 Bad Request detected, attempting to reduce memory summary size"
+                    )
+                    memory_config = getattr(self.coordinator.config, "memory", None)
                     if memory_config:
                         min_length = memory_config.summary_min_effective_length
                         default_max = memory_config.summary_max_length
                     else:
                         min_length = 16000
                         default_max = 64000
-                    
+
                     current_max = getattr(
-                        self.coordinator, '_memory_summary_max_length', default_max
+                        self.coordinator, "_memory_summary_max_length", default_max
                     )
                     logger.warning(
                         f"[PlanPhase] 400 Bad Request detected. "
@@ -151,7 +153,7 @@ class PlanPhase(BasePhase):
                         f"[PlanPhase] New memory_summary_max_length: "
                         f"{self.coordinator._memory_summary_max_length}"
                     )
-                    
+
                     if self.coordinator._memory_summary_max_length <= 20000:
                         self.coordinator.event_logger.log_llm_result(
                             step=state.step,
@@ -169,13 +171,15 @@ class PlanPhase(BasePhase):
                             error=f"LLM call failed: {error} (prompt may be too large)",
                         )
                     else:
-                        logger.info("[PlanPhase] Continuing to next iteration with smaller memory summary")
+                        logger.info(
+                            "[PlanPhase] Continuing to next iteration with smaller memory summary"
+                        )
                         return PhaseResult(
                             success=True,
                             data={},
                             next_phase=Phase.DISCOVER,
                         )
-                
+
                 # For other errors, fail immediately
                 self.coordinator.event_logger.log_llm_result(
                     step=state.step,
@@ -196,7 +200,9 @@ class PlanPhase(BasePhase):
             # Process actions
             actions = action_json.actions
             stop_reason = action_json.stop_reason
-            logger.debug(f"[PlanPhase] LLM response: stop_reason={stop_reason}, actions={len(actions)}")
+            logger.debug(
+                f"[PlanPhase] LLM response: stop_reason={stop_reason}, actions={len(actions)}"
+            )
 
             # Replace placeholders
             logger.debug(
@@ -260,9 +266,7 @@ class PlanPhase(BasePhase):
                     "step": state.step,
                     "thought_summary": action_json.thought_summary,
                     "plan": action_json.plan,
-                    "actions": [
-                        a.to_dict() if hasattr(a, "to_dict") else a for a in actions
-                    ],
+                    "actions": [a.to_dict() if hasattr(a, "to_dict") else a for a in actions],
                     "stop_reason": stop_reason,
                     "llm_output": full_output,
                 }
@@ -284,19 +288,23 @@ class PlanPhase(BasePhase):
                 state_machine=self.coordinator.state_machine,
                 job_state=self.coordinator.job_state,
             )
-            
+
             logger.debug(
                 f"[PlanPhase] Stop reason processed: stop_reason={stop_reason}, "
                 f"next_phase={next_phase}, pending_stop_reason={pending_stop_reason}"
             )
-            
+
             return phase_result
 
         except Exception as e:
             import traceback
+
             error_trace = traceback.format_exc()
             logger.error(f"[PlanPhase] PLAN phase error: {e}")
-            logger.debug(f"[PlanPhase] Exception details: {type(e).__name__}: {e}\n{error_trace}", exc_info=True)
+            logger.debug(
+                f"[PlanPhase] Exception details: {type(e).__name__}: {e}\n{error_trace}",
+                exc_info=True,
+            )
             self.coordinator.state_manager.agent_state.last_error.summary = (
                 f"PLAN phase error: {e}\n{error_trace[:5000]}"
             )
@@ -316,15 +324,11 @@ class PlanPhase(BasePhase):
 
         if self.coordinator.task_spec.goal:
             keywords.extend(
-                self.coordinator.indexer.extract_keywords(
-                    self.coordinator.task_spec.goal
-                )
+                self.coordinator.indexer.extract_keywords(self.coordinator.task_spec.goal)
             )
 
         if state.last_error.summary:
-            keywords.extend(
-                self.coordinator.indexer.extract_keywords(state.last_error.summary)
-            )
+            keywords.extend(self.coordinator.indexer.extract_keywords(state.last_error.summary))
 
         return keywords[:10]
 
@@ -348,12 +352,16 @@ class PlanPhase(BasePhase):
                         f"[PlanPhase] Replaced placeholder {content} with actual file content "
                         f"({len(file_contents[content])} chars)"
                     )
-                    logger.debug(f"[PlanPhase] File content preview: {file_contents[content][:200]}...")
+                    logger.debug(
+                        f"[PlanPhase] File content preview: {file_contents[content][:200]}..."
+                    )
                 elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
                     logger.error(
                         f"[PlanPhase] Error: Placeholder {content} not found in file_contents!"
                     )
-                    logger.error(f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}")
+                    logger.error(
+                        f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}"
+                    )
 
             elif tool == "append_file":
                 content = args.get("content", "")
@@ -367,9 +375,7 @@ class PlanPhase(BasePhase):
                         f"({len(file_contents[content])} chars)"
                     )
                 elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.warning(
-                        f"[PlanPhase] Placeholder {content} not found in file_contents"
-                    )
+                    logger.warning(f"[PlanPhase] Placeholder {content} not found in file_contents")
 
             elif tool == "edit_file":
                 content = args.get("content", "")
@@ -383,9 +389,7 @@ class PlanPhase(BasePhase):
                         f"({len(file_contents[content])} chars)"
                     )
                 elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.warning(
-                        f"[PlanPhase] Placeholder {content} not found in file_contents"
-                    )
+                    logger.warning(f"[PlanPhase] Placeholder {content} not found in file_contents")
 
             modified_actions.append(action)
 

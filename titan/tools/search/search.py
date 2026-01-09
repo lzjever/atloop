@@ -10,14 +10,14 @@ from titan.tools.base import BaseTool, ToolResult
 class SearchTool(BaseTool):
     """
     Enhanced tool for searching file contents using grep with regex, context lines, and file filtering.
-    
+
     **Features:**
     - Full regex pattern support
     - Context lines (before/after matches)
     - File filtering by glob pattern
     - Multiple output modes (content, files, count)
     - Case-insensitive search option
-    
+
     **Use cases:**
     - Finding function definitions: `search('def function_name')`
     - Finding imports: `search('^import |^from ')`
@@ -104,16 +104,16 @@ class SearchTool(BaseTool):
         **Examples:**
             # Find function definitions
             search(query="def \\w+", glob="*.py")
-            
+
             # Find imports with context
             search(query="^import |^from ", glob="*.py", -C=2)
-            
+
             # Find TODO comments (case-insensitive)
             search(query="TODO|FIXME", -i=True)
-            
+
             # Find files containing pattern (without showing content)
             search(query="def main", output_mode="files_with_matches")
-            
+
             # Count matches per file
             search(query="class \\w+", output_mode="count")
 

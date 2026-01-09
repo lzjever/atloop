@@ -10,18 +10,18 @@ from titan.tools.base import BaseTool, ToolResult
 class MultiEditFileTool(BaseTool):
     """
     Tool for editing multiple files in a single atomic transaction.
-    
+
     **Key Features:**
     - **Transactional**: All edits succeed or all fail (atomicity)
     - **Batch operations**: Edit multiple files in one operation
     - **Rollback on error**: If any edit fails, all changes are rolled back
-    
+
     **Use cases:**
     - Updating imports across multiple files
     - Refactoring code that spans multiple files
     - Applying the same change to multiple files
     - Coordinated updates that must happen together
-    
+
     **When to use:**
     - ✅ Need to edit multiple files atomically
     - ✅ Changes must all succeed or all fail
@@ -166,7 +166,9 @@ class MultiEditFileTool(BaseTool):
 
                 # Check for read errors in stderr, not exit code
                 if read_result.get("stderr", "").strip():
-                    read_errors.append(f"Edit[{i}] ({path}): Failed to read file. Error: {read_result.get('stderr', 'Unknown error')}")
+                    read_errors.append(
+                        f"Edit[{i}] ({path}): Failed to read file. Error: {read_result.get('stderr', 'Unknown error')}"
+                    )
                     continue
 
                 file_contents[path] = read_result.get("stdout", "")
@@ -258,7 +260,9 @@ class MultiEditFileTool(BaseTool):
 
             # Check for write errors in stderr, not exit code
             if write_result.get("stderr", "").strip():
-                write_errors.append(f"{path}: Failed to write file. Error: {write_result.get('stderr', 'Unknown error')}")
+                write_errors.append(
+                    f"{path}: Failed to write file. Error: {write_result.get('stderr', 'Unknown error')}"
+                )
             else:
                 successful_edits.append(path)
 

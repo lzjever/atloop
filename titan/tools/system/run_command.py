@@ -9,16 +9,16 @@ from titan.tools.base import BaseTool, ToolResult
 class RunCommandTool(BaseTool):
     """
     Tool for executing shell commands in the sandbox workspace.
-    
+
     **⚠️ This is the primary tool for executing system commands!**
-    
+
     **Use cases:**
     - Running build commands (make, npm, pip, etc.)
     - Running tests (pytest, unittest, etc.)
     - Executing scripts (python3, node, etc.)
     - File operations (ls, cat, grep, find, etc.)
     - System checks (which, type, etc.)
-    
+
     **Important notes:**
     - Commands run in /workspace directory
     - Success is determined by stderr content, NOT exit code
@@ -77,16 +77,16 @@ class RunCommandTool(BaseTool):
         **Examples:**
             # List files
             run(cmd="ls -la")
-            
+
             # Run Python script
             run(cmd="python3 script.py")
-            
+
             # Run tests
             run(cmd="pytest tests/")
-            
+
             # Search for pattern
             run(cmd="grep -rn 'def function' .")
-            
+
             # View file content
             run(cmd="cat file.py")
             run(cmd="head -n 50 file.py")

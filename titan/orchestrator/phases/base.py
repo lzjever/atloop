@@ -28,7 +28,7 @@ class PhaseResult:
 
 class BasePhase(ABC):
     """Base class for all phase handlers.
-    
+
     All phase implementations must inherit from this class
     and implement the execute() method.
     """
@@ -36,7 +36,7 @@ class BasePhase(ABC):
     def __init__(self, coordinator: "WorkflowCoordinator"):
         """
         Initialize phase handler.
-        
+
         Args:
             coordinator: Workflow coordinator instance
         """
@@ -46,10 +46,10 @@ class BasePhase(ABC):
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
         Execute the phase.
-        
+
         Args:
             context: Phase execution context
-            
+
         Returns:
             Phase execution result
         """
@@ -58,10 +58,10 @@ class BasePhase(ABC):
     def _transition(self, phase: Phase) -> bool:
         """
         Transition to a new phase.
-        
+
         Args:
             phase: Target phase
-            
+
         Returns:
             True if transition is valid
         """

@@ -1,7 +1,6 @@
 """DISCOVER phase implementation."""
 
 import logging
-from typing import Dict
 
 from titan.memory.summarizer import MemorySummarizer
 from titan.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
@@ -16,10 +15,10 @@ class DiscoverPhase(BasePhase):
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
         Execute DISCOVER phase.
-        
+
         Args:
             context: Phase execution context
-            
+
         Returns:
             Phase execution result
         """
@@ -29,7 +28,7 @@ class DiscoverPhase(BasePhase):
         try:
             # Check if context_builder is initialized
             if self.coordinator.context_builder is None:
-                logger.error(f"[DiscoverPhase] ContextBuilder not initialized")
+                logger.error("[DiscoverPhase] ContextBuilder not initialized")
                 return PhaseResult(
                     success=False,
                     data={},
@@ -38,27 +37,35 @@ class DiscoverPhase(BasePhase):
                 )
 
             # Build memory summary
-            logger.debug(f"[DiscoverPhase] Building memory summary")
-            memory_config = getattr(self.coordinator.config, 'memory', None)
+            logger.debug("[DiscoverPhase] Building memory summary")
+            memory_config = getattr(self.coordinator.config, "memory", None)
             if memory_config:
                 memory_summary_max_length = memory_config.summary_max_length
-                logger.debug(f"[DiscoverPhase] Using memory config: max_length={memory_summary_max_length}")
+                logger.debug(
+                    f"[DiscoverPhase] Using memory config: max_length={memory_summary_max_length}"
+                )
             else:
                 memory_summary_max_length = 64000
-                logger.debug(f"[DiscoverPhase] Using default memory summary max length: {memory_summary_max_length}")
-            
+                logger.debug(
+                    f"[DiscoverPhase] Using default memory summary max length: {memory_summary_max_length}"
+                )
+
             memory_summary = MemorySummarizer.summarize(
-                state, max_length=memory_summary_max_length, task_goal=self.coordinator.task_spec.goal
+                state,
+                max_length=memory_summary_max_length,
+                task_goal=self.coordinator.task_spec.goal,
             )
-            logger.debug(f"[DiscoverPhase] Memory summary length: {len(memory_summary)} chars (max: {memory_summary_max_length})")
+            logger.debug(
+                f"[DiscoverPhase] Memory summary length: {len(memory_summary)} chars (max: {memory_summary_max_length})"
+            )
 
             # Extract keywords
-            logger.debug(f"[DiscoverPhase] Extracting keywords")
+            logger.debug("[DiscoverPhase] Extracting keywords")
             keywords = self._extract_keywords()
             logger.debug(f"[DiscoverPhase] Extracted {len(keywords)} keywords: {keywords[:5]}")
 
             # Build context pack
-            logger.debug(f"[DiscoverPhase] Building context pack")
+            logger.debug("[DiscoverPhase] Building context pack")
             context_pack = self.coordinator.context_builder.build(
                 goal=self.coordinator.task_spec.goal,
                 constraints=self.coordinator.task_spec.constraints,
@@ -69,26 +76,28 @@ class DiscoverPhase(BasePhase):
                 memory_summary=memory_summary,
                 keywords=keywords,
             )
-            logger.debug(f"[DiscoverPhase] Context pack built: project_profile={context_pack.project_profile}")
+            logger.debug(
+                f"[DiscoverPhase] Context pack built: project_profile={context_pack.project_profile}"
+            )
 
             # Store context pack for PLAN phase
             self.coordinator.job_state.shared_data["context_pack"] = context_pack.to_string()
-            logger.debug(f"[DiscoverPhase] Context pack stored in job_state")
+            logger.debug("[DiscoverPhase] Context pack stored in job_state")
 
             # Transition to PLAN
-            logger.debug(f"[DiscoverPhase] Transitioning to PLAN phase")
+            logger.debug("[DiscoverPhase] Transitioning to PLAN phase")
             transition_result = self._transition(Phase.PLAN)
             if not transition_result:
-                logger.error(f"[DiscoverPhase] Transition failed: DISCOVER -> PLAN")
+                logger.error("[DiscoverPhase] Transition failed: DISCOVER -> PLAN")
                 return PhaseResult(
                     success=False,
                     data={},
                     next_phase=Phase.FAIL,
                     error="State transition failed: DISCOVER -> PLAN",
                 )
-            
+
             self.coordinator.state_manager.update(phase="PLAN")
-            logger.info(f"[DiscoverPhase] Successfully transitioned to PLAN phase")
+            logger.info("[DiscoverPhase] Successfully transitioned to PLAN phase")
 
             return PhaseResult(
                 success=True,
@@ -98,7 +107,9 @@ class DiscoverPhase(BasePhase):
 
         except Exception as e:
             logger.error(f"[DiscoverPhase] Error: {e}")
-            logger.debug(f"[DiscoverPhase] Exception details: {type(e).__name__}: {e}", exc_info=True)
+            logger.debug(
+                f"[DiscoverPhase] Exception details: {type(e).__name__}: {e}", exc_info=True
+            )
             return PhaseResult(
                 success=False,
                 data={},
@@ -110,19 +121,15 @@ class DiscoverPhase(BasePhase):
         """Extract keywords from state."""
         keywords = []
         state = self.coordinator.state_manager.agent_state
-        
+
         # Extract from goal
         if self.coordinator.task_spec.goal:
             keywords.extend(
-                self.coordinator.indexer.extract_keywords(
-                    self.coordinator.task_spec.goal
-                )
+                self.coordinator.indexer.extract_keywords(self.coordinator.task_spec.goal)
             )
-        
+
         # Extract from error
         if state.last_error.summary:
-            keywords.extend(
-                self.coordinator.indexer.extract_keywords(state.last_error.summary)
-            )
-        
+            keywords.extend(self.coordinator.indexer.extract_keywords(state.last_error.summary))
+
         return keywords[:10]  # Limit to 10 keywords

@@ -9,12 +9,12 @@ from titan.tools.base import BaseTool, ToolResult
 class GlobFilesTool(BaseTool):
     """
     Tool for finding files using gitignore-style glob patterns.
-    
+
     **Features:**
     - Supports common glob patterns (*, **)
     - Recursive directory searching
     - File filtering by extension or pattern
-    
+
     **Use cases:**
     - Finding all Python files: `*.py`
     - Finding all test files: `test_*.py`
@@ -75,16 +75,16 @@ class GlobFilesTool(BaseTool):
         **Examples:**
             # Find all Python files
             glob(pattern="*.py")
-            
+
             # Find all Python files recursively
             glob(pattern="**/*.py")
-            
+
             # Find test files
             glob(pattern="test_*.py")
-            
+
             # Find files in specific directory
             glob(pattern="src/*.py")
-            
+
             # Limit results
             glob(pattern="*.py", max_results=10)
 

@@ -19,15 +19,15 @@ class ConfigLoader:
     def setup(titan_dir: Optional[str] = None) -> Config:
         """
         Setup configuration - call once at application startup.
-        
+
         Args:
             titan_dir: Custom Titan directory (for testing)
-            
+
         Returns:
             Config instance (also registered globally)
         """
         logger.debug(f"[ConfigLoader] Setting up config with titan_dir: {titan_dir}")
-        
+
         # Find Titan directory
         if titan_dir:
             titan_path = Path(titan_dir).resolve()
@@ -44,7 +44,7 @@ class ConfigLoader:
 
         # Build sources list (lowest to highest priority)
         config_sources = []
-        logger.debug(f"[ConfigLoader] Building config sources")
+        logger.debug("[ConfigLoader] Building config sources")
 
         # User config (lowest priority)
         user_config = Path.home() / ".titan" / "config" / "titan.yaml"
@@ -67,7 +67,7 @@ class ConfigLoader:
 
         # Environment variables
         config_sources.append(sources.Env(prefix="TITAN__"))
-        logger.debug(f"[ConfigLoader] Added environment variables source")
+        logger.debug("[ConfigLoader] Added environment variables source")
 
         # .env file
         env_file = Path.cwd() / ".env"
@@ -84,7 +84,7 @@ class ConfigLoader:
 
         # Register globally
         set_global_config(cfg, name="titan")
-        logger.info(f"[ConfigLoader] Configuration setup complete, registered globally")
+        logger.info("[ConfigLoader] Configuration setup complete, registered globally")
 
         return cfg
 
@@ -92,16 +92,16 @@ class ConfigLoader:
     def get() -> TitanConfig:
         """
         Get configuration - access from anywhere in lib/api.
-        
+
         Returns:
             Loaded TitanConfig instance (type-safe, validated against TitanConfig model)
-            
+
         Raises:
             KeyError: If config not initialized (call setup() first)
             RequiredFieldError: If required fields missing (varlord validation)
             TypeError: If types don't match model (varlord validation)
         """
-        logger.debug(f"[ConfigLoader] Getting config from global registry")
+        logger.debug("[ConfigLoader] Getting config from global registry")
         config = get_global_config(name="titan")
         loaded_config = config.load()  # Validated against TitanConfig model
         logger.debug(f"[ConfigLoader] Config loaded: ai={loaded_config.ai.completion.model}")

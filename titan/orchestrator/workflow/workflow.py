@@ -18,32 +18,34 @@ class Workflow:
 
     def __init__(self, coordinator: WorkflowCoordinator):
         """Initialize workflow."""
-        logger.debug(f"[Workflow] Initializing workflow")
+        logger.debug("[Workflow] Initializing workflow")
         self.coordinator = coordinator
         self.discover = DiscoverPhase(coordinator)
         self.plan = PlanPhase(coordinator)
         self.act = ActPhase(coordinator)
         self.verify = VerifyPhase(coordinator)
-        logger.debug(f"[Workflow] Workflow initialized with all phases")
+        logger.debug("[Workflow] Workflow initialized with all phases")
 
     def run(self) -> Dict[str, Any]:
         """Run workflow - single method."""
-        logger.info(f"[Workflow] Starting workflow execution")
-        
+        logger.info("[Workflow] Starting workflow execution")
+
         if not self.coordinator.initialize():
-            logger.error(f"[Workflow] Workspace initialization failed")
+            logger.error("[Workflow] Workspace initialization failed")
             return self._failure("Workspace initialization failed")
 
         max_iterations = 100
         logger.debug(f"[Workflow] Max iterations: {max_iterations}")
-        
+
         for iteration in range(1, max_iterations + 1):
             logger.debug(f"[Workflow] Iteration {iteration}/{max_iterations}")
             state = self.coordinator.state_manager.agent_state
 
             # Check budget
             within_budget, budget_msg = self.coordinator.budget_manager.check_all()
-            logger.debug(f"[Workflow] Budget check: within_budget={within_budget}, msg={budget_msg}")
+            logger.debug(
+                f"[Workflow] Budget check: within_budget={within_budget}, msg={budget_msg}"
+            )
             if not within_budget:
                 logger.warning(f"[Workflow] Budget exhausted: {budget_msg}")
                 return self._failure(f"Budget exhausted: {budget_msg}")
@@ -64,13 +66,17 @@ class Workflow:
             current_phase = Phase.from_string(state.phase)
             logger.debug(f"[Workflow] Executing phase: {current_phase} at step {state.step}")
             result = self._execute_phase(current_phase, state.step)
-            
+
             # Safety check: ensure result is not None
             if result is None:
-                logger.error(f"[Workflow] Phase {current_phase} returned None instead of PhaseResult")
+                logger.error(
+                    f"[Workflow] Phase {current_phase} returned None instead of PhaseResult"
+                )
                 return self._failure(f"Phase {current_phase} execution returned None")
-            
-            logger.debug(f"[Workflow] Phase execution result: success={result.success}, next_phase={result.next_phase}")
+
+            logger.debug(
+                f"[Workflow] Phase execution result: success={result.success}, next_phase={result.next_phase}"
+            )
 
             # Check termination
             if result.next_phase == Phase.DONE:

@@ -2,11 +2,8 @@
 
 import argparse
 import sys
-from typing import Any
 
 # CLI uses varlord for CLI argument parsing
-from varlord import Config, sources
-
 from titan.cli.commands import cmd_config, cmd_execute, cmd_init
 
 
@@ -25,7 +22,9 @@ def create_parser() -> argparse.ArgumentParser:
     execute_parser.add_argument("--workspace", required=True, help="Workspace directory")
     execute_parser.add_argument("--prompt", help="Task prompt (text)")
     execute_parser.add_argument("--prompt-file", help="Task prompt (file)")
-    execute_parser.add_argument("--sandbox-url", default="http://127.0.0.1:8080", help="Sandbox base URL")
+    execute_parser.add_argument(
+        "--sandbox-url", default="http://127.0.0.1:8080", help="Sandbox base URL"
+    )
     execute_parser.add_argument("--local-test", action="store_true", help="Use local test mode")
     execute_parser.add_argument("--session", help="Session ID")
 
@@ -62,6 +61,7 @@ def main() -> int:
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 

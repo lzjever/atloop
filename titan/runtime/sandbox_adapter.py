@@ -240,15 +240,17 @@ class SandboxAdapter:
         if not self._initialized:
             # If sandbox was never initialized, nothing to download
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"Sandbox not initialized, skipping download")
+            logger.debug("Sandbox not initialized, skipping download")
             return True
 
         try:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.debug(f"Downloading workspace from sandbox session {self.session_id}")
-            
+
             # Use noxrunner's download_workspace method
             # This handles both local and remote backends transparently
             success = self.client.download_workspace(
@@ -256,16 +258,17 @@ class SandboxAdapter:
                 local_dir=workspace_path,
                 src="/workspace",
             )
-            
+
             if success:
                 logger.info(f"Downloaded workspace from sandbox to {workspace_path}")
             else:
-                logger.warning(f"Failed to download workspace from sandbox")
-            
+                logger.warning("Failed to download workspace from sandbox")
+
             return success
 
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to download workspace: {e}")
             logger.debug(f"Exception details: {type(e).__name__}: {e}", exc_info=True)

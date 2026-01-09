@@ -1,20 +1,20 @@
 """Simple JobState implementation to replace routilux dependency."""
 
 import json
-from typing import Any, Dict, List
 from datetime import datetime
+from typing import Any, Dict, List
 
 
 class JobState:
     """Simple job state for tracking execution state.
-    
+
     This is a minimal replacement for routilux.JobState that provides
     only the functionality needed by the titan project.
     """
 
     def __init__(self, flow_id: str = ""):
         """Initialize job state.
-        
+
         Args:
             flow_id: Flow identifier.
         """
@@ -26,7 +26,7 @@ class JobState:
 
     def serialize(self) -> str:
         """Serialize job state to JSON string.
-        
+
         Returns:
             JSON string representation of the job state.
         """
@@ -41,7 +41,7 @@ class JobState:
 
     def deserialize(self, data: str) -> None:
         """Deserialize job state from JSON string.
-        
+
         Args:
             data: JSON string representation of the job state.
         """

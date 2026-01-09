@@ -8,16 +8,16 @@ from titan.tools.base import BaseTool, ToolResult
 class SkillTool(BaseTool):
     """
     Tool for loading skill content on-demand.
-    
+
     When the LLM needs guidance from a skill (e.g., tool-usage, error-handling),
     it uses this tool to load the full skill content. The skill content is returned
     as stdout for the LLM to read and apply.
-    
+
     **Use cases:**
     - Loading tool usage best practices (tool-usage skill)
     - Loading error handling guidance (error-handling skill)
     - Loading domain-specific knowledge (any custom skill)
-    
+
     **Note:** This tool requires skill_loader to be configured in the ToolRegistry.
     """
 
@@ -72,7 +72,7 @@ class SkillTool(BaseTool):
 
         if content is None or content == "":
             available = ""
-            if hasattr(self.skill_loader, 'skills') and self.skill_loader.skills:
+            if hasattr(self.skill_loader, "skills") and self.skill_loader.skills:
                 available = f" Available skills: {', '.join(self.skill_loader.skills.keys())}"
             return ToolResult(
                 ok=False,

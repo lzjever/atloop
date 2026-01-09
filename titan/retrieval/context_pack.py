@@ -86,7 +86,9 @@ class ContextPack:
             parts.append("")
             parts.append(self.test_results)
             parts.append("")
-            parts.append("**Important**: If tests pass and task goal is achieved, please set stop_reason='done'")
+            parts.append(
+                "**Important**: If tests pass and task goal is achieved, please set stop_reason='done'"
+            )
             parts.append("")
 
         # Memory Summary
@@ -153,7 +155,9 @@ class ContextPackBuilder:
         profile_str = f"Language: {profile_dict.get('language', 'Unknown')}\n"
         profile_str += f"Package Manager: {profile_dict.get('package_manager', 'Unknown')}\n"
         if profile_dict.get("test_commands"):
-            profile_str += f"Test Command Candidates: {', '.join(profile_dict['test_commands'][:3])}\n"
+            profile_str += (
+                f"Test Command Candidates: {', '.join(profile_dict['test_commands'][:3])}\n"
+            )
 
         # Search for relevant files
         relevant_files_str = "None"

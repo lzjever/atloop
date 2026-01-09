@@ -15,20 +15,20 @@ class ToolExecutor:
     def __init__(self, coordinator: WorkflowCoordinator):
         """
         Initialize tool executor.
-        
+
         Args:
             coordinator: Workflow coordinator instance
         """
         self.coordinator = coordinator
-        logger.debug(f"[ToolExecutor] Initialized")
+        logger.debug("[ToolExecutor] Initialized")
 
     def execute_actions(self, actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Execute a list of actions.
-        
+
         Args:
             actions: List of action dictionaries
-            
+
         Returns:
             List of tool execution results
         """
@@ -36,13 +36,17 @@ class ToolExecutor:
         results = []
 
         for i, action in enumerate(actions):
-            logger.debug(f"[ToolExecutor] Executing action {i+1}/{len(actions)}: {action.get('tool')}")
+            logger.debug(
+                f"[ToolExecutor] Executing action {i + 1}/{len(actions)}: {action.get('tool')}"
+            )
             try:
                 result = self._execute_action(action)
                 results.append(result)
-                logger.debug(f"[ToolExecutor] Action {i+1} completed: success={result.get('success', False)}")
+                logger.debug(
+                    f"[ToolExecutor] Action {i + 1} completed: success={result.get('success', False)}"
+                )
             except Exception as e:
-                logger.error(f"[ToolExecutor] Action {i+1} failed: {e}")
+                logger.error(f"[ToolExecutor] Action {i + 1} failed: {e}")
                 logger.debug(
                     f"[ToolExecutor] Exception details: {type(e).__name__}: {e}",
                     exc_info=True,

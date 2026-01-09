@@ -5,8 +5,6 @@ import logging
 import re
 from pathlib import Path
 
-import pytest
-
 logger = logging.getLogger(__name__)
 
 
@@ -18,15 +16,11 @@ class TestCodeQualityValidation:
         agent_loop_file = Path("titan/orchestrator/agent_loop.py")
         assert agent_loop_file.exists(), "agent_loop.py should exist"
 
-        with open(agent_loop_file, "r", encoding="utf-8") as f:
+        with open(agent_loop_file, encoding="utf-8") as f:
             lines = f.readlines()
 
         # Count non-empty, non-comment lines
-        code_lines = [
-            line
-            for line in lines
-            if line.strip() and not line.strip().startswith("#")
-        ]
+        code_lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
         line_count = len(code_lines)
 
         assert line_count < 50, f"AgentLoop should be < 50 lines, got {line_count}"
@@ -37,14 +31,10 @@ class TestCodeQualityValidation:
         cli_main_file = Path("titan/cli/main.py")
         assert cli_main_file.exists(), "cli/main.py should exist"
 
-        with open(cli_main_file, "r", encoding="utf-8") as f:
+        with open(cli_main_file, encoding="utf-8") as f:
             lines = f.readlines()
 
-        code_lines = [
-            line
-            for line in lines
-            if line.strip() and not line.strip().startswith("#")
-        ]
+        code_lines = [line for line in lines if line.strip() and not line.strip().startswith("#")]
         line_count = len(code_lines)
 
         assert line_count < 100, f"CLI main should be < 100 lines, got {line_count}"
@@ -61,13 +51,11 @@ class TestCodeQualityValidation:
             if py_file.name == "__init__.py" or "test" in py_file.name:
                 continue
 
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 lines = f.readlines()
 
             code_lines = [
-                line
-                for line in lines
-                if line.strip() and not line.strip().startswith("#")
+                line for line in lines if line.strip() and not line.strip().startswith("#")
             ]
             line_count = len(code_lines)
 
@@ -93,14 +81,18 @@ class TestCodeQualityValidation:
             if "prompt" in str(py_file) or "skill" in str(py_file).lower():
                 continue
 
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
                 # Check for Chinese characters (excluding comments and strings that might be examples)
                 lines = content.split("\n")
                 for i, line in enumerate(lines, 1):
                     # Skip comments and docstrings
                     stripped = line.strip()
-                    if stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''"):
+                    if (
+                        stripped.startswith("#")
+                        or stripped.startswith('"""')
+                        or stripped.startswith("'''")
+                    ):
                         continue
                     # Check for Chinese in code
                     if chinese_pattern.search(line):
@@ -121,12 +113,12 @@ class TestCodeQualityValidation:
         files_with_chinese_logs = []
 
         for py_file in titan_dir.rglob("*.py"):
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
                 lines = content.split("\n")
                 for i, line in enumerate(lines, 1):
                     # Look for logger calls
-                    if "logger." in line or 'f"' in line or 'f\'' in line:
+                    if "logger." in line or 'f"' in line or "f'" in line:
                         if chinese_pattern.search(line):
                             files_with_chinese_logs.append((py_file, i, line.strip()[:80]))
 
@@ -152,7 +144,7 @@ class TestCodeQualityValidation:
             if not py_file.exists():
                 continue
 
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
 
             # Basic check: functions should have type hints
@@ -161,7 +153,11 @@ class TestCodeQualityValidation:
 
             if functions:
                 # Check if any functions have type hints (annotations)
-                functions_with_hints = [f for f in functions if f.returns is not None or any(arg.annotation for arg in f.args.args)]
+                functions_with_hints = [
+                    f
+                    for f in functions
+                    if f.returns is not None or any(arg.annotation for arg in f.args.args)
+                ]
                 coverage = len(functions_with_hints) / len(functions) if functions else 0
                 logger.info(f"Type hints coverage in {file_path}: {coverage:.1%}")
 
@@ -184,7 +180,7 @@ class TestCodeQualityValidation:
             if not py_file.exists():
                 continue
 
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content)
@@ -220,7 +216,7 @@ class TestFunctionalityValidation:
         """Test only one execution method."""
         # Check AgentLoop has only one run method
         agent_loop_file = Path("titan/orchestrator/agent_loop.py")
-        with open(agent_loop_file, "r", encoding="utf-8") as f:
+        with open(agent_loop_file, encoding="utf-8") as f:
             content = f.read()
 
         # Count run methods (should be only one)
@@ -232,7 +228,7 @@ class TestFunctionalityValidation:
         """Test varlord usage in lib/api."""
         # Check ConfigLoader uses varlord
         loader_file = Path("titan/config/loader.py")
-        with open(loader_file, "r", encoding="utf-8") as f:
+        with open(loader_file, encoding="utf-8") as f:
             content = f.read()
 
         assert "from varlord import" in content, "ConfigLoader should use varlord"
@@ -264,7 +260,7 @@ class TestFunctionalityValidation:
             if not py_file.exists():
                 continue
 
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 content = f.read()
 
             # Check for debug logging
@@ -277,7 +273,7 @@ class TestFunctionalityValidation:
         """Test ConfigLoader usage pattern."""
         # Check that ConfigLoader provides get() and setup() methods
         loader_file = Path("titan/config/loader.py")
-        with open(loader_file, "r", encoding="utf-8") as f:
+        with open(loader_file, encoding="utf-8") as f:
             content = f.read()
 
         assert "def get(" in content, "ConfigLoader should provide get() method"

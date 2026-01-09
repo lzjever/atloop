@@ -12,9 +12,7 @@ class ResultAdapter:
     """Adapter for converting various result types to unified action result format."""
 
     @staticmethod
-    def to_action_result(
-        tool_name: str, args: Dict[str, Any], result: Any
-    ) -> Dict[str, Any]:
+    def to_action_result(tool_name: str, args: Dict[str, Any], result: Any) -> Dict[str, Any]:
         """
         Convert tool execution result to unified action result format.
 
@@ -95,9 +93,7 @@ class ResultAdapter:
         }
 
     @staticmethod
-    def _from_error(
-        tool_name: str, args: Dict[str, Any], error_msg: str
-    ) -> Dict[str, Any]:
+    def _from_error(tool_name: str, args: Dict[str, Any], error_msg: str) -> Dict[str, Any]:
         """Create error result for unexpected failures."""
         return {
             "success": False,

@@ -1,7 +1,6 @@
 """ACT phase implementation."""
 
 import logging
-from typing import Any, Dict, List
 
 from titan.config.limits import (
     ERROR_SUMMARY_LIMIT_FILE_VIEW,
@@ -28,15 +27,15 @@ class ActPhase(BasePhase):
         """Initialize ACT phase."""
         super().__init__(coordinator)
         self.executor = ToolExecutor(coordinator)
-        logger.debug(f"[ActPhase] Initialized with ToolExecutor")
+        logger.debug("[ActPhase] Initialized with ToolExecutor")
 
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
         Execute ACT phase.
-        
+
         Args:
             context: Phase execution context
-            
+
         Returns:
             Phase execution result
         """
@@ -50,9 +49,9 @@ class ActPhase(BasePhase):
                 f"[ActPhase] ACT phase: actions_dict keys = "
                 f"{list(actions_dict.keys()) if actions_dict else 'None'}"
             )
-            
+
             if not actions_dict or "actions" not in actions_dict:
-                logger.warning(f"[ActPhase] No actions found, transitioning back to DISCOVER")
+                logger.warning("[ActPhase] No actions found, transitioning back to DISCOVER")
                 self.coordinator.state_manager.update(phase="DISCOVER")
                 self._transition(Phase.DISCOVER)
                 return PhaseResult(
@@ -84,11 +83,15 @@ class ActPhase(BasePhase):
             for i, action in enumerate(action_json.actions):
                 tool = action.get("tool")
                 args = action.get("args", {})
-                logger.debug(f"[ActPhase] Executing action {i+1}/{len(action_json.actions)}: {tool}")
+                logger.debug(
+                    f"[ActPhase] Executing action {i + 1}/{len(action_json.actions)}: {tool}"
+                )
 
                 # Execute tool via executor
                 result = self.executor._execute_action(action)
-                logger.debug(f"[ActPhase] Action {i+1} completed: success={result.get('success', False)}")
+                logger.debug(
+                    f"[ActPhase] Action {i + 1} completed: success={result.get('success', False)}"
+                )
 
                 # Add tool name to result
                 result["tool"] = tool
@@ -178,10 +181,10 @@ class ActPhase(BasePhase):
                         max_summary = ERROR_SUMMARY_LIMIT_NORMAL
 
                     state.last_error.summary = result_summary[:max_summary]
-                    state.last_error.raw_stderr_tail = (
-                        stderr[-STDERR_TAIL_LIMIT:] if stderr else ""
+                    state.last_error.raw_stderr_tail = stderr[-STDERR_TAIL_LIMIT:] if stderr else ""
+                    logger.debug(
+                        f"[ActPhase] Updated last_error: summary_length={len(state.last_error.summary)}"
                     )
-                    logger.debug(f"[ActPhase] Updated last_error: summary_length={len(state.last_error.summary)}")
 
                 # Track modified files
                 if tool == "write_file":
@@ -190,8 +193,10 @@ class ActPhase(BasePhase):
                         modified_files.append(file_path)
                         if file_path not in state.memory.created_files:
                             state.memory.created_files.append(file_path)
-                            logger.info(f"[ActPhase] Tracking newly created file: {file_path} (total: {len(state.memory.created_files)})")
-                            
+                            logger.info(
+                                f"[ActPhase] Tracking newly created file: {file_path} (total: {len(state.memory.created_files)})"
+                            )
+
                             # Update current_diff to show file creation
                             file_content = args.get("content", "")
                             if file_content:
@@ -200,16 +205,24 @@ class ActPhase(BasePhase):
                                 for line in file_content.splitlines()[:50]:  # First 50 lines
                                     diff_content += f"+{line}\n"
                                 if len(file_content.splitlines()) > 50:
-                                    diff_content += f"... ({len(file_content.splitlines()) - 50} more lines)\n"
-                                state.artifacts.current_diff = diff_content[:5000]  # Limit diff size
-                                logger.debug(f"[ActPhase] Updated current_diff after file creation: {file_path}")
-                            
+                                    diff_content += (
+                                        f"... ({len(file_content.splitlines()) - 50} more lines)\n"
+                                    )
+                                state.artifacts.current_diff = diff_content[
+                                    :5000
+                                ]  # Limit diff size
+                                logger.debug(
+                                    f"[ActPhase] Updated current_diff after file creation: {file_path}"
+                                )
+
                             self.coordinator.state_manager.save()
 
                 # Update budget
                 state.budget_used.tool_calls += 1
                 self.coordinator.budget_manager.budget_used.tool_calls += 1
-                logger.debug(f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}")
+                logger.debug(
+                    f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}"
+                )
 
             # Record attempt
             success = all(r.get("ok", False) for r in results)
@@ -221,12 +234,15 @@ class ActPhase(BasePhase):
                     "results": results,
                 }
             )
-            logger.debug(f"[ActPhase] Recorded attempt: success={success}, files={len(modified_files)}")
+            logger.debug(
+                f"[ActPhase] Recorded attempt: success={success}, files={len(modified_files)}"
+            )
 
             # Auto-detect milestones
             if success and modified_files:
                 if len(modified_files) >= 3:
                     from titan.memory.memory_manager import MemoryManager
+
                     milestone_content = f"Successfully modified {len(modified_files)} files: {', '.join(modified_files[:3])}"
                     if len(modified_files) > 3:
                         milestone_content += " etc"
@@ -253,10 +269,10 @@ class ActPhase(BasePhase):
                 )
 
             # Transition to VERIFY
-            logger.debug(f"[ActPhase] Transitioning to VERIFY phase")
+            logger.debug("[ActPhase] Transitioning to VERIFY phase")
             self._transition(Phase.VERIFY)
             self.coordinator.state_manager.update(phase="VERIFY")
-            logger.info(f"[ActPhase] Successfully transitioned to VERIFY phase")
+            logger.info("[ActPhase] Successfully transitioned to VERIFY phase")
 
             return PhaseResult(
                 success=True,

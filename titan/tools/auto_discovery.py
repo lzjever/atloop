@@ -5,7 +5,7 @@ import importlib
 import inspect
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
 
 from titan.tools.base import BaseTool
 from titan.tools.tool_factory import ToolFactory
@@ -32,7 +32,7 @@ class ToolDiscovery:
         if tools_dir is None:
             # Default to titan/tools directory
             tools_dir = Path(__file__).parent
-        
+
         self.tools_dir = tools_dir
         self.base_tool_path = Path(__file__).parent / "base.py"
 
@@ -44,7 +44,7 @@ class ToolDiscovery:
             List of tuples: (module_path, class_name, tool_class)
         """
         tool_classes = []
-        
+
         # Scan all Python files in tools directory
         for py_file in self.tools_dir.rglob("*.py"):
             if py_file.name in _EXCLUDED_FILES:
@@ -65,7 +65,7 @@ class ToolDiscovery:
             except Exception as e:
                 logger.debug(f"[ToolDiscovery] Failed to scan {py_file}: {e}")
                 continue
-        
+
         return tool_classes
 
     def _file_to_module_path(self, file_path: Path) -> str:
@@ -80,21 +80,21 @@ class ToolDiscovery:
         """
         abs_file_path = file_path.resolve()
         abs_tools_dir = self.tools_dir.resolve()
-        
+
         # Find project root (where titan/ directory is)
         # Start from tools_dir and go up until we find a directory containing 'titan'
         project_root = abs_tools_dir.parent.parent  # titan/tools -> titan -> project_root
-        
+
         # Try to get relative path from project root
         try:
             rel_path = abs_file_path.relative_to(project_root)
             # rel_path should be like: titan/tools/filesystem/write_file.py
             parts = list(rel_path.parts)
-            
+
             # Remove .py extension from filename
             if parts[-1].endswith(".py"):
                 parts[-1] = parts[-1][:-3]
-            
+
             # Convert to module path
             return ".".join(parts)
         except ValueError:
@@ -123,11 +123,11 @@ class ToolDiscovery:
         """
         # First, try to parse AST to find classes that inherit from BaseTool
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 source = f.read()
-            
+
             tree = ast.parse(source, filename=str(file_path))
-            
+
             # Find classes that inherit from BaseTool
             tool_class_names = []
             for node in ast.walk(tree):
@@ -140,10 +140,10 @@ class ToolDiscovery:
                             # Handle cases like titan.tools.base.BaseTool
                             if base.attr == "BaseTool":
                                 tool_class_names.append(node.name)
-            
+
             if not tool_class_names:
                 return []
-            
+
             # Now import the module and get the actual classes
             module_path = self._file_to_module_path(file_path)
             try:
@@ -181,7 +181,7 @@ class ToolDiscovery:
             "module": tool_class.__module__,
             "docstring": inspect.getdoc(tool_class) or "",
         }
-        
+
         # Get name and description by instantiating (with dummy args if needed)
         # We'll use introspection to get property values
         try:
@@ -192,7 +192,7 @@ class ToolDiscovery:
                 if isinstance(name_prop, property):
                     # Can't get property value without instance, but we can check the method
                     pass
-            
+
             # Get __init__ signature to understand what parameters are needed
             init_sig = inspect.signature(tool_class.__init__)
             info["init_params"] = list(init_sig.parameters.keys())[1:]  # Skip 'self'
@@ -200,14 +200,11 @@ class ToolDiscovery:
         except Exception as e:
             info["init_params"] = []
             info["init_signature"] = f"Error: {e}"
-        
+
         return info
 
     def instantiate_tool(
-        self, 
-        tool_class: Type[BaseTool], 
-        sandbox: "SandboxAdapter", 
-        skill_loader=None
+        self, tool_class: Type[BaseTool], sandbox: "SandboxAdapter", skill_loader=None
     ) -> Optional[BaseTool]:
         """
         Instantiate a tool class with appropriate parameters.
@@ -230,7 +227,7 @@ def auto_register_tools(
     registry: "ToolRegistry",
     sandbox: "SandboxAdapter",
     skill_loader=None,
-    tools_dir: Optional[Path] = None
+    tools_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Automatically discover and register all tools.
@@ -246,14 +243,9 @@ def auto_register_tools(
     """
     discovery = ToolDiscovery(tools_dir)
     tool_classes = discovery.discover_tool_classes()
-    
-    stats = {
-        "discovered": len(tool_classes),
-        "registered": 0,
-        "failed": 0,
-        "tools": []
-    }
-    
+
+    stats = {"discovered": len(tool_classes), "registered": 0, "failed": 0, "tools": []}
+
     for module_path, class_name, tool_class in tool_classes:
         try:
             # Instantiate tool
@@ -262,11 +254,9 @@ def auto_register_tools(
                 # Register tool
                 registry.register(tool_instance)
                 stats["registered"] += 1
-                stats["tools"].append({
-                    "name": tool_instance.name,
-                    "class": class_name,
-                    "module": module_path
-                })
+                stats["tools"].append(
+                    {"name": tool_instance.name, "class": class_name, "module": module_path}
+                )
             else:
                 stats["failed"] += 1
         except Exception as e:
@@ -274,5 +264,5 @@ def auto_register_tools(
                 f"[ToolDiscovery] Failed to register {class_name} from {module_path}: {e}"
             )
             stats["failed"] += 1
-    
+
     return stats

@@ -1,17 +1,13 @@
 """End-to-end tests for CLI commands."""
 
 import logging
-import subprocess
-import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from titan.cli.commands.config import cmd_config
 from titan.cli.commands.execute import cmd_execute
 from titan.cli.commands.init import cmd_init
-from titan.cli.main import main
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +51,7 @@ class TestCLIE2E:
         assert result == 0
         logger.info("CLI config E2E successful ✅")
 
-    def test_cli_e2e_execute_simple(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_cli_e2e_execute_simple(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command with simple task."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -89,9 +83,7 @@ class TestCLIE2E:
             logger.debug(f"CLI execute failed (expected): {e}")
             pytest.skip(f"CLI execute requires sandbox/LLM: {e}")
 
-    def test_cli_e2e_execute_with_file(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_cli_e2e_execute_with_file(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command with prompt file."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -123,9 +115,7 @@ class TestCLIE2E:
             logger.debug(f"CLI execute failed (expected): {e}")
             pytest.skip(f"CLI execute requires sandbox/LLM: {e}")
 
-    def test_cli_e2e_execute_with_sandbox(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_cli_e2e_execute_with_sandbox(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command with sandbox URL."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -149,9 +139,7 @@ class TestCLIE2E:
         assert args.local_test is False
         logger.info("CLI execute with sandbox E2E setup successful ✅")
 
-    def test_cli_e2e_execute_local_test(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_cli_e2e_execute_local_test(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command in local test mode."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")

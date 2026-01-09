@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from titan.api.runner import TaskRunner
 from titan.config.loader import ConfigLoader
 from titan.config.models import Budget, TaskSpec
 from titan.orchestrator.coordinator import WorkflowCoordinator
@@ -17,9 +16,7 @@ logger = logging.getLogger(__name__)
 class TestE2ESimpleWrite:
     """E2E test for simple write file scenario."""
 
-    def test_e2e_simple_write_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_write_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E simple write file scenario setup."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -50,9 +47,7 @@ class TestE2ESimpleWrite:
 
         logger.info("Simple write scenario setup successful ✅")
 
-    def test_e2e_simple_write_tool_execution(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_write_tool_execution(self, real_config_file: Path, temp_workspace: Path):
         """Test tool execution in simple write scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -98,7 +93,9 @@ class TestE2ESimpleWrite:
             logger.info("Tool execution test successful ✅")
         except AttributeError as e:
             if "execute_tool" in str(e):
-                pytest.fail(f"ToolRuntime.execute_tool() does not exist. Use registry.execute() instead. Error: {e}")
+                pytest.fail(
+                    f"ToolRuntime.execute_tool() does not exist. Use registry.execute() instead. Error: {e}"
+                )
             raise
         except Exception as e:
             # If sandbox is not available, that's okay for this test
@@ -108,9 +105,7 @@ class TestE2ESimpleWrite:
             else:
                 raise
 
-    def test_e2e_simple_write_full_workflow(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_write_full_workflow(self, real_config_file: Path, temp_workspace: Path):
         """Test full workflow for simple write scenario (mocked)."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")

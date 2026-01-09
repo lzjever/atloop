@@ -1,7 +1,6 @@
 """Tests for tools module - ToolRegistry, ToolExecutor, BaseTool, ToolResult."""
 
 import logging
-from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, Mock
 
@@ -60,9 +59,7 @@ class TestToolResult:
 
     def test_tool_result_success(self):
         """Test successful ToolResult creation."""
-        result = ToolResult(
-            ok=True, stdout="output", stderr="", meta={"key": "value"}
-        )
+        result = ToolResult(ok=True, stdout="output", stderr="", meta={"key": "value"})
         assert result.ok is True
         assert result.stdout == "output"
         assert result.stderr == ""
@@ -70,9 +67,7 @@ class TestToolResult:
 
     def test_tool_result_failure(self):
         """Test failed ToolResult creation."""
-        result = ToolResult(
-            ok=False, stdout="", stderr="error", meta={"error": "test"}
-        )
+        result = ToolResult(ok=False, stdout="", stderr="error", meta={"error": "test"})
         assert result.ok is False
         assert result.stderr == "error"
 
@@ -361,13 +356,12 @@ class TestToolExecutor:
 
     def test_execute_action_with_to_dict_method(self, executor):
         """Test _execute_action with object having to_dict method (defensive path)."""
+
         class DictLikeResult:
             def to_dict(self):
                 return {"ok": True, "stdout": "to_dict output", "stderr": "", "meta": {}}
 
-        executor.coordinator.tool_runtime.registry.execute = Mock(
-            return_value=DictLikeResult()
-        )
+        executor.coordinator.tool_runtime.registry.execute = Mock(return_value=DictLikeResult())
 
         action = {"tool": "test_tool", "args": {}}
         result = executor._execute_action(action)

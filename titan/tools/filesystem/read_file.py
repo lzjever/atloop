@@ -10,19 +10,19 @@ from titan.tools.base import BaseTool, ToolResult
 class ReadFileTool(BaseTool):
     """
     Tool for reading files from the sandbox workspace with type detection and chunked reading.
-    
+
     **Features:**
     - Automatic file type detection (text/binary)
     - Support for large files via line range reading
     - Binary file detection and handling
     - File size limits (10MB max for full read)
-    
+
     **Use cases:**
     - Reading source code files
     - Reading configuration files
     - Reading documentation files
     - Reading log files (with line ranges)
-    
+
     **Note**: This tool reads from the sandbox workspace (/workspace), not from the local machine.
     For reading skill files (stored locally), use `read_skill_file` instead.
     """
@@ -81,13 +81,13 @@ class ReadFileTool(BaseTool):
         **Examples:**
             # Read entire file
             read_file(path="src/main.py")
-            
+
             # Read first 100 lines
             read_file(path="src/main.py", offset=1, limit=100)
-            
+
             # Read lines 50-100
             read_file(path="src/main.py", offset=50, limit=51)
-            
+
             # Read from line 200 to end
             read_file(path="src/main.py", offset=200)
 

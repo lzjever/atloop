@@ -2,14 +2,12 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from titan.api.runner import TaskRunner
 from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec, TitanConfig
-from titan.orchestrator import AgentLoop
+from titan.config.models import Budget, TaskSpec
 from titan.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
@@ -18,9 +16,7 @@ logger = logging.getLogger(__name__)
 class TestE2EIntegration:
     """End-to-end integration tests."""
 
-    def test_e2e_simple_bugfix_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_bugfix_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for simple bugfix scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -58,9 +54,7 @@ def test_add():
         assert coordinator.state_manager.agent_state.phase == "DISCOVER"
         logger.info("E2E bugfix setup successful ✅")
 
-    def test_e2e_simple_feature_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_feature_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for simple feature scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -86,9 +80,7 @@ def test_add():
         assert coordinator.task_spec.task_type == "feature"
         logger.info("E2E feature setup successful ✅")
 
-    def test_e2e_simple_refactor_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_simple_refactor_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for simple refactor scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -114,9 +106,7 @@ def test_add():
         assert coordinator.task_spec.task_type == "refactor"
         logger.info("E2E refactor setup successful ✅")
 
-    def test_e2e_multi_file_edit_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_multi_file_edit_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for multi-file editing scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -149,9 +139,7 @@ def test_add():
         assert len(files) >= 3
         logger.info("E2E multi-file edit setup successful ✅")
 
-    def test_e2e_with_tests_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_with_tests_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup with test execution."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -165,9 +153,7 @@ def test_add():
         # Create test structure
         (temp_workspace / "src").mkdir(parents=True, exist_ok=True)
         (temp_workspace / "tests").mkdir(parents=True, exist_ok=True)
-        (temp_workspace / "src" / "calc.py").write_text(
-            "def add(a, b): return a + b\n"
-        )
+        (temp_workspace / "src" / "calc.py").write_text("def add(a, b): return a + b\n")
         (temp_workspace / "tests" / "test_calc.py").write_text(
             "from src.calc import add\ndef test_add(): assert add(2, 3) == 5\n"
         )
@@ -187,9 +173,7 @@ def test_add():
         assert coordinator is not None
         logger.info("E2E with tests setup successful ✅")
 
-    def test_e2e_error_scenarios(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_error_scenarios(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E error scenario handling."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -217,9 +201,7 @@ def test_add():
         assert state.last_error.summary == ""
         logger.info("E2E error scenarios setup successful ✅")
 
-    def test_e2e_budget_exhaustion_setup(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_budget_exhaustion_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E budget exhaustion scenario."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -305,9 +287,7 @@ runs_dir: runs
 class TestE2ETaskRunner:
     """End-to-end tests for TaskRunner API."""
 
-    def test_e2e_task_runner_initialization(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_task_runner_initialization(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner initialization for E2E."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -319,7 +299,7 @@ class TestE2ETaskRunner:
         assert runner is not None
 
         # Create task config
-        task_config = {
+        {
             "goal": "Test task",
             "workspace_root": str(temp_workspace),
             "sandbox": {
@@ -333,16 +313,14 @@ class TestE2ETaskRunner:
         assert config is not None
         logger.info("TaskRunner E2E initialization successful ✅")
 
-    def test_e2e_task_runner_config_validation(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_e2e_task_runner_config_validation(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner config validation."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
 
         logger.info("Testing TaskRunner config validation")
 
-        runner = TaskRunner()
+        TaskRunner()
 
         # Valid config
         task_config = {

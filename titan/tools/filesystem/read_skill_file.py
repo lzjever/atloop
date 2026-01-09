@@ -9,26 +9,26 @@ from titan.tools.base import BaseTool, ToolResult
 class ReadSkillFileTool(BaseTool):
     """
     Tool for reading files from skill directories (on local machine, not from sandbox workspace).
-    
+
     **🚨🚨🚨 CRITICAL**: This tool reads from skill directories on the LOCAL machine, NOT from the sandbox!
-    
+
     **Key Points:**
     - **Skill files are stored LOCALLY** (on the host machine, in ~/.titan/skills/ or project .titan/skills/)
     - **Workspace is a REMOTE SANDBOX** (/workspace) - it does NOT contain skill files or templates
     - **When a skill mentions other files** (e.g., "see docx-js.md", "reference guide.md"), those files are LOCAL
     - **You MUST use `read_skill_file`** to read skill-related files - they are NOT in the sandbox!
     - **DO NOT try to use `read_file` or `run("cat ...")`** to find skill files in the sandbox - they don't exist there!
-    
+
     **Use cases:**
     - Reading skill files (when skill mentions other files to reference)
     - Reading files referenced in skill documentation
     - Accessing skill-specific resources (templates, guides, examples)
-    
+
     **Path resolution:**
     - With skill_name: Path is relative to skill directory (most common use case)
     - Without skill_name: Absolute path or relative to ~/.titan/
     - Supports ~ expansion for home directory
-    
+
     **Important distinction:**
     - ✅ **Skill files** → Use `read_skill_file` (stored locally)
     - ✅ **Workspace files** → Use `read_file` (stored in remote sandbox /workspace)
@@ -73,14 +73,14 @@ class ReadSkillFileTool(BaseTool):
         Execute read skill file tool.
 
         **🚨🚨🚨 CRITICAL**: This tool reads from skill directories on the LOCAL machine, NOT from the sandbox workspace!
-        
+
         **Important understanding:**
         - **Skill files are stored LOCALLY** (on the host machine)
         - **Workspace is a REMOTE SANDBOX** (/workspace) - it does NOT contain skill files
         - **When a skill mentions other files**, those files are LOCAL, not in the sandbox
         - **You MUST use `read_skill_file`** to read skill-related files
         - **DO NOT try to use `read_file` or `run("cat ...")`** to find skill files in the sandbox - they don't exist there!
-        
+
         Use `read_file` to read files from the sandbox workspace (/workspace).
 
         **Args:**
@@ -108,10 +108,10 @@ class ReadSkillFileTool(BaseTool):
         **Examples:**
             # Read skill file (when skill mentions other files)
             read_skill_file(path="references/guide.md", skill_name="long_document_writer")
-            
+
             # Read skill documentation
             read_skill_file(path="docx-js.md", skill_name="docx")
-            
+
             # Read with line range
             read_skill_file(path="skill-doc.md", skill_name="docx", offset=1, limit=50)
 
@@ -225,7 +225,12 @@ class ReadSkillFileTool(BaseTool):
                     ok=True,
                     stdout="",
                     stderr="",
-                    meta={"path": str(file_path), "start_line": offset, "end_line": end_line, "total_lines": len(lines)},
+                    meta={
+                        "path": str(file_path),
+                        "start_line": offset,
+                        "end_line": end_line,
+                        "total_lines": len(lines),
+                    },
                 )
 
             selected_lines = lines[start_line:end_line]
@@ -242,4 +247,3 @@ class ReadSkillFileTool(BaseTool):
                 "end_line": (offset + limit - 1) if (offset and limit) else None,
             },
         )
-

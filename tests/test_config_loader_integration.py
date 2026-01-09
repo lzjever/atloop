@@ -54,9 +54,11 @@ class TestConfigLoaderIntegration:
         assert config.default_budget.max_llm_calls > 0
         assert config.default_budget.max_tool_calls > 0
         assert config.default_budget.max_wall_time_sec > 0
-        logger.info(f"Default Budget: LLM={config.default_budget.max_llm_calls}, "
-                   f"Tools={config.default_budget.max_tool_calls}, "
-                   f"Time={config.default_budget.max_wall_time_sec}s")
+        logger.info(
+            f"Default Budget: LLM={config.default_budget.max_llm_calls}, "
+            f"Tools={config.default_budget.max_tool_calls}, "
+            f"Time={config.default_budget.max_wall_time_sec}s"
+        )
 
         # Verify memory config
         assert config.memory is not None

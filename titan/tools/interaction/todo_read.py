@@ -9,7 +9,7 @@ from titan.tools.base import BaseTool, ToolResult
 class TodoReadTool(BaseTool):
     """
     Tool for reading and displaying the current task list from TODO.md.
-    
+
     **Use cases:**
     - Checking current task status
     - Reviewing progress on multi-step tasks
@@ -64,16 +64,16 @@ class TodoReadTool(BaseTool):
         Tasks are grouped by status and displayed as:
         ```
         # TODO List (3 task(s))
-        
+
         ## In Progress
         1. Task 1 (Running task 1)
-        
+
         ## Pending
         1. Task 2 (Will run task 2)
-        
+
         ## Completed (1)
         1. Task 3
-        
+
         Summary: 1 pending, 1 in progress, 1 completed
         ```
 

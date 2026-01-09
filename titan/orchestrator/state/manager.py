@@ -16,7 +16,7 @@ class StateManager:
 
     def __init__(self, state_file: Path, job_state: JobState):
         """Initialize state manager.
-        
+
         Args:
             state_file: Path to state persistence file
             job_state: JobState instance for shared data
@@ -36,7 +36,7 @@ class StateManager:
         """Load state from file or create new."""
         if self._state_file.exists():
             try:
-                with open(self._state_file, "r", encoding="utf-8") as f:
+                with open(self._state_file, encoding="utf-8") as f:
                     state_dict = json.load(f)
                 self._agent_state = AgentState.from_dict(state_dict)
                 self._sync()
@@ -87,4 +87,4 @@ class StateManager:
         if self._agent_state:
             self._job_state.shared_data["agent_state"] = self._agent_state.to_dict()
             self._job_state.update_timestamp()
-            logger.debug(f"[StateManager] Synced to job_state")
+            logger.debug("[StateManager] Synced to job_state")

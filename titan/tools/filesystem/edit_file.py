@@ -10,20 +10,20 @@ from titan.tools.base import BaseTool, ToolResult
 class EditFileTool(BaseTool):
     """
     Tool for editing files using Git-style diff (old_string -> new_string).
-    
+
     **⚠️ This is the preferred tool for modifying existing files!**
-    
+
     **Why use edit_file instead of write_file:**
     - ✅ More precise: Only modifies the specified part
     - ✅ Safer: Doesn't risk overwriting unrelated code
     - ✅ More efficient: No need to read and rewrite entire file
     - ✅ Better for local modifications: Functions, classes, paragraphs, etc.
-    
+
     **Safety features:**
     - Match count validation: Only replaces if old_string appears exactly once
     - Prevents accidental multiple replacements
     - Clear error messages when matches are not found or ambiguous
-    
+
     **Use cases:**
     - Modifying a function or method
     - Updating a class definition
@@ -65,15 +65,16 @@ class EditFileTool(BaseTool):
         # Parse content to extract old_string and new_string
         content = args["content"]
         import re
-        old_match = re.search(r'<old>(.*?)</old>', content, re.DOTALL)
-        new_match = re.search(r'<new>(.*?)</new>', content, re.DOTALL)
-        
+
+        old_match = re.search(r"<old>(.*?)</old>", content, re.DOTALL)
+        new_match = re.search(r"<new>(.*?)</new>", content, re.DOTALL)
+
         if not old_match or not new_match:
             return False, "content must be in format: <old>old_string</old><new>new_string</new>"
-        
+
         old_string = old_match.group(1)
         new_string = new_match.group(1)
-        
+
         # Check if old_string and new_string are the same
         if old_string == new_string:
             return False, "old_string and new_string are the same. No changes to make."
@@ -110,7 +111,7 @@ class EditFileTool(BaseTool):
                 path="src/utils.py",
                 content="<old>def calculate(x, y):\n    return x + y</old><new>def calculate(x, y):\n    return x * y</new>"
             )
-            
+
             # Add context for uniqueness
             edit_file(
                 path="src/main.py",
@@ -142,20 +143,21 @@ class EditFileTool(BaseTool):
         path = args["path"]
         content = args["content"]
         replace_all = args.get("replace_all", False)
-        
+
         # Parse content to extract old_string and new_string
         import re
-        old_match = re.search(r'<old>(.*?)</old>', content, re.DOTALL)
-        new_match = re.search(r'<new>(.*?)</new>', content, re.DOTALL)
-        
+
+        old_match = re.search(r"<old>(.*?)</old>", content, re.DOTALL)
+        new_match = re.search(r"<new>(.*?)</new>", content, re.DOTALL)
+
         if not old_match or not new_match:
             return ToolResult(
                 ok=False,
                 stdout="",
-                stderr=f"Invalid content format. Expected format: <old>old_string</old><new>new_string</new>",
+                stderr="Invalid content format. Expected format: <old>old_string</old><new>new_string</new>",
                 meta={"path": path},
             )
-        
+
         old_string = old_match.group(1)
         new_string = new_match.group(1)
 
@@ -205,7 +207,7 @@ class EditFileTool(BaseTool):
 
             # Count occurrences for safety check
             match_count = original_content.count(old_string_for_replace)
-            
+
             # Safety check: only replace if exactly one match (unless replace_all is True)
             if replace_all:
                 # Replace all occurrences
@@ -218,7 +220,7 @@ class EditFileTool(BaseTool):
                     return ToolResult(
                         ok=False,
                         stdout="",
-                        stderr=f"Edit failed: old_string not found in file. The text you're trying to replace does not exist in the file. Please check the old_string and try again.",
+                        stderr="Edit failed: old_string not found in file. The text you're trying to replace does not exist in the file. Please check the old_string and try again.",
                         meta={"path": path, "match_count": 0},
                     )
                 elif match_count > 1:

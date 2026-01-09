@@ -29,23 +29,27 @@ class Memory:
     key_files: List[Dict[str, Any]] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
     created_files: List[str] = field(default_factory=list)  # Track created files for resume
-    
+
     # Long-term memory (persists across steps, can be dynamically updated)
-    plan: Union[str, List[Any]] = field(default_factory=list)  # Current execution plan (structured: List[PlanStep], or legacy: str)
+    plan: Union[str, List[Any]] = field(
+        default_factory=list
+    )  # Current execution plan (structured: List[PlanStep], or legacy: str)
     task_summary: str = ""  # Summary of task goal and constraints
-    important_decisions: List[Dict[str, Any]] = field(default_factory=list)  # Important decisions that should be remembered
+    important_decisions: List[Dict[str, Any]] = field(
+        default_factory=list
+    )  # Important decisions that should be remembered
     milestones: List[Dict[str, Any]] = field(default_factory=list)  # Key milestones achieved
     learnings: List[str] = field(default_factory=list)  # Important learnings from execution
-    
+
     # Enhanced storage for Memory-Only architecture (Phase 3)
     # Store LLM responses for better history tracking
     llm_responses: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {"step": int, "thought_summary": str, "plan": List[str], "actions": List[Dict], "stop_reason": str, "llm_output": str}
-    
+
     # Store tool execution results history (separate from attempts for better organization)
     tool_results_history: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {"step": int, "tool": str, "args": Dict, "result": Dict}
-    
+
     # Auto-read file content after modification (Phase 5)
     modified_files_content: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {
@@ -58,7 +62,7 @@ class Memory:
     #     "access_count": int,  # How many times this file was referenced in decisions
     #     "importance_score": float,  # Calculated importance (0-1)
     # }
-    
+
     # Auto-read file content after modification (Phase 5)
     modified_files_content: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {
@@ -121,7 +125,7 @@ class AgentState:
                 "notes": self.memory.notes,
                 "created_files": self.memory.created_files,
                 "plan": (
-                    [s.to_dict() if hasattr(s, 'to_dict') else s for s in self.memory.plan]
+                    [s.to_dict() if hasattr(s, "to_dict") else s for s in self.memory.plan]
                     if isinstance(self.memory.plan, list)
                     else self.memory.plan
                 ),
@@ -158,7 +162,7 @@ class AgentState:
         """Create from dictionary."""
         last_error = LastError(**data.get("last_error", {}))
         memory_data = data.get("memory", {})
-        
+
         # Handle plan: can be string or list of dicts (structured)
         plan_data = memory_data.get("plan", [])
         if isinstance(plan_data, str):
@@ -167,13 +171,14 @@ class AgentState:
             # Structured format: convert dicts to PlanStep objects
             try:
                 from titan.memory.plan import PlanStep
+
                 plan = [PlanStep.from_dict(s) if isinstance(s, dict) else s for s in plan_data]
             except ImportError:
                 # Fallback: keep as list of dicts
                 plan = plan_data
         else:
             plan = []
-        
+
         memory = Memory(
             decisions=memory_data.get("decisions", []),
             attempts=memory_data.get("attempts", []),

@@ -105,7 +105,6 @@ class EventLogger:
             "ok": ok,
         }
 
-
         # Truncate long outputs
         max_output_length = EVENT_LOGGER_OUTPUT_LIMIT_NORMAL
         if stdout:

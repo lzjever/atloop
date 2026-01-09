@@ -10,20 +10,20 @@ from titan.tools.base import BaseTool, ToolResult
 class AppendFileTool(BaseTool):
     """
     Tool for appending content to the end of existing files.
-    
+
     **⚠️ This tool is fully available and can be used normally!**
-    
+
     **Use cases:**
     - Continuing to write files that exceed 6,000 characters (after initial write_file)
     - Adding log entries
     - Appending comments or notes
     - Building files incrementally
-    
+
     **Key differences from write_file and edit_file:**
     - `write_file`: Completely overwrites file (creates or replaces entire file)
     - `edit_file`: Replaces specific text within file (precise modifications)
     - `append_file`: Adds content to end of file (doesn't modify existing content)
-    
+
     **Content handling:**
     - Content is appended exactly as provided
     - Preserves trailing newlines in input content
@@ -87,7 +87,7 @@ class AppendFileTool(BaseTool):
                 path="long_document.md",
                 content="\\n\\n## Chapter 2\\nThis is the continuation..."
             )
-            
+
             # Add a log entry
             append_file(
                 path="app.log",

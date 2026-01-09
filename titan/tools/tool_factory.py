@@ -64,7 +64,5 @@ class ToolFactory:
             logger.debug(f"[ToolFactory] Created {tool_class.__name__} instance")
             return instance
         except Exception as e:
-            logger.debug(
-                f"[ToolFactory] Failed to create {tool_class.__name__}: {e}"
-            )
+            logger.debug(f"[ToolFactory] Failed to create {tool_class.__name__}: {e}")
             return None

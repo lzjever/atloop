@@ -1,5 +1,7 @@
 """Memory summarizer for condensing memory into prompts."""
 
+from typing import Optional
+
 from titan.config.limits import (
     MEMORY_SUMMARY_DEFAULT_LIMIT,
     MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_OTHER,
@@ -9,8 +11,6 @@ from titan.config.limits import (
     MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
     MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
 )
-from typing import Optional
-
 from titan.memory.state import AgentState
 
 
@@ -21,15 +21,15 @@ class MemorySummarizer:
     def get_memory_overview(state: AgentState) -> str:
         """
         Get a brief overview of memory for terminal output.
-        
+
         Args:
             state: Agent state
-            
+
         Returns:
             Brief overview string (single line, compact format)
         """
         parts = []
-        
+
         # Created files count
         if state.memory.created_files:
             parts.append(f"📁 {len(state.memory.created_files)} files")
@@ -38,7 +38,7 @@ class MemorySummarizer:
             if len(last_file) > 30:
                 last_file = "..." + last_file[-27:]
             parts.append(f"Latest: {last_file}")
-        
+
         # Recent attempts
         if state.memory.attempts:
             last_attempt = state.memory.attempts[-1]
@@ -46,15 +46,16 @@ class MemorySummarizer:
             files = last_attempt.get("files", [])
             status = "✓" if success else "✗"
             parts.append(f"{status} Modified {len(files)} files")
-        
+
         # Budget usage
         parts.append(f"💰 LLM:{state.budget_used.llm_calls} Tools:{state.budget_used.tool_calls}")
-        
+
         # Long-term memory preview
         if state.memory.plan or state.memory.task_summary:
             long_term_parts = []
             if state.memory.plan:
                 from titan.memory.plan import PlanManager
+
                 plan_str = PlanManager.plan_to_string(state.memory.plan)
                 if plan_str:
                     plan_preview = plan_str[:40] + "..." if len(plan_str) > 40 else plan_str
@@ -65,7 +66,7 @@ class MemorySummarizer:
                 long_term_parts.append(f"Milestones:{len(state.memory.milestones)}")
             if long_term_parts:
                 parts.append(f"📋 {' | '.join(long_term_parts)}")
-        
+
         # Last error (if any, very brief)
         if state.last_error.summary:
             error_preview = state.last_error.summary[:50]
@@ -74,11 +75,15 @@ class MemorySummarizer:
             # Extract first line or key info
             error_first_line = error_preview.split("\n")[0]
             parts.append(f"⚠️ {error_first_line}")
-        
+
         return " | ".join(parts) if parts else "No memory information"
 
     @staticmethod
-    def summarize(state: AgentState, max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT, task_goal: Optional[str] = None) -> str:
+    def summarize(
+        state: AgentState,
+        max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT,
+        task_goal: Optional[str] = None,
+    ) -> str:
         """
         Summarize agent state memory.
 
@@ -91,56 +96,66 @@ class MemorySummarizer:
             Summary string
         """
         parts = []
-        
+
         # If memory is completely empty, return a minimal summary
-        if (not state.memory.task_summary and 
-            not state.memory.plan and 
-            not state.memory.decisions and 
-            not state.memory.attempts and
-            not state.memory.important_decisions and
-            not state.memory.milestones and
-            not state.memory.learnings and
-            not state.memory.llm_responses and
-            not state.memory.tool_results_history and
-            not state.memory.modified_files_content):
+        if (
+            not state.memory.task_summary
+            and not state.memory.plan
+            and not state.memory.decisions
+            and not state.memory.attempts
+            and not state.memory.important_decisions
+            and not state.memory.milestones
+            and not state.memory.learnings
+            and not state.memory.llm_responses
+            and not state.memory.tool_results_history
+            and not state.memory.modified_files_content
+        ):
             return "Initial state: Task just started, no operations executed yet."
-        
+
         # Long-term memory: Task summary (shown first, persists across steps)
         if state.memory.task_summary:
             parts.append("## 📋 Task Overview (Long-term Memory)")
             parts.append(state.memory.task_summary)
             parts.append("")
-        
+
         # Long-term memory: Current plan (can be dynamically updated)
         if state.memory.plan:
             from titan.memory.plan import PlanManager, PlanStep
+
             parts.append("## 📝 Current Execution Plan (Long-term Memory, Dynamically Updated)")
-            
+
             # Convert plan to string representation
             plan_str = PlanManager.plan_to_string(state.memory.plan)
             if plan_str:
                 parts.append(plan_str)
-                
+
                 # Show progress if structured
-                if isinstance(state.memory.plan, list) and state.memory.plan and isinstance(state.memory.plan[0], (PlanStep, dict)):
+                if (
+                    isinstance(state.memory.plan, list)
+                    and state.memory.plan
+                    and isinstance(state.memory.plan[0], (PlanStep, dict))
+                ):
                     progress = PlanManager.get_progress(state)
                     if progress["total"] > 0:
-                        parts.append(f"\nProgress: {progress['completed']}/{progress['total']} completed "
-                                   f"({progress['completion_rate']*100:.0f}%), "
-                                   f"{progress['in_progress']} in progress, {progress['pending']} pending")
+                        parts.append(
+                            f"\nProgress: {progress['completed']}/{progress['total']} completed "
+                            f"({progress['completion_rate'] * 100:.0f}%), "
+                            f"{progress['in_progress']} in progress, {progress['pending']} pending"
+                        )
             parts.append("")
-        
+
         # Long-term memory: Important decisions (sorted by importance)
         if state.memory.important_decisions:
             from titan.memory.scorer import ImportanceScorer
+
             parts.append("## 🎯 Important Decisions (Long-term Memory)")
-            
+
             # Score and sort by importance
             scored_decisions = []
             for decision in state.memory.important_decisions:
                 score = ImportanceScorer.score_decision(decision)
                 scored_decisions.append((score, decision))
-            
+
             # Sort by score (descending) and take top 5
             scored_decisions.sort(key=lambda x: x[0], reverse=True)
             for score, decision in scored_decisions[:5]:
@@ -150,18 +165,19 @@ class MemorySummarizer:
                 importance_indicator = "⭐" * min(3, int(score * 3) + 1)
                 parts.append(f"- {importance_indicator} Step {step}: {content}")
             parts.append("")
-        
+
         # Long-term memory: Milestones (sorted by importance)
         if state.memory.milestones:
             from titan.memory.scorer import ImportanceScorer
+
             parts.append("## 🏆 Achieved Milestones (Long-term Memory)")
-            
+
             # Score and sort by importance
             scored_milestones = []
             for milestone in state.memory.milestones:
                 score = ImportanceScorer.score_milestone(milestone)
                 scored_milestones.append((score, milestone))
-            
+
             # Sort by score (descending) and take top 5
             scored_milestones.sort(key=lambda x: x[0], reverse=True)
             for score, milestone in scored_milestones[:5]:
@@ -170,18 +186,19 @@ class MemorySummarizer:
                 importance_indicator = "⭐" * min(3, int(score * 3) + 1)
                 parts.append(f"- {importance_indicator} Step {step}: {content}")
             parts.append("")
-        
+
         # Long-term memory: Learnings (sorted by importance)
         if state.memory.learnings:
             from titan.memory.scorer import ImportanceScorer
+
             parts.append("## 💡 Important Learnings (Long-term Memory)")
-            
+
             # Score and sort by importance
             scored_learnings = []
             for learning in state.memory.learnings:
                 score = ImportanceScorer.score_learning(learning)
                 scored_learnings.append((score, learning))
-            
+
             # Sort by score (descending) and take top 3
             scored_learnings.sort(key=lambda x: x[0], reverse=True)
             for score, learning in scored_learnings[:3]:
@@ -197,13 +214,15 @@ class MemorySummarizer:
                 actions_count = len(decision.get("actions", []))
                 thought_summary = decision.get("thought_summary", "")
                 stop_reason = decision.get("stop_reason", "?")
-                
+
                 # Show decision with thought summary if available
                 if thought_summary:
-                    parts.append(f"- Step {step}: {thought_summary[:100]}... (executed {actions_count} actions, {stop_reason})")
+                    parts.append(
+                        f"- Step {step}: {thought_summary[:100]}... (executed {actions_count} actions, {stop_reason})"
+                    )
                 else:
                     parts.append(f"- Step {step}: Executed {actions_count} actions ({stop_reason})")
-        
+
         # Phase 3: Enhanced - Show recent LLM responses if available
         if state.memory.llm_responses:
             parts.append("\n## Recent LLM Responses (Enhanced Storage)")
@@ -286,14 +305,23 @@ class MemorySummarizer:
         if task_goal and state.memory.created_files:
             task_goal_lower = task_goal.lower()
             # Simple heuristic: if goal contains "write" and "code" and file is created, task might be complete
-            if ('write' in task_goal_lower or 'create' in task_goal_lower) and \
-               ('code' in task_goal_lower or 'file' in task_goal_lower or 'python' in task_goal_lower):
+            if ("write" in task_goal_lower or "create" in task_goal_lower) and (
+                "code" in task_goal_lower
+                or "file" in task_goal_lower
+                or "python" in task_goal_lower
+            ):
                 parts.insert(0, "\n## ✅ Task Completion Status")
                 parts.insert(1, f"**Task Goal**: {task_goal}")
                 parts.insert(2, f"**Created Files**: {', '.join(state.memory.created_files)}")
                 parts.insert(3, "")
-                parts.insert(4, "**Analysis**: File(s) have been created. For simple 'write code' tasks, this typically means the task is complete.")
-                parts.insert(5, "**Recommendation**: If the created file(s) satisfy the task goal, please set `stop_reason='done'`.")
+                parts.insert(
+                    4,
+                    "**Analysis**: File(s) have been created. For simple 'write code' tasks, this typically means the task is complete.",
+                )
+                parts.insert(
+                    5,
+                    "**Recommendation**: If the created file(s) satisfy the task goal, please set `stop_reason='done'`.",
+                )
                 parts.insert(6, "")
 
         # Created files (for resume capability) - Important but after long-term memory
@@ -303,15 +331,34 @@ class MemorySummarizer:
             for i, file_path in enumerate(state.memory.created_files[-20:], 1):  # Last 20 files
                 parts.insert(1 + i, f"- ✅ {file_path}")
             if len(state.memory.created_files) > 20:
-                parts.insert(1 + len(state.memory.created_files[-20:]) + 1, f"... ({len(state.memory.created_files) - 20} more files)")
-            insert_pos = 1 + min(20, len(state.memory.created_files)) + (2 if len(state.memory.created_files) > 20 else 1)
+                parts.insert(
+                    1 + len(state.memory.created_files[-20:]) + 1,
+                    f"... ({len(state.memory.created_files) - 20} more files)",
+                )
+            insert_pos = (
+                1
+                + min(20, len(state.memory.created_files))
+                + (2 if len(state.memory.created_files) > 20 else 1)
+            )
             parts.insert(insert_pos, "")
             parts.insert(insert_pos + 1, "🚨🚨🚨 **CRITICAL WARNING**:")
             parts.insert(insert_pos + 2, "1. **These files already exist, DO NOT recreate them!**")
-            parts.insert(insert_pos + 3, "2. If task requires multiple files, continue creating **remaining files** (not in the list above)")
-            parts.insert(insert_pos + 4, "3. If files above need modification, use `edit_file` tool, do NOT use `write_file` to recreate")
-            parts.insert(insert_pos + 5, "4. **Before creating any new file, check the list above to ensure no duplicates**")
-            parts.insert(insert_pos + 6, "5. If a file is in the list above, it already exists - use `read_file` to read or `edit_file` to modify")
+            parts.insert(
+                insert_pos + 3,
+                "2. If task requires multiple files, continue creating **remaining files** (not in the list above)",
+            )
+            parts.insert(
+                insert_pos + 4,
+                "3. If files above need modification, use `edit_file` tool, do NOT use `write_file` to recreate",
+            )
+            parts.insert(
+                insert_pos + 5,
+                "4. **Before creating any new file, check the list above to ensure no duplicates**",
+            )
+            parts.insert(
+                insert_pos + 6,
+                "5. If a file is in the list above, it already exists - use `read_file` to read or `edit_file` to modify",
+            )
 
         # Key files
         if state.memory.key_files:
@@ -324,51 +371,55 @@ class MemorySummarizer:
         # Phase 5: Recently modified files content (auto-read)
         if state.memory.modified_files_content:
             parts.append("\n## Recently Modified File Content (Auto-read)")
-            
+
             # Sort by importance, take top N
             sorted_files = sorted(
                 state.memory.modified_files_content,
-                key=lambda x: (
-                    x.get("importance_score", 0),
-                    x.get("last_modified_step", 0)
-                ),
-                reverse=True
+                key=lambda x: (x.get("importance_score", 0), x.get("last_modified_step", 0)),
+                reverse=True,
             )
-            
+
             # Show recently modified, most important files (max 5)
             max_files_to_show = 5
             total_size = 0
             max_total_size = 20000  # Max 20KB content (~5k tokens)
-            
+
             for file_record in sorted_files[:max_files_to_show]:
                 path = file_record.get("path", "?")
                 content = file_record.get("content", "")
                 step = file_record.get("last_modified_step", "?")
                 size = file_record.get("size", 0)
                 importance = file_record.get("importance_score", 0)
-                
+
                 # If total size exceeds limit, truncate content
                 if total_size + size > max_total_size:
                     remaining = max_total_size - total_size
                     if remaining > 100:  # At least show 100 chars
-                        content = content[:remaining] + f"\n... [File too large, truncated, full content {size} bytes]"
+                        content = (
+                            content[:remaining]
+                            + f"\n... [File too large, truncated, full content {size} bytes]"
+                        )
                     else:
                         content = f"[File too large ({size} bytes), content not shown]"
                         parts.append(f"\n### {path} (Step {step}, Importance: {importance:.2f})")
                         parts.append(f"```\n{content}\n```")
                         total_size += 100  # Estimate
                         continue
-                
+
                 parts.append(f"\n### {path} (Step {step}, Importance: {importance:.2f})")
-                
+
                 # Display strategy based on file size
                 if size > 10000:  # Larger than 10KB
                     # Show first 5000 chars and last 500 chars
-                    preview = content[:5000] + f"\n... [Omitted {size - 5500} chars] ...\n" + content[-500:]
+                    preview = (
+                        content[:5000]
+                        + f"\n... [Omitted {size - 5500} chars] ...\n"
+                        + content[-500:]
+                    )
                     parts.append(f"```\n{preview}\n```")
                 else:
                     parts.append(f"```\n{content}\n```")
-                
+
                 total_size += min(size, max_total_size - total_size)
                 if total_size >= max_total_size:
                     remaining_files = len(sorted_files) - max_files_to_show
@@ -422,8 +473,12 @@ class MemorySummarizer:
                 )
                 parts.append("")
                 parts.append("**Important Understanding**:")
-                parts.append("- You generate all actions in PLAN phase, system executes them in ACT phase")
-                parts.append("- **You can only see results after all actions are executed** (in next PLAN phase)")
+                parts.append(
+                    "- You generate all actions in PLAN phase, system executes them in ACT phase"
+                )
+                parts.append(
+                    "- **You can only see results after all actions are executed** (in next PLAN phase)"
+                )
                 parts.append(
                     "- Therefore, if you need to view file content to fix, **do NOT view and fix in the same round**"
                 )
@@ -433,19 +488,27 @@ class MemorySummarizer:
                     "1. **If error message clearly indicates the problem** (e.g., ImportError shows missing function name):"
                 )
                 parts.append("   - **Use `write_file` directly to fix**, no need to view first")
-                parts.append("   - Infer actual function name from error or previous context, fix directly")
+                parts.append(
+                    "   - Infer actual function name from error or previous context, fix directly"
+                )
                 parts.append("")
                 parts.append("2. **If you need to view file content to fix**:")
                 parts.append(
                     '   - **Round 1**: Only execute viewing operations (e.g., `run("grep ...")`), set `stop_reason="continue"`'
                 )
                 parts.append("   - **Wait for system to execute and return results**")
-                parts.append("   - **Round 2**: After seeing viewing results, **must immediately** execute `write_file` to fix")
-                parts.append("   - **Forbidden**: Continue viewing other files without fixing after seeing results")
+                parts.append(
+                    "   - **Round 2**: After seeing viewing results, **must immediately** execute `write_file` to fix"
+                )
+                parts.append(
+                    "   - **Forbidden**: Continue viewing other files without fixing after seeing results"
+                )
                 parts.append("")
                 parts.append("**Your Current Problem**:")
                 parts.append("- You have viewed files but haven't fixed yet")
-                parts.append("- **Must**: In next round after seeing viewing results, immediately execute `write_file` to fix")
+                parts.append(
+                    "- **Must**: In next round after seeing viewing results, immediately execute `write_file` to fix"
+                )
                 parts.append("- **Forbidden**: Continue viewing other files without fixing")
 
         # Detect repetitive exploration actions (for new project creation)
@@ -475,11 +538,15 @@ class MemorySummarizer:
                     f"You have executed {exploration_count} exploration operations (ls, find, pwd, etc.), "
                     f"but haven't started creating any files yet."
                 )
-                parts.append("If you already understand the project structure, start creating files immediately, don't continue exploring.")
+                parts.append(
+                    "If you already understand the project structure, start creating files immediately, don't continue exploring."
+                )
                 parts.append(
                     "Use write_file tool to create project files, use run('mkdir -p ...') to create directory structure."
                 )
-                parts.append("For new project creation tasks, 2-3 explorations are enough, should start creating files immediately.")
+                parts.append(
+                    "For new project creation tasks, 2-3 explorations are enough, should start creating files immediately."
+                )
 
         # Last error (includes all recent tool execution results)
         # CRITICAL: This is the PRIMARY source of tool execution info for LLM
@@ -491,7 +558,9 @@ class MemorySummarizer:
                 "  - Even if exit_code=0, error messages in stderr (e.g., 'not found', 'error', 'failed') need to be handled"
             )
             parts.append("  - Please carefully check complete content of stderr and stdout")
-            parts.append("  - For shell commands, stderr usually contains the real execution status")
+            parts.append(
+                "  - For shell commands, stderr usually contains the real execution status"
+            )
             parts.append("")
             parts.append(f"{state.last_error.summary}")
             if state.last_error.repro_cmd:
@@ -528,7 +597,7 @@ class MemorySummarizer:
                         stderr_preview += "..."
                     parts.append(f"  Stderr: {stderr_preview}")
             parts.append("")
-        
+
         # Recent tool executions (both success and failure) - let LLM judge
         # CRITICAL: Include ALL tool outputs so LLM has complete context
         # This is especially important for shell commands where stderr may contain critical info
@@ -602,36 +671,45 @@ class MemorySummarizer:
             # Find section boundaries
             long_term_end = summary.find("## Recent Decisions")
             last_error_start = summary.find("## Last Tool Execution Result")
-            
+
             # Calculate what we can keep
             if long_term_end > 0:
                 long_term_section = summary[:long_term_end]
             else:
                 long_term_section = ""
-            
+
             # Try to preserve last_error section
             if last_error_start > 0:
                 # Keep long-term + last_error
                 remaining = effective_max_length - len(long_term_section)
                 if remaining > 0:
                     # Find end of last_error section (before "## Recent Tool Execution Results" or end)
-                    recent_exec_start = summary.find("## Recent Tool Execution Results", last_error_start)
+                    recent_exec_start = summary.find(
+                        "## Recent Tool Execution Results", last_error_start
+                    )
                     if recent_exec_start > 0:
                         last_error_section = summary[last_error_start:recent_exec_start]
                     else:
                         # Take as much as we can
-                        last_error_section = summary[last_error_start:last_error_start + remaining]
-                    
+                        last_error_section = summary[
+                            last_error_start : last_error_start + remaining
+                        ]
+
                     # Truncate last_error_section if needed
                     if len(long_term_section) + len(last_error_section) > effective_max_length:
-                        available = effective_max_length - len(long_term_section) - 100  # Reserve 100 chars for message
+                        available = (
+                            effective_max_length - len(long_term_section) - 100
+                        )  # Reserve 100 chars for message
                         last_error_section = last_error_section[:available] + "..."
-                    
+
                     summary = long_term_section + "\n" + last_error_section
                     if len(summary) < effective_max_length:
                         summary += "\n[Summary truncated, but preserved long-term memory and last tool execution result...]"
                 else:
-                    summary = long_term_section + "\n[Summary truncated, but preserved long-term memory...]"
+                    summary = (
+                        long_term_section
+                        + "\n[Summary truncated, but preserved long-term memory...]"
+                    )
             else:
                 # Fallback: simple truncation
                 summary = summary[:effective_max_length] + "\n[Summary truncated...]"

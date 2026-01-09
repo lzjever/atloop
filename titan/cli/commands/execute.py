@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def cmd_execute(args: Any) -> int:
     """Execute task - single method."""
     logger.debug(f"[CLI] Execute command called with args: {vars(args)}")
-    
+
     try:
         # Read prompt
         if args.prompt:
@@ -46,7 +46,7 @@ def cmd_execute(args: Any) -> int:
 
         # Execute
         runner = TaskRunner(titan_dir=getattr(args, "titan_dir", None))
-        logger.debug(f"[CLI] Starting task execution")
+        logger.debug("[CLI] Starting task execution")
         result = runner.execute(task_config, console=True)
         logger.debug(f"[CLI] Task execution completed: success={result['success']}")
 
@@ -59,5 +59,6 @@ def cmd_execute(args: Any) -> int:
         logger.debug(f"[CLI] Exception details: {type(e).__name__}: {e}", exc_info=True)
         print(f"[ERROR] {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1

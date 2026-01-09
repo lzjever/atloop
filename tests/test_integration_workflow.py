@@ -2,12 +2,11 @@
 
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from titan.config.loader import ConfigLoader
-from titan.config.models import Budget, TaskSpec, TitanConfig
+from titan.config.models import Budget, TaskSpec
 from titan.orchestrator.coordinator import WorkflowCoordinator
 from titan.orchestrator.state_machine import Phase
 from titan.orchestrator.workflow.workflow import Workflow
@@ -39,7 +38,7 @@ class TestWorkflowPhaseTransitions:
 
         # Initialize coordinator
         coordinator = WorkflowCoordinator(task_spec, config)
-        workflow = Workflow(coordinator)
+        Workflow(coordinator)
 
         # Check initial phase
         state = coordinator.state_manager.agent_state
@@ -195,9 +194,7 @@ class TestWorkflowPhaseTransitions:
 class TestWorkflowBudgetTracking:
     """Integration tests for budget tracking across workflow phases."""
 
-    def test_workflow_budget_initialization(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_workflow_budget_initialization(self, real_config_file: Path, temp_workspace: Path):
         """Test budget initialization in workflow."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -230,9 +227,7 @@ class TestWorkflowBudgetTracking:
         assert coordinator.budget_manager.budget_used.tool_calls == 0
         logger.info("Budget initialization successful ✅")
 
-    def test_workflow_budget_tracking_llm_calls(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_workflow_budget_tracking_llm_calls(self, real_config_file: Path, temp_workspace: Path):
         """Test budget tracking for LLM calls."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
@@ -298,9 +293,7 @@ class TestWorkflowBudgetTracking:
         assert coordinator.budget_manager.budget_used.tool_calls == 20
         logger.info("Tool budget tracking successful ✅")
 
-    def test_workflow_budget_exhaustion(
-        self, real_config_file: Path, temp_workspace: Path
-    ):
+    def test_workflow_budget_exhaustion(self, real_config_file: Path, temp_workspace: Path):
         """Test budget exhaustion detection."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")
