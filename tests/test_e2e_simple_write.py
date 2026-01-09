@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.e2e
-
 from atloop.config.loader import ConfigLoader
 from atloop.config.models import Budget, TaskSpec
 from atloop.orchestrator.coordinator import WorkflowCoordinator
+
+pytestmark = pytest.mark.e2e
 
 logger = logging.getLogger(__name__)
 

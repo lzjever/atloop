@@ -1,9 +1,12 @@
 """Single workflow implementation - DISCOVER -> PLAN -> ACT -> VERIFY."""
 
 import logging
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from atloop.orchestrator.coordinator import WorkflowCoordinator
+
+if TYPE_CHECKING:
+    from atloop.orchestrator.phases.base import PhaseResult
 from atloop.orchestrator.phases.act import ActPhase
 from atloop.orchestrator.phases.discover import DiscoverPhase
 from atloop.orchestrator.phases.plan import PlanPhase
@@ -97,7 +100,7 @@ class Workflow:
 
     def _execute_phase(self, phase: Phase, step: int) -> "PhaseResult":
         """Execute a phase - single method."""
-        from atloop.orchestrator.phases.base import PhaseContext, PhaseResult
+        from atloop.orchestrator.phases.base import PhaseContext, PhaseResult  # noqa: F401
 
         context = PhaseContext(step=step, phase=phase)
         logger.debug(f"[Workflow] Executing phase {phase} at step {step}")

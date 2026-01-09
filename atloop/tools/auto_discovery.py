@@ -12,6 +12,7 @@ from atloop.tools.tool_factory import ToolFactory
 
 if TYPE_CHECKING:
     from atloop.runtime.sandbox_adapter import SandboxAdapter
+    from atloop.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,6 @@
 """Prompt templates package."""
 
 from pathlib import Path
-from typing import Optional
 
 
 class PromptLoader:

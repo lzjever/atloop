@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.integration
-
 from atloop.config.loader import ConfigLoader
 from atloop.config.models import Budget, TaskSpec
 from atloop.orchestrator.coordinator import WorkflowCoordinator
 from atloop.orchestrator.state_machine import Phase
 from atloop.orchestrator.workflow.workflow import Workflow
+
+pytestmark = pytest.mark.integration
 
 logger = logging.getLogger(__name__)
 

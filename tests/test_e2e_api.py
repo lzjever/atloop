@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.e2e
-
 from atloop.api.runner import TaskRunner
 from atloop.config.loader import ConfigLoader
+
+pytestmark = pytest.mark.e2e
 
 logger = logging.getLogger(__name__)
 

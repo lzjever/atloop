@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.integration
-
 from atloop.config.loader import ConfigLoader
 from atloop.config.models import AtloopConfig
+
+pytestmark = pytest.mark.integration
 
 logger = logging.getLogger(__name__)
 

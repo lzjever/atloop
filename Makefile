@@ -99,7 +99,7 @@ test-integration:
 	$(PYTHON_CMD) -m pytest tests/ -v -m integration
 
 lint:
-	$(PYTHON_CMD) -m ruff check atloop/ tests/ --output-format=concise
+	$(PYTHON_CMD) -m ruff check atloop/ tests/ --output-format=concise --no-fix
 
 format:
 	$(PYTHON_CMD) -m ruff format atloop/ tests/

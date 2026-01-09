@@ -2,9 +2,12 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from atloop.orchestrator.state_machine import Phase
+
+if TYPE_CHECKING:
+    from atloop.orchestrator.coordinator import WorkflowCoordinator
 
 
 @dataclass

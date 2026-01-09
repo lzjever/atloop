@@ -1,6 +1,7 @@
 """ACT phase implementation."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from atloop.config.limits import (
     ERROR_SUMMARY_LIMIT_FILE_VIEW,
@@ -16,6 +17,9 @@ from atloop.orchestrator.executor.tool_executor import ToolExecutor
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.phases.stop_reason_handler import StopReasonHandler
 from atloop.orchestrator.state_machine import Phase
+
+if TYPE_CHECKING:
+    from atloop.orchestrator.coordinator import WorkflowCoordinator
 
 logger = logging.getLogger(__name__)
 

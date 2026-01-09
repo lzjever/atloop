@@ -57,7 +57,7 @@ jobs:
       
       - name: Run linting
         run: |
-          uv run ruff check atloop/ tests/
+          uv run ruff check atloop/ tests/ --output-format=concise --no-fix
       
       - name: Check formatting
         run: |
