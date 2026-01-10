@@ -214,6 +214,22 @@ class StopReasonHandler:
         actions: List[Dict[str, Any]], action_json: ActionJSON, job_state
     ) -> None:
         """Store actions in job_state for ACT phase."""
+        # Debug: Check for unreplaced placeholders before storing
+        for i, action in enumerate(actions):
+            tool = action.get("tool")
+            if tool in ["write_file", "append_file", "edit_file"]:
+                content = action.get("args", {}).get("content", "")
+                if content.startswith("FILE_CONTENT_#"):
+                    logger.error(
+                        f"[StopReasonHandler] ❌ CRITICAL: Action {i+1} still has unreplaced placeholder "
+                        f"{content} when storing for ACT phase! This will cause tool execution to fail!"
+                    )
+                else:
+                    logger.debug(
+                        f"[StopReasonHandler] Action {i+1} ({tool}): content_length={len(content)}, "
+                        f"preview={content[:100] if len(content) > 100 else content}"
+                    )
+        
         action_json_with_replaced = ActionJSON(
             thought_summary=action_json.thought_summary,
             plan=action_json.plan,
@@ -221,8 +237,21 @@ class StopReasonHandler:
             stop_reason=action_json.stop_reason,
             result_message=action_json.result_message,
         )
-        job_state.shared_data["actions"] = action_json_with_replaced.to_dict()
+        stored_dict = action_json_with_replaced.to_dict()
+        job_state.shared_data["actions"] = stored_dict
         logger.debug(f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase")
+        
+        # Verify stored actions don't have placeholders
+        stored_actions = stored_dict.get("actions", [])
+        for i, action in enumerate(stored_actions):
+            tool = action.get("tool")
+            if tool in ["write_file", "append_file", "edit_file"]:
+                content = action.get("args", {}).get("content", "")
+                if content.startswith("FILE_CONTENT_#"):
+                    logger.error(
+                        f"[StopReasonHandler] ❌ CRITICAL: Stored action {i+1} still has unreplaced placeholder "
+                        f"{content}! This indicates a bug in action storage!"
+                    )
 
     @staticmethod
     def apply_pending_stop_reason(

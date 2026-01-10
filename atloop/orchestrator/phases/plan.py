@@ -214,6 +214,13 @@ class PlanPhase(BasePhase):
                     f"[PlanPhase] Received {len(file_contents)} file content placeholders: "
                     f"{list(file_contents.keys())}"
                 )
+                for key, value in file_contents.items():
+                    logger.debug(
+                        f"[PlanPhase] file_contents[{key}]: length={len(value)}, "
+                        f"preview={value[:200]}..."
+                    )
+            else:
+                logger.warning("[PlanPhase] No file_contents received from LLM!")
             actions = self._replace_file_content_placeholders(actions, file_contents)
 
             # Debug: Check for remaining placeholders
@@ -336,13 +343,22 @@ class PlanPhase(BasePhase):
         self, actions: list[dict], file_contents: dict[str, str]
     ) -> list[dict]:
         """Replace FILE_CONTENT_#N placeholders with actual content."""
+        logger.debug(
+            f"[PlanPhase] _replace_file_content_placeholders: processing {len(actions)} actions, "
+            f"file_contents keys: {list(file_contents.keys())}"
+        )
         modified_actions = []
-        for action in actions:
+        for i, action in enumerate(actions):
             tool = action.get("tool")
             args = action.get("args", {})
+            logger.debug(
+                f"[PlanPhase] Processing action {i+1}/{len(actions)}: tool={tool}, "
+                f"args keys: {list(args.keys())}"
+            )
 
             if tool == "write_file":
                 content = args.get("content", "")
+                logger.debug(f"[PlanPhase] write_file: content={content[:100] if len(content) > 100 else content}")
                 if content in file_contents:
                     args = args.copy()
                     args["content"] = file_contents[content]
@@ -365,6 +381,7 @@ class PlanPhase(BasePhase):
 
             elif tool == "append_file":
                 content = args.get("content", "")
+                logger.debug(f"[PlanPhase] append_file: content={content[:100] if len(content) > 100 else content}")
                 if content in file_contents:
                     args = args.copy()
                     args["content"] = file_contents[content]
@@ -379,18 +396,51 @@ class PlanPhase(BasePhase):
 
             elif tool == "edit_file":
                 content = args.get("content", "")
+                logger.debug(
+                    f"[PlanPhase] edit_file: content={content[:100] if len(content) > 100 else content}, "
+                    f"is_placeholder={content.startswith('FILE_CONTENT_#')}, "
+                    f"in_file_contents={content in file_contents}"
+                )
                 if content in file_contents:
+                    original_content = content
+                    replacement_content = file_contents[content]
                     args = args.copy()
-                    args["content"] = file_contents[content]
+                    args["content"] = replacement_content
                     action = action.copy()
                     action["args"] = args
                     logger.info(
-                        f"[PlanPhase] Replaced placeholder {content} with edit_file actual content "
-                        f"({len(file_contents[content])} chars)"
+                        f"[PlanPhase] ✅ Replaced placeholder {original_content} with edit_file actual content "
+                        f"({len(replacement_content)} chars)"
+                    )
+                    logger.debug(
+                        f"[PlanPhase] Replacement content preview (first 300 chars): "
+                        f"{replacement_content[:300]}..."
+                    )
+                    logger.debug(
+                        f"[PlanPhase] After replacement, action['args']['content'] = "
+                        f"{action['args']['content'][:100] if len(action['args']['content']) > 100 else action['args']['content']}"
                     )
                 elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.warning(f"[PlanPhase] Placeholder {content} not found in file_contents")
+                    logger.error(
+                        f"[PlanPhase] ❌ ERROR: edit_file placeholder {content} not found in file_contents!"
+                    )
+                    logger.error(
+                        f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}"
+                    )
+                    logger.error(
+                        f"[PlanPhase] This will cause edit_file to fail - placeholder was not replaced!"
+                    )
+                else:
+                    logger.debug(
+                        f"[PlanPhase] edit_file: content is not a placeholder (already replaced or direct content)"
+                    )
 
             modified_actions.append(action)
+            logger.debug(
+                f"[PlanPhase] Action {i+1} processed, final args keys: {list(action.get('args', {}).keys())}"
+            )
 
+        logger.debug(
+            f"[PlanPhase] _replace_file_content_placeholders: returning {len(modified_actions)} modified actions"
+        )
         return modified_actions

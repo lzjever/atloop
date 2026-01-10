@@ -460,6 +460,15 @@ def parse_action_json(
 
     # Extract file contents from placeholders (e.g., ---(FILE_CONTENT_#1)--- ... ---(FILE_CONTENT_#2)---)
     file_contents = _extract_file_contents(text)
+    logger.debug(
+        f"[parse_action_json] Extracted {len(file_contents)} file contents: "
+        f"keys={list(file_contents.keys())}"
+    )
+    for key, value in file_contents.items():
+        logger.debug(
+            f"[parse_action_json] file_contents[{key}]: length={len(value)}, "
+            f"preview={value[:200]}..."
+        )
 
     # Remove file content sections from text to get pure JSON
     json_text = _remove_file_content_sections(text)

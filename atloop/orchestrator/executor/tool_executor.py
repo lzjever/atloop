@@ -81,10 +81,32 @@ class ToolExecutor:
         args = action.get("args", {})
 
         logger.debug(f"[ToolExecutor] Executing tool: {tool_name} with args: {list(args.keys())}")
+        
+        # Additional debug logging for edit_file
+        if tool_name == "edit_file":
+            content = args.get("content", "")
+            logger.info(
+                f"[ToolExecutor] edit_file: path={args.get('path', 'N/A')}, "
+                f"content_length={len(content)}, "
+                f"is_placeholder={content.startswith('FILE_CONTENT_#')}, "
+                f"content_preview={content[:300] if len(content) > 300 else content}"
+            )
 
         # ToolRegistry.execute() returns ToolResult (ok, stdout, stderr, meta)
         result = self.coordinator.tool_runtime.registry.execute(tool_name, args)
-        logger.debug(f"[ToolExecutor] Tool execution completed: {tool_name}")
+        logger.debug(
+            f"[ToolExecutor] Tool execution completed: {tool_name}, "
+            f"ok={result.ok if hasattr(result, 'ok') else 'N/A'}, "
+            f"stderr_length={len(result.stderr) if hasattr(result, 'stderr') else 'N/A'}"
+        )
+        
+        # Log edit_file result details
+        if tool_name == "edit_file":
+            logger.info(
+                f"[ToolExecutor] edit_file result: ok={result.ok if hasattr(result, 'ok') else 'N/A'}, "
+                f"stdout={result.stdout[:200] if hasattr(result, 'stdout') and result.stdout else 'N/A'}, "
+                f"stderr={result.stderr[:200] if hasattr(result, 'stderr') and result.stderr else 'N/A'}"
+            )
 
         # Convert to unified format using ResultAdapter
         return ResultAdapter.to_action_result(tool_name, args, result)
