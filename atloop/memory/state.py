@@ -72,13 +72,20 @@ class Memory:
     learnings: List[str] = field(default_factory=list)
 
     # =========================================================================
-    # DEBUG-ONLY - LLM interpretations (NOT fed back to LLM to prevent loops)
+    # PARTIALLY VISIBLE - Facts only (NOT fully DEBUG-ONLY)
     # =========================================================================
-    # These fields are preserved for debugging/logging but are NOT included
-    # in the memory summary sent to the LLM.
+    # decisions: Partially visible to LLM - only factual information is shown
+    #   - ✅ Visible: step, actions_count, tools_used, stop_reason
+    #   - ❌ NOT visible: current_step_thoughts, plan, llm_output
+    #   - Purpose: Provide context about what was done, without LLM's thinking process
     decisions: List[Dict[str, Any]] = field(default_factory=list)
-    # WARNING: Contains current_step_thoughts - DO NOT feed back to LLM
-    
+    # NOTE: Contains current_step_thoughts - this field is NOT shown to LLM
+    #       Only factual information (tools, actions, stop_reason) is shown in MemorySummary
+
+    # =========================================================================
+    # DEBUG-ONLY - LLM interpretations (NOT fed back to LLM)
+    # =========================================================================
+    # llm_responses: Completely invisible to LLM - only for debugging/logging
     llm_responses: List[Dict[str, Any]] = field(default_factory=list)
     # WARNING: Contains current_step_thoughts - DO NOT feed back to LLM
     # Format: {"step": int, "current_step_thoughts": str, "plan": List[str], ...}

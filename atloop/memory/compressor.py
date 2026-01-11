@@ -201,14 +201,69 @@ class MemoryCompressor:
 
     @staticmethod
     def _summarize_decisions(decisions: List[Dict[str, Any]]) -> str:
-        """Summarize a list of decisions."""
+        """
+        Summarize a list of decisions, extracting key factual information.
+        
+        NOTE: Only extracts factual information, NOT LLM's thinking process.
+        """
         if not decisions:
             return "无历史决策"
 
         total = len(decisions)
         total_actions = sum(len(d.get("actions", [])) for d in decisions)
-
-        return f"历史 {total} 个决策，共执行了 {total_actions} 个动作"
+        
+        # ✅ 改进：提取关键事实信息
+        key_facts = []
+        
+        # 统计 stop_reason 分布
+        stop_reasons = {}
+        for d in decisions:
+            reason = d.get("stop_reason", "unknown")
+            stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
+        
+        # 统计验证结果
+        verification_results = {
+            "success": 0,
+            "failure": 0,
+            "unknown": 0,
+        }
+        for d in decisions:
+            verification = d.get("verification_success")
+            if verification is True:
+                verification_results["success"] += 1
+            elif verification is False:
+                verification_results["failure"] += 1
+            else:
+                verification_results["unknown"] += 1
+        
+        # 统计常用工具
+        tools_used = {}
+        for d in decisions:
+            actions = d.get("actions", [])
+            for action in actions:
+                if isinstance(action, dict):
+                    tool = action.get("tool", "unknown")
+                    tools_used[tool] = tools_used.get(tool, 0) + 1
+        
+        # 构建摘要
+        summary_parts = [f"历史 {total} 个决策，共执行了 {total_actions} 个动作"]
+        
+        if stop_reasons:
+            reasons_str = ", ".join([f"{k}:{v}" for k, v in stop_reasons.items()])
+            summary_parts.append(f"停止原因分布: {reasons_str}")
+        
+        if verification_results["success"] > 0 or verification_results["failure"] > 0:
+            summary_parts.append(
+                f"验证结果: 成功 {verification_results['success']} 次, "
+                f"失败 {verification_results['failure']} 次"
+            )
+        
+        if tools_used:
+            top_tools = sorted(tools_used.items(), key=lambda x: x[1], reverse=True)[:3]
+            tools_str = ", ".join([f"{tool}({count})" for tool, count in top_tools])
+            summary_parts.append(f"常用工具: {tools_str}")
+        
+        return "。".join(summary_parts)
 
     # Phase 4: LLM Compression
 
@@ -236,10 +291,28 @@ class MemoryCompressor:
         logger.info(f"[MemoryCompressor] 开始 LLM 压缩: {len(old_decisions)} 个旧决策")
 
         try:
+            # ✅ 改进：过滤掉不应反馈给 LLM 的字段
+            # 只保留事实信息，排除 LLM 的主观内容（current_step_thoughts, plan, llm_output）
+            filtered_decisions = []
+            for decision in old_decisions:
+                # 只保留事实信息，排除 LLM 的主观内容
+                filtered = {
+                    "step": decision.get("step"),
+                    "stop_reason": decision.get("stop_reason"),
+                    "actions_count": decision.get("actions_count"),
+                    "verification_success": decision.get("verification_success"),
+                    "actions": decision.get("actions", []),  # 动作列表是事实
+                    # ❌ 明确排除以下字段（防止反馈循环）：
+                    # - current_step_thoughts (LLM 思考过程)
+                    # - plan (LLM 计划，已在 memory.plan 中)
+                    # - llm_output (完整 LLM 输出)
+                }
+                filtered_decisions.append(filtered)
+
             # Build compression prompt
             # Limit the data size to avoid exceeding LLM context
             max_data_size = 50000  # 50KB of decision data
-            decisions_json = json.dumps(old_decisions, ensure_ascii=False, indent=2)
+            decisions_json = json.dumps(filtered_decisions, ensure_ascii=False, indent=2)
             if len(decisions_json) > max_data_size:
                 # Truncate if too large
                 decisions_json = decisions_json[:max_data_size] + "\n... [数据已截断]"
@@ -254,10 +327,13 @@ class MemoryCompressor:
 3. 保留工具执行结果的关键信息（错误、成功状态）
 4. 摘要长度控制在 {memory_config.llm_compression_target // 2} 字符以内
 5. 使用结构化格式（Markdown）
+6. ⚠️ **重要**：只提取事实信息（工具、动作、结果），不要包含任何 LLM 的思考过程、假设或推理
+
+注意：这些是历史决策的事实信息（工具、动作、结果），不包含 LLM 的思考过程。
 
 输出格式：
 ## 压缩摘要
-[摘要内容]
+[摘要内容 - 只包含事实信息]
 
 ## 关键信息
 - 任务目标：...
@@ -274,7 +350,7 @@ class MemoryCompressor:
             # Use LLM client's chat directly
             result = llm_client.chat.complete(
                 compression_prompt,
-                system="你是一个记忆压缩专家。请将历史决策压缩为简洁的摘要，保留关键信息。",
+                system="你是一个记忆压缩专家。请将历史决策压缩为简洁的摘要，保留关键信息。注意：只处理事实信息，不包含 LLM 的思考过程。",
                 params=chat_params,
             )
 
@@ -396,7 +472,12 @@ class MemoryCompressor:
         """Get a signature for a decision (for deduplication)."""
         # Create signature from key fields
         step = decision.get("step", "")
-        thought = decision.get("thought_summary", "")[:50]  # First 50 chars
+        # ✅ 更新：使用 current_step_thoughts 而不是 thought_summary
+        # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
+        thought = (
+            decision.get("current_step_thoughts", "") or 
+            decision.get("thought_summary", "")  # 向后兼容
+        )[:50]  # First 50 chars
         actions_count = len(decision.get("actions", []))
         stop_reason = decision.get("stop_reason", "")
 
@@ -416,13 +497,21 @@ class MemoryCompressor:
     def _calculate_similarity(decision1: Dict[str, Any], decision2: Dict[str, Any]) -> float:
         """Calculate similarity between two decisions (0.0-1.0)."""
         # Compare key fields
-        thought1 = str(decision1.get("thought_summary", ""))
-        thought2 = str(decision2.get("thought_summary", ""))
+        # ✅ 更新：使用 current_step_thoughts 而不是 thought_summary
+        # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
+        thought1 = str(
+            decision1.get("current_step_thoughts", "") or 
+            decision1.get("thought_summary", "")  # 向后兼容
+        )
+        thought2 = str(
+            decision2.get("current_step_thoughts", "") or 
+            decision2.get("thought_summary", "")  # 向后兼容
+        )
 
         actions1 = decision1.get("actions", [])
         actions2 = decision2.get("actions", [])
 
-        # Calculate text similarity for thought_summary
+        # Calculate text similarity for current_step_thoughts
         if thought1 and thought2:
             similarity = SequenceMatcher(None, thought1, thought2).ratio()
         else:

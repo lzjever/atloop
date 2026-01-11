@@ -189,22 +189,21 @@ def _compress_with_llm(state: AgentState, memory_config, llm_client) -> None:
     state.memory.decisions = [compressed_record] + recent_decisions
 ```
 
-**问题 2：违反"不反馈给 LLM"原则**
+**问题 2：违反"不反馈给 LLM"原则** ✅ **已修复**
 
-**评估**：⚠️ **存在矛盾**
-- `current_step_thoughts` 被标记为"不反馈给 LLM"
-- 但在 LLM 压缩时，**整个 `decisions` JSON（包含 `current_step_thoughts`）被发送给 LLM**
-- 这违反了设计原则，可能导致反馈循环
+**修复状态**：✅ **已解决**
+- ✅ `_compress_with_llm` 现在在压缩前**明确过滤**掉 `current_step_thoughts`、`plan`、`llm_output`
+- ✅ 只保留事实信息（step、actions、stop_reason、verification_success）
+- ✅ 在压缩 prompt 中明确要求"只提取事实信息，不要包含任何 LLM 的思考过程"
+- ✅ 在 system prompt 中强调"只处理事实信息，不包含 LLM 的思考过程"
 
-**问题 3：压缩后的摘要可能包含思考内容**
+**问题 3：压缩后的摘要可能包含思考内容** ✅ **已修复**
 
-- LLM 压缩后的摘要可能包含从 `current_step_thoughts` 提取的信息
-- 这个摘要存储在 `learnings` 中
-- `learnings` 会被反馈给 LLM（在 `MemorySummarizer.summarize()` 中）
-
-**评估**：⚠️ **间接反馈循环风险**
-- 虽然 `current_step_thoughts` 不直接反馈，但通过压缩摘要间接反馈了
-- 这可能导致 LLM 的假设变成"事实"
+**修复状态**：✅ **已解决**
+- ✅ 压缩前过滤确保摘要只包含事实信息
+- ✅ `_summarize_decisions` 改进后只提取关键事实（stop_reason 分布、验证结果、常用工具）
+- ✅ 不提取任何思考过程内容
+- ✅ 间接反馈循环风险已消除
 
 ---
 
@@ -295,18 +294,20 @@ if state.memory.learnings:
 2. **使用机制**：`MemorySummarizer` 明确排除 `current_step_thoughts`
 3. **设计理念**：防止反馈循环是正确的
 
-### ⚠️ 潜在问题
+### ✅ 已修复的问题
 
-1. **压缩时违反原则**：
-   - `_compress_with_llm` 将包含 `current_step_thoughts` 的完整 JSON 发送给 LLM
-   - 这违反了"不反馈给 LLM"的设计原则
+1. **压缩时违反原则** ✅ **已修复**：
+   - ✅ `_compress_with_llm` 现在在压缩前明确过滤掉 `current_step_thoughts`、`plan`、`llm_output`
+   - ✅ 只保留事实信息发送给 LLM
+   - ✅ 严格遵守"不反馈给 LLM"的设计原则
 
-2. **总结过于简单**：
-   - `_summarize_decisions` 只统计数量，不提取有价值信息
-   - `current_step_thoughts` 中的有价值信息（如失败原因、尝试的方法）在压缩时丢失
+2. **总结过于简单** ✅ **已改进**：
+   - ✅ `_summarize_decisions` 现在提取关键事实信息（stop_reason 分布、验证结果、常用工具）
+   - ✅ 生成更有价值的摘要，包含统计信息
 
-3. **间接反馈循环风险**：
-   - 虽然当前实现中 `_summarize_decisions` 不提取内容，但如果未来改进，可能引入间接反馈循环
+3. **间接反馈循环风险** ✅ **已消除**：
+   - ✅ 压缩前过滤确保摘要只包含事实信息
+   - ✅ 不再有间接反馈循环的风险
 
 ---
 
@@ -378,23 +379,24 @@ def _summarize_decisions(decisions: List[Dict[str, Any]]) -> str:
 
 ## 8. 总体评估
 
-### 合理性评分：7/10
+### 合理性评分：9/10 ✅
 
 **优点**：
 - ✅ 核心设计理念正确：防止反馈循环
 - ✅ `MemorySummarizer` 实现正确：明确排除思考内容
 - ✅ 存储机制合理：双重存储，标记清晰
+- ✅ **压缩机制已修复**：严格遵守"不反馈"原则
+- ✅ **总结机制已改进**：提取关键事实信息
+- ✅ **间接反馈循环风险已消除**：压缩前过滤确保安全
 
-**缺点**：
-- ⚠️ 压缩机制存在矛盾：违反"不反馈"原则
-- ⚠️ 总结机制过于简单：丢失有价值信息
-- ⚠️ 间接反馈循环风险：虽然当前不存在，但设计上有风险
+**剩余改进空间**：
+- 可以考虑更智能的过滤机制（当前实现已足够）
 
-### 建议优先级
+### ✅ 改进状态
 
-1. **高优先级**：修复 `_compress_with_llm`，在压缩前过滤 `current_step_thoughts`
-2. **中优先级**：改进 `_summarize_decisions`，提取关键事实信息（不包含思考过程）
-3. **低优先级**：考虑分离思考内容和事实内容的设计
+1. ✅ **已完成**：修复 `_compress_with_llm`，在压缩前过滤 `current_step_thoughts`
+2. ✅ **已完成**：改进 `_summarize_decisions`，提取关键事实信息（不包含思考过程）
+3. ⏸️ **暂缓**：考虑分离思考内容和事实内容的设计（当前实现已足够）
 
 ---
 
