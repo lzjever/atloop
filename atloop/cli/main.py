@@ -5,11 +5,27 @@ import sys
 
 # CLI uses varlord for CLI argument parsing
 from atloop.cli.commands import cmd_config, cmd_execute, cmd_init
+from atloop.cli.logging_config import setup_logging
 
 
 def create_parser() -> argparse.ArgumentParser:
     """Create parser - single method."""
-    parser = argparse.ArgumentParser(description="atloop - Task Automation Node")
+    parser = argparse.ArgumentParser(
+        description="atloop - Task Automation Node",
+        epilog=(
+            "Environment Variables:\n"
+            "  ATLOOP_LOG_LEVEL    Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).\n"
+            "                       Default: INFO\n"
+            "\n"
+            "Examples:\n"
+            "  # Set log level via environment variable\n"
+            "  ATLOOP_LOG_LEVEL=DEBUG atloopc execute --workspace ./workspace --prompt 'task'\n"
+            "\n"
+            "  # Use default INFO level\n"
+            "  atloopc execute --workspace ./workspace --prompt 'task'\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # init
@@ -42,6 +58,10 @@ def add_atloop_dir_arg(parser: argparse.ArgumentParser) -> None:
 
 def main() -> int:
     """Main entry point."""
+    # Setup logging from environment variable before parsing arguments
+    # This ensures logging is configured early for all commands
+    setup_logging()
+
     parser = create_parser()
     args = parser.parse_args()
 

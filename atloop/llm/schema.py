@@ -83,8 +83,30 @@ VALID_TOOLS = {
 }
 
 
+class ActionJSONValidationError(ValueError):
+    """Exception raised when ActionJSON validation fails."""
+
+    def __init__(self, message: str, data: Optional[Dict[str, Any]] = None):
+        """
+        Initialize validation error.
+
+        Args:
+            message: Validation error message
+            data: The invalid data that failed validation (for debugging)
+        """
+        super().__init__(message)
+        self.message = message
+        self.data = data
+
+
 class ActionJSON:
-    """Action JSON data structure."""
+    """Action JSON data structure.
+    
+    Design principle: Fail Fast
+    - Data validation happens at construction time
+    - Invalid data is rejected immediately with clear error messages
+    - Downstream code can trust that ActionJSON instances are valid
+    """
 
     def __init__(
         self,
@@ -103,7 +125,39 @@ class ActionJSON:
             thought_summary: Optional thought summary
             plan: Optional plan steps
             result_message: Optional result message
+            
+        Raises:
+            ActionJSONValidationError: If data is invalid
         """
+        # Type checks for constructor arguments (defensive programming at API boundary)
+        if not isinstance(actions, list):
+            raise ActionJSONValidationError(
+                f"'actions' must be a list, but got {type(actions).__name__}."
+            )
+        if not isinstance(stop_reason, str):
+            raise ActionJSONValidationError(
+                f"'stop_reason' must be a string, but got {type(stop_reason).__name__}."
+            )
+        if stop_reason not in ["continue", "done", "fail"]:
+            raise ActionJSONValidationError(
+                f"Invalid stop_reason: '{stop_reason}'. Must be one of: 'continue', 'done', 'fail'."
+            )
+        
+        # Validate each action
+        for i, action in enumerate(actions):
+            if not isinstance(action, dict):
+                raise ActionJSONValidationError(
+                    f"action[{i}] must be a dictionary, but got {type(action).__name__}."
+                )
+            if "tool" not in action:
+                raise ActionJSONValidationError(
+                    f"action[{i}] missing required field: 'tool'."
+                )
+            if "args" not in action:
+                raise ActionJSONValidationError(
+                    f"action[{i}] missing required field: 'args'."
+                )
+        
         self.actions = actions
         self.stop_reason = stop_reason
         self.thought_summary = thought_summary
@@ -125,8 +179,39 @@ class ActionJSON:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ActionJSON":
-        """Create from dictionary."""
+    def from_dict(cls, data: Dict[str, Any], validate: bool = True) -> "ActionJSON":
+        """
+        Create from dictionary with validation.
+        
+        Design principle: Validate at the boundary
+        - Data entering the system is validated immediately
+        - Invalid data is rejected with clear error messages
+        - Downstream code can trust the data structure
+        
+        Args:
+            data: Dictionary containing action JSON data
+            validate: Whether to validate the data (default: True)
+            
+        Returns:
+            ActionJSON instance
+            
+        Raises:
+            ActionJSONValidationError: If data is invalid and validate=True
+            TypeError: If data is not a dictionary
+        """
+        # Type check at boundary
+        if not isinstance(data, dict):
+            raise TypeError(
+                f"ActionJSON.from_dict() expects a dict, but got {type(data).__name__}."
+            )
+        
+        # Validate data structure if requested
+        if validate:
+            is_valid, error_msg = validate_action_json(data)
+            if not is_valid:
+                raise ActionJSONValidationError(error_msg, data=data)
+        
+        # Extract and construct (data is now guaranteed to be valid)
         return cls(
             actions=data.get("actions", []),
             stop_reason=data.get("stop_reason", "continue"),
@@ -460,14 +545,10 @@ def parse_action_json(
 
     # Extract file contents from placeholders (e.g., ---(FILE_CONTENT_#1)--- ... ---(FILE_CONTENT_#2)---)
     file_contents = _extract_file_contents(text)
-    logger.debug(
-        f"[parse_action_json] Extracted {len(file_contents)} file contents: "
-        f"keys={list(file_contents.keys())}"
-    )
-    for key, value in file_contents.items():
+    if file_contents:
         logger.debug(
-            f"[parse_action_json] file_contents[{key}]: length={len(value)}, "
-            f"preview={value[:200]}..."
+            f"[parse_action_json] Extracted {len(file_contents)} file contents: "
+            f"keys={list(file_contents.keys())}"
         )
 
     # Remove file content sections from text to get pure JSON
@@ -478,7 +559,8 @@ def parse_action_json(
         data = json.loads(json_text)
         is_valid, error = validate_action_json(data)
         if is_valid:
-            return ActionJSON.from_dict(data), None, file_contents
+            # Data already validated, skip validation in from_dict() for performance
+            return ActionJSON.from_dict(data, validate=False), None, file_contents
         else:
             return None, error, file_contents  # Return detailed validation error
     except json.JSONDecodeError as e:

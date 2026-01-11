@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Dict
 
 from atloop.orchestrator.coordinator import WorkflowCoordinator
+from atloop.orchestrator.error_handler import ErrorClassifier, ErrorCategory, ErrorRecoveryStrategy
 
 if TYPE_CHECKING:
     from atloop.orchestrator.phases.base import PhaseResult
@@ -86,8 +87,24 @@ class Workflow:
                 logger.info(f"[Workflow] Workflow completed successfully at step {state.step}")
                 return self._success()
             elif result.next_phase == Phase.FAIL:
-                logger.error(f"[Workflow] Workflow failed: {result.error}")
-                return self._failure(result.error or "Workflow failed")
+                # Only fail if error is truly fatal (not recoverable)
+                if result.recoverable:
+                    logger.warning(
+                        f"[Workflow] Phase returned FAIL but marked as recoverable. "
+                        f"Treating as recoverable error."
+                    )
+                    # Treat as recoverable and transition to PLAN
+                    recovery_result = self._handle_recoverable_error(
+                        current_phase,
+                        result.error or "Unknown error",
+                        result.data,
+                        error_already_set_in_state=result.error_already_set_in_state,
+                    )
+                    # Continue with recovery result instead
+                    result = recovery_result
+                else:
+                    logger.error(f"[Workflow] Workflow failed with fatal error: {result.error}")
+                    return self._failure(result.error or "Workflow failed")
 
             # Transition
             if result.next_phase:
@@ -99,21 +116,28 @@ class Workflow:
         return self._failure("Max iterations reached")
 
     def _execute_phase(self, phase: Phase, step: int) -> "PhaseResult":
-        """Execute a phase - single method."""
+        """
+        Execute a phase with unified error handling.
+
+        This method provides centralized error handling for all phases.
+        Errors are classified as recoverable or fatal, and appropriate
+        recovery strategies are applied.
+        """
         from atloop.orchestrator.phases.base import PhaseContext, PhaseResult  # noqa: F401
 
         context = PhaseContext(step=step, phase=phase)
         logger.debug(f"[Workflow] Executing phase {phase} at step {step}")
 
         try:
+            # Execute phase - phases should focus on business logic, not error handling
             if phase == Phase.DISCOVER:
-                return self.discover.execute(context)
+                result = self.discover.execute(context)
             elif phase == Phase.PLAN:
-                return self.plan.execute(context)
+                result = self.plan.execute(context)
             elif phase == Phase.ACT:
-                return self.act.execute(context)
+                result = self.act.execute(context)
             elif phase == Phase.VERIFY:
-                return self.verify.execute(context)
+                result = self.verify.execute(context)
             else:
                 logger.error(f"[Workflow] Unknown phase: {phase}")
                 return PhaseResult(
@@ -121,16 +145,183 @@ class Workflow:
                     data={},
                     next_phase=Phase.FAIL,
                     error=f"Unknown phase: {phase}",
+                    recoverable=False,
                 )
+
+            # If phase returned a result with error, check if it's recoverable
+            if not result.success and result.error:
+                # Phase may have already classified the error
+                if result.recoverable:
+                    logger.warning(
+                        f"[Workflow] Phase {phase} returned recoverable error: {result.error}"
+                    )
+                    return self._handle_recoverable_error(
+                        phase,
+                        result.error,
+                        result.data,
+                        error_already_set_in_state=result.error_already_set_in_state,
+                    )
+                else:
+                    # Classify the error
+                    error_category = ErrorClassifier.classify(
+                        Exception(result.error), result.error
+                    )
+                    if error_category == ErrorCategory.RECOVERABLE:
+                        logger.warning(
+                            f"[Workflow] Classified error as recoverable: {result.error}"
+                        )
+                        return self._handle_recoverable_error(
+                            phase,
+                            result.error,
+                            result.data,
+                            error_already_set_in_state=result.error_already_set_in_state,
+                        )
+                    else:
+                        logger.error(f"[Workflow] Fatal error in phase {phase}: {result.error}")
+                        return result
+
+            return result
+
         except Exception as e:
-            logger.error(f"[Workflow] Phase {phase} error: {e}")
+            # Unified exception handling for all phases
+            # This handles unexpected exceptions that Phase didn't catch
+            logger.error(f"[Workflow] Phase {phase} raised exception: {e}")
             logger.debug(f"[Workflow] Exception details: {type(e).__name__}: {e}", exc_info=True)
-            return PhaseResult(
-                success=False,
-                data={},
-                next_phase=Phase.FAIL,
-                error=str(e),
+
+            # Classify the error
+            error_category = ErrorClassifier.classify(e)
+            error_msg = ErrorRecoveryStrategy.format_error_for_llm(
+                e, error_category, context=f"Phase {phase.value}"
             )
+
+            # Update state with error information
+            # Since this is an unexpected exception, Phase didn't set error info
+            # However, we should check if Phase had already set detailed error info
+            # (e.g., ActPhase might have set tool execution errors before raising exception)
+            state = self.coordinator.state_manager.agent_state
+            
+            # Check if Phase had already set detailed error info
+            # (indicated by presence of structured markers)
+            has_phase_error = bool(
+                state.last_error.summary
+                and any(
+                    marker in state.last_error.summary
+                    for marker in ["Tool:", "Command:", "Stderr (", "Stdout (", "⚠️ Important:"]
+                )
+            )
+            
+            if has_phase_error:
+                # Phase had set detailed error info, append exception as additional context
+                # Don't overwrite Phase's detailed information
+                exception_info = f"\n\n--- Unexpected Phase Exception (after tool execution) ---\n{error_msg}"
+                state.last_error.summary = (state.last_error.summary + exception_info)[:5000]
+                logger.debug(
+                    f"[Workflow] Appended exception info to Phase's detailed error summary "
+                    f"(total length: {len(state.last_error.summary)})"
+                )
+                # Phase had set error info, so mark it as already set
+                error_already_set_in_state = True
+            else:
+                # No detailed error info from Phase, set exception as the error
+                state.last_error.summary = error_msg[:5000]
+                logger.debug(
+                    f"[Workflow] Set last_error.summary with exception error_msg "
+                    f"(length: {len(error_msg[:5000])})"
+                )
+                error_already_set_in_state = False
+
+            if error_category == ErrorCategory.RECOVERABLE:
+                logger.warning(
+                    f"[Workflow] Treating exception as recoverable, transitioning to recovery phase"
+                )
+                return self._handle_recoverable_error(
+                    phase, error_msg, {}, error_already_set_in_state=error_already_set_in_state
+                )
+            else:
+                logger.error(f"[Workflow] Fatal exception in phase {phase}, failing workflow")
+                return PhaseResult(
+                    success=False,
+                    data={},
+                    next_phase=Phase.FAIL,
+                    error=error_msg,
+                    recoverable=False,
+                )
+
+    def _handle_recoverable_error(
+        self,
+        current_phase: Phase,
+        error_msg: str,
+        error_data: Dict[str, Any],
+        error_already_set_in_state: bool = False,
+    ) -> "PhaseResult":
+        """
+        Handle a recoverable error by transitioning to appropriate recovery phase.
+
+        Design principle: Trust Phase's state management.
+        - If Phase has already set detailed error info in state.last_error.summary,
+          we should NOT overwrite it with simplified error_msg.
+        - PhaseResult.error is only for logging/classification, not for updating state.
+
+        Args:
+            current_phase: The phase where error occurred
+            error_msg: Error message (for logging/classification only)
+            error_data: Additional error data
+            error_already_set_in_state: If True, Phase has already set detailed error in state
+
+        Returns:
+            PhaseResult indicating transition to recovery phase
+        """
+        from atloop.orchestrator.phases.base import PhaseResult  # noqa: F401
+
+        # For recoverable errors, transition to PLAN to let LLM adjust strategy
+        recovery_phase = Phase.PLAN
+        logger.info(
+            f"[Workflow] Recoverable error in {current_phase.value}, "
+            f"transitioning to {recovery_phase.value} for LLM to adjust strategy"
+        )
+
+        # Update state only if Phase hasn't already set detailed error information
+        state = self.coordinator.state_manager.agent_state
+        
+        if error_already_set_in_state:
+            # Phase has already set detailed error info in state.last_error.summary
+            # Trust Phase's state management - don't overwrite with simplified error_msg
+            logger.debug(
+                f"[Workflow] Phase {current_phase.value} has already set detailed error info "
+                f"in state.last_error.summary (length: {len(state.last_error.summary or '')}). "
+                f"Preserving it. PhaseResult.error is for logging only."
+            )
+        else:
+            # Phase didn't set error info (e.g., unexpected exception)
+            # Workflow should set it for error recovery
+            if state.last_error.summary:
+                # State already has some error info, append to it
+                logger.debug(
+                    f"[Workflow] Appending error_msg to existing error summary "
+                    f"(existing length: {len(state.last_error.summary)})"
+                )
+                state.last_error.summary = (
+                    state.last_error.summary + f"\n\n--- Workflow Error Handling ---\n{error_msg}"
+                )[:5000]
+            else:
+                # No existing error info, set it
+                state.last_error.summary = error_msg[:5000]
+                logger.debug(
+                    f"[Workflow] Set last_error.summary with error_msg "
+                    f"(length: {len(error_msg[:5000])})"
+                )
+
+        # Transition to recovery phase
+        self.coordinator.state_machine.transition(recovery_phase)
+        self.coordinator.state_manager.update(phase=recovery_phase.value)
+
+        return PhaseResult(
+            success=False,  # Not successful, but recoverable
+            data=error_data,
+            next_phase=recovery_phase,
+            error=error_msg,  # For logging/classification only
+            recoverable=True,
+        )
 
     def _success(self) -> Dict[str, Any]:
         """Generate success report."""

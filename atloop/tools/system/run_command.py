@@ -98,6 +98,18 @@ class RunCommandTool(BaseTool):
         - **Failure = non-empty stderr** (contains error messages)
         - Many commands return exit_code=0 even with errors (e.g., pytest collection errors)
         - Always read stdout and stderr content to judge success
+        
+        
+        **⚠️ Hard requirement: avoid “triple-layer quoting hell”**
+        If use python3 -c "....", you must use single quotes inside the string following "-c".
+        Example:
+        {
+            "tool": "run",
+            "args": {
+                "cmd": "python3 -c \\"import sys; sys.path.insert(0, '.'); from jira_client import JiraClient; client = JiraClient(); projects = client.get_projects(); print('Projects:'); for p in projects: print(f\\"  {p['key']}: {p['name']}\\")\\""
+            }
+        }
+
 
         **Common Commands:**
         - File viewing: `cat`, `head`, `tail`, `less`, `more`

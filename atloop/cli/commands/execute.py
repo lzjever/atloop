@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 def cmd_execute(args: Any) -> int:
     """Execute task - single method."""
+    # Logging is already configured in main() via setup_logging()
+    # which reads from ATLOOP_LOG_LEVEL environment variable
     logger.debug(f"[CLI] Execute command called with args: {vars(args)}")
 
     try:

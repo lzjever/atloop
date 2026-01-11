@@ -58,6 +58,10 @@ class VerifyPhase(BasePhase):
                 )
 
             # Update last error if verification failed
+            # Note: We set error info here to inform LLM in next PLAN phase about verification failure.
+            # However, we return success=True because verification failure is not fatal - it just means
+            # LLM needs to adjust strategy. This won't trigger error recovery, so we don't need to
+            # mark error_already_set_in_state=True (that flag is only relevant for error recovery flow).
             if not verification_result.success and verification_result.command:
                 logger.debug("[VerifyPhase] Verification failed, updating error state")
                 error_msg_parts = []
@@ -127,15 +131,6 @@ class VerifyPhase(BasePhase):
             )
 
         except Exception as e:
-            logger.error(f"[VerifyPhase] Error: {e}")
-            logger.debug(f"[VerifyPhase] Exception details: {type(e).__name__}: {e}", exc_info=True)
-            state = self.coordinator.state_manager.agent_state
-            state.last_error.summary = f"VERIFY phase error: {e}"
-            self.coordinator.state_manager.update(phase="FAIL")
-            self._transition(Phase.FAIL)
-            return PhaseResult(
-                success=False,
-                data={},
-                next_phase=Phase.FAIL,
-                error=str(e),
-            )
+            # Let Workflow handle the exception with unified error handling
+            logger.error(f"[VerifyPhase] VERIFY phase exception: {e}")
+            raise  # Re-raise for Workflow to handle

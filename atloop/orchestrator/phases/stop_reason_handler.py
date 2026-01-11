@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from atloop.llm import ActionJSON
 from atloop.orchestrator.phases.base import PhaseResult
+from atloop.orchestrator.phases.placeholder_replacer import PlaceholderReplacer
 from atloop.orchestrator.state_machine import Phase
 
 logger = logging.getLogger(__name__)
@@ -213,23 +214,31 @@ class StopReasonHandler:
     def _store_actions_for_act(
         actions: List[Dict[str, Any]], action_json: ActionJSON, job_state
     ) -> None:
-        """Store actions in job_state for ACT phase."""
-        # Debug: Check for unreplaced placeholders before storing
-        for i, action in enumerate(actions):
-            tool = action.get("tool")
-            if tool in ["write_file", "append_file", "edit_file"]:
-                content = action.get("args", {}).get("content", "")
-                if content.startswith("FILE_CONTENT_#"):
-                    logger.error(
-                        f"[StopReasonHandler] ❌ CRITICAL: Action {i+1} still has unreplaced placeholder "
-                        f"{content} when storing for ACT phase! This will cause tool execution to fail!"
-                    )
-                else:
-                    logger.debug(
-                        f"[StopReasonHandler] Action {i+1} ({tool}): content_length={len(content)}, "
-                        f"preview={content[:100] if len(content) > 100 else content}"
-                    )
-        
+        """
+        Store actions in job_state for ACT phase.
+
+        This method validates that all placeholders have been replaced before storing.
+        If unreplaced placeholders are found, it logs an error but still stores the actions
+        (so the error can be seen in tool execution results).
+        """
+        # Validate that all placeholders have been replaced
+        is_valid, remaining = PlaceholderReplacer.validate_replacement(actions, {})
+
+        if not is_valid:
+            logger.error(
+                f"[StopReasonHandler] ❌ CRITICAL: Found {len(remaining)} unreplaced placeholders "
+                f"when storing actions for ACT phase: {remaining}"
+            )
+            logger.error(
+                "[StopReasonHandler] This will cause tool execution to fail. "
+                "Actions are still being stored so the error will be visible in execution results."
+            )
+        else:
+            logger.debug(
+                f"[StopReasonHandler] All placeholders validated - storing {len(actions)} actions"
+            )
+
+        # Create ActionJSON with replaced actions
         action_json_with_replaced = ActionJSON(
             thought_summary=action_json.thought_summary,
             plan=action_json.plan,
@@ -237,21 +246,11 @@ class StopReasonHandler:
             stop_reason=action_json.stop_reason,
             result_message=action_json.result_message,
         )
+
+        # Store in job_state
         stored_dict = action_json_with_replaced.to_dict()
         job_state.shared_data["actions"] = stored_dict
-        logger.debug(f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase")
-        
-        # Verify stored actions don't have placeholders
-        stored_actions = stored_dict.get("actions", [])
-        for i, action in enumerate(stored_actions):
-            tool = action.get("tool")
-            if tool in ["write_file", "append_file", "edit_file"]:
-                content = action.get("args", {}).get("content", "")
-                if content.startswith("FILE_CONTENT_#"):
-                    logger.error(
-                        f"[StopReasonHandler] ❌ CRITICAL: Stored action {i+1} still has unreplaced placeholder "
-                        f"{content}! This indicates a bug in action storage!"
-                    )
+        logger.info(f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase")
 
     @staticmethod
     def apply_pending_stop_reason(

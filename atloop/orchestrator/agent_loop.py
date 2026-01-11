@@ -1,7 +1,7 @@
 """Agent loop - thin wrapper."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from atloop.config.models import AtloopConfig, TaskSpec
 from atloop.orchestrator.coordinator import WorkflowCoordinator
@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 class AgentLoop:
     """Agent loop - single responsibility: coordinate workflow execution."""
 
-    def __init__(self, task_spec: TaskSpec, config: AtloopConfig):
+    def __init__(self, task_spec: TaskSpec, config: AtloopConfig, session_id: Optional[str] = None):
         """Initialize agent loop."""
         logger.debug(f"[AgentLoop] Initializing for task: {task_spec.task_id}")
-        self.coordinator = WorkflowCoordinator(task_spec, config)
+        self.coordinator = WorkflowCoordinator(task_spec, config, session_id=session_id)
         self.workflow = Workflow(self.coordinator)
         logger.debug("[AgentLoop] Initialization complete")
 

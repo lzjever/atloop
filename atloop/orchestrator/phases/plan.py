@@ -4,6 +4,10 @@ import logging
 
 from atloop.memory.summarizer import MemorySummarizer
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
+from atloop.orchestrator.phases.placeholder_replacer import (
+    PlaceholderReplacementError,
+    PlaceholderReplacer,
+)
 from atloop.orchestrator.phases.stop_reason_handler import StopReasonHandler
 from atloop.orchestrator.state_machine import Phase
 
@@ -204,7 +208,7 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] LLM response: stop_reason={stop_reason}, actions={len(actions)}"
             )
 
-            # Replace placeholders
+            # Replace placeholders using dedicated service
             logger.debug(
                 f"[PlanPhase] Preparing to replace placeholders, file_contents keys: "
                 f"{list(file_contents.keys())}"
@@ -214,27 +218,24 @@ class PlanPhase(BasePhase):
                     f"[PlanPhase] Received {len(file_contents)} file content placeholders: "
                     f"{list(file_contents.keys())}"
                 )
-                for key, value in file_contents.items():
-                    logger.debug(
-                        f"[PlanPhase] file_contents[{key}]: length={len(value)}, "
-                        f"preview={value[:200]}..."
-                    )
             else:
                 logger.warning("[PlanPhase] No file_contents received from LLM!")
-            actions = self._replace_file_content_placeholders(actions, file_contents)
 
-            # Debug: Check for remaining placeholders
-            for action in actions:
-                if action.get("tool") in ["write_file", "append_file", "edit_file"]:
-                    content = action.get("args", {}).get("content", "")
-                    if content.startswith("FILE_CONTENT_#"):
-                        logger.error(
-                            f"[PlanPhase] Error: Action still has placeholder {content} that was not replaced!"
-                        )
-                        logger.error(
-                            f"[PlanPhase] Available file_contents keys: "
-                            f"{list(file_contents.keys())}"
-                        )
+            try:
+                # Use PlaceholderReplacer service for clean, testable replacement
+                actions = PlaceholderReplacer.replace_and_validate(
+                    actions, file_contents, strict=False
+                )
+                logger.info(
+                    f"[PlanPhase] Successfully replaced placeholders in {len(actions)} actions"
+                )
+            except PlaceholderReplacementError as e:
+                logger.error(
+                    f"[PlanPhase] Placeholder replacement failed: {e}. "
+                    f"Missing placeholders: {e.missing_placeholders}"
+                )
+                # Continue with actions anyway - validation will catch this later
+                # This allows the workflow to continue and show the error in tool execution
 
             # Log LLM result
             self.coordinator.event_logger.log_llm_result(
@@ -304,25 +305,9 @@ class PlanPhase(BasePhase):
             return phase_result
 
         except Exception as e:
-            import traceback
-
-            error_trace = traceback.format_exc()
-            logger.error(f"[PlanPhase] PLAN phase error: {e}")
-            logger.debug(
-                f"[PlanPhase] Exception details: {type(e).__name__}: {e}\n{error_trace}",
-                exc_info=True,
-            )
-            self.coordinator.state_manager.agent_state.last_error.summary = (
-                f"PLAN phase error: {e}\n{error_trace[:5000]}"
-            )
-            self.coordinator.state_manager.update(phase="FAIL")
-            self._transition(Phase.FAIL)
-            return PhaseResult(
-                success=False,
-                data={},
-                next_phase=Phase.FAIL,
-                error=str(e),
-            )
+            # Let Workflow handle the exception with unified error handling
+            logger.error(f"[PlanPhase] PLAN phase exception: {e}")
+            raise  # Re-raise for Workflow to handle
 
     def _extract_keywords(self) -> list[str]:
         """Extract keywords from state."""
@@ -339,108 +324,3 @@ class PlanPhase(BasePhase):
 
         return keywords[:10]
 
-    def _replace_file_content_placeholders(
-        self, actions: list[dict], file_contents: dict[str, str]
-    ) -> list[dict]:
-        """Replace FILE_CONTENT_#N placeholders with actual content."""
-        logger.debug(
-            f"[PlanPhase] _replace_file_content_placeholders: processing {len(actions)} actions, "
-            f"file_contents keys: {list(file_contents.keys())}"
-        )
-        modified_actions = []
-        for i, action in enumerate(actions):
-            tool = action.get("tool")
-            args = action.get("args", {})
-            logger.debug(
-                f"[PlanPhase] Processing action {i+1}/{len(actions)}: tool={tool}, "
-                f"args keys: {list(args.keys())}"
-            )
-
-            if tool == "write_file":
-                content = args.get("content", "")
-                logger.debug(f"[PlanPhase] write_file: content={content[:100] if len(content) > 100 else content}")
-                if content in file_contents:
-                    args = args.copy()
-                    args["content"] = file_contents[content]
-                    action = action.copy()
-                    action["args"] = args
-                    logger.info(
-                        f"[PlanPhase] Replaced placeholder {content} with actual file content "
-                        f"({len(file_contents[content])} chars)"
-                    )
-                    logger.debug(
-                        f"[PlanPhase] File content preview: {file_contents[content][:200]}..."
-                    )
-                elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.error(
-                        f"[PlanPhase] Error: Placeholder {content} not found in file_contents!"
-                    )
-                    logger.error(
-                        f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}"
-                    )
-
-            elif tool == "append_file":
-                content = args.get("content", "")
-                logger.debug(f"[PlanPhase] append_file: content={content[:100] if len(content) > 100 else content}")
-                if content in file_contents:
-                    args = args.copy()
-                    args["content"] = file_contents[content]
-                    action = action.copy()
-                    action["args"] = args
-                    logger.info(
-                        f"[PlanPhase] Replaced placeholder {content} with append_file actual content "
-                        f"({len(file_contents[content])} chars)"
-                    )
-                elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.warning(f"[PlanPhase] Placeholder {content} not found in file_contents")
-
-            elif tool == "edit_file":
-                content = args.get("content", "")
-                logger.debug(
-                    f"[PlanPhase] edit_file: content={content[:100] if len(content) > 100 else content}, "
-                    f"is_placeholder={content.startswith('FILE_CONTENT_#')}, "
-                    f"in_file_contents={content in file_contents}"
-                )
-                if content in file_contents:
-                    original_content = content
-                    replacement_content = file_contents[content]
-                    args = args.copy()
-                    args["content"] = replacement_content
-                    action = action.copy()
-                    action["args"] = args
-                    logger.info(
-                        f"[PlanPhase] ✅ Replaced placeholder {original_content} with edit_file actual content "
-                        f"({len(replacement_content)} chars)"
-                    )
-                    logger.debug(
-                        f"[PlanPhase] Replacement content preview (first 300 chars): "
-                        f"{replacement_content[:300]}..."
-                    )
-                    logger.debug(
-                        f"[PlanPhase] After replacement, action['args']['content'] = "
-                        f"{action['args']['content'][:100] if len(action['args']['content']) > 100 else action['args']['content']}"
-                    )
-                elif content.startswith("FILE_CONTENT_#") and content not in file_contents:
-                    logger.error(
-                        f"[PlanPhase] ❌ ERROR: edit_file placeholder {content} not found in file_contents!"
-                    )
-                    logger.error(
-                        f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}"
-                    )
-                    logger.error(
-                        f"[PlanPhase] This will cause edit_file to fail - placeholder was not replaced!"
-                    )
-                else:
-                    logger.debug(
-                        f"[PlanPhase] edit_file: content is not a placeholder (already replaced or direct content)"
-                    )
-
-            modified_actions.append(action)
-            logger.debug(
-                f"[PlanPhase] Action {i+1} processed, final args keys: {list(action.get('args', {}).keys())}"
-            )
-
-        logger.debug(
-            f"[PlanPhase] _replace_file_content_placeholders: returning {len(modified_actions)} modified actions"
-        )
-        return modified_actions

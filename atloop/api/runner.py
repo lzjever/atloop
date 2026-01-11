@@ -112,9 +112,35 @@ class TaskRunner:
                 config = replace(config, sandbox=sandbox_config)
                 logger.debug(f"[TaskRunner] Sandbox config overridden: {sandbox_config}")
 
+            # Extract session_id from task_config if provided
+            session_id = task_config.get("session_id")
+            if session_id:
+                logger.debug(f"[TaskRunner] Using provided session_id: {session_id}")
+            else:
+                logger.debug(f"[TaskRunner] No session_id provided, will use task_id: {task_spec.task_id}")
+
+            # Create agent loop (creates coordinator and sandbox adapter)
+            logger.info("[TaskRunner] Creating agent loop")
+            loop = AgentLoop(task_spec, config, session_id=session_id)
+
+            # Upload workspace files to sandbox before execution
+            # This ensures files are available for indexing and execution
+            try:
+                logger.info("[TaskRunner] Uploading workspace files to sandbox")
+                sandbox_adapter = loop.coordinator.sandbox
+                if not sandbox_adapter.upload_workspace(task_spec.workspace_root):
+                    logger.error("[TaskRunner] Failed to upload workspace to sandbox")
+                    return {"success": False, "error": "Failed to upload workspace to sandbox"}
+                logger.info("[TaskRunner] Workspace files uploaded to sandbox successfully")
+            except Exception as e:
+                logger.error(f"[TaskRunner] Error uploading workspace: {e}")
+                logger.debug(
+                    f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True
+                )
+                return {"success": False, "error": f"Failed to upload workspace: {e}"}
+
             # Execute
             logger.info("[TaskRunner] Starting agent loop")
-            loop = AgentLoop(task_spec, config)
             report = loop.run()
             logger.info(f"[TaskRunner] Agent loop completed: status={report.get('status')}")
 

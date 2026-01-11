@@ -106,16 +106,9 @@ class DiscoverPhase(BasePhase):
             )
 
         except Exception as e:
-            logger.error(f"[DiscoverPhase] Error: {e}")
-            logger.debug(
-                f"[DiscoverPhase] Exception details: {type(e).__name__}: {e}", exc_info=True
-            )
-            return PhaseResult(
-                success=False,
-                data={},
-                next_phase=Phase.FAIL,
-                error=str(e),
-            )
+            # Let Workflow handle the exception with unified error handling
+            logger.error(f"[DiscoverPhase] DISCOVER phase exception: {e}")
+            raise  # Re-raise for Workflow to handle
 
     def _extract_keywords(self) -> list[str]:
         """Extract keywords from state."""

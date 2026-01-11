@@ -25,16 +25,23 @@ logger = logging.getLogger(__name__)
 class WorkflowCoordinator:
     """Workflow coordinator - single entry point for all components."""
 
-    def __init__(self, task_spec: TaskSpec, config: AtloopConfig):
+    def __init__(self, task_spec: TaskSpec, config: AtloopConfig, session_id: Optional[str] = None):
         """Initialize coordinator."""
         logger.debug(f"[Coordinator] Initializing for task: {task_spec.task_id}")
 
         self.task_spec = task_spec
         self.config = config
 
+        # Use provided session_id or fallback to task_id
+        effective_session_id = session_id if session_id else task_spec.task_id
+        if session_id:
+            logger.debug(f"[Coordinator] Using provided session_id: {session_id}")
+        else:
+            logger.debug(f"[Coordinator] No session_id provided, using task_id: {task_spec.task_id}")
+
         # Infrastructure
         logger.debug("[Coordinator] Creating sandbox adapter")
-        self.sandbox = SandboxAdapter(config.sandbox, task_spec.task_id)
+        self.sandbox = SandboxAdapter(config.sandbox, effective_session_id)
 
         logger.debug("[Coordinator] Creating LLM client")
         self.llm_client = LLMClient(config, workspace_root=task_spec.workspace_root)
