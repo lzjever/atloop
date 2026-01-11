@@ -99,17 +99,17 @@
     "tool": "edit_file",
     "args": {
       "path": "file.py",
-      "content": "FILE_CONTENT_#1"
+      "content": "WRITE_FILE_CONTENT_#1"
     }
   }]
 }
 
----(FILE_CONTENT_#1)---
+---(WRITE_FILE_CONTENT_#1)---
 <old>def old_function():\n    return None</old><new>def new_function():\n    return True</new>
 ```
 
 **Important Notes**:
-- **Must use placeholder**: The `content` field must use placeholder `FILE_CONTENT_#N`, with actual content provided after JSON
+- **Must use placeholder**: The `content` field must use placeholder `WRITE_FILE_CONTENT_#N` (or `EDIT_FILE_CONTENT_#N` for edit_file), with actual content provided after JSON
 - **Content format**: Placeholder content format is `<old>old_string</old><new>new_string</new>`
 - **Unified interface**: Uses the same `content` parameter interface as `write_file`, `append_file`
 
@@ -139,12 +139,12 @@
     "tool": "write_file",
     "args": {
       "path": "new_file.py",
-      "content": "FILE_CONTENT_#1"
+      "content": "WRITE_FILE_CONTENT_#1"
     }
   }]
 }
 
----(FILE_CONTENT_#1)---
+---(WRITE_FILE_CONTENT_#1)---
 def hello():
     print("Hello, world!")
     return True
@@ -165,12 +165,12 @@ def hello():
     "tool": "append_file",
     "args": {
       "path": "long_document.md",
-      "content": "FILE_CONTENT_#1"
+      "content": "WRITE_FILE_CONTENT_#1"
     }
   }]
 }
 
----(FILE_CONTENT_#1)---
+---(WRITE_FILE_CONTENT_#1)---
 
 ## 续写章节
 这里是继续的内容...
@@ -198,33 +198,48 @@ Need to operate on file?
    └─ Subsequent rounds: append_file (remaining content)
 ```
 
-## ⚠️ Placeholder Usage (Avoid JSON Format Errors)
+## ⚠️ Placeholder Usage (Type-Specific, Avoid JSON Format Errors)
 
-**🚨🚨🚨 Mandatory Requirement: For `write_file`, `append_file`, `edit_file` tools, you must use placeholders in all cases!**
+**🚨🚨🚨 Mandatory Requirement: You must use type-specific placeholders for each tool!**
 
-**Absolutely Forbidden**: Directly writing file content in the `content` field (even short text is not allowed). This will cause JSON format errors.
+**Absolutely Forbidden**: Directly writing content in fields (even short text is not allowed). This will cause JSON format errors.
 
-**Must Use Placeholders**: All file content must be provided through placeholders `FILE_CONTENT_#N`, with actual content provided after JSON using delimiter format.
+**Must Use Type-Specific Placeholders**: Each tool has its own placeholder type. Using wrong type will cause validation errors.
+
+### Placeholder Types by Tool
+
+| Tool | Placeholder Type | Field Name |
+|------|-----------------|------------|
+| `write_file` | `WRITE_FILE_CONTENT_#N` | `content` |
+| `edit_file` | `EDIT_FILE_CONTENT_#N` | `content` |
+| `append_file` | `APPEND_FILE_CONTENT_#N` | `content` |
+| `run` (complex commands) | `SHELL_COMMAND_#N` | `cmd` |
+| `run_python_script_string` | `PYTHON_SCRIPT_#N` | `script` |
+| `run_shell_script_string` | `SHELL_SCRIPT_#N` | `script` |
 
 ### Placeholder Format Requirements
 
-1. **In Action JSON**: Use placeholders `FILE_CONTENT_#1`, `FILE_CONTENT_#2`, `FILE_CONTENT_#3` ... (numbered sequentially)
-2. **After Action JSON**: Provide actual file content using delimiter format:
+1. **In Action JSON**: Use type-specific placeholders (e.g., `WRITE_FILE_CONTENT_#1`, `PYTHON_SCRIPT_#1`)
+2. **After Action JSON**: Provide actual content using delimiter format:
    ```
-   ---(FILE_CONTENT_#1)---
+   ---(WRITE_FILE_CONTENT_#1)---
    <actual file content>
-   ---(FILE_CONTENT_#2)---
-   <actual file content>
+   ---(PYTHON_SCRIPT_#1)---
+   <actual Python code>
    ```
-Note: For edit_file, the actual file content represented by the placeholder has the format: <old>string to be replaced</old><new>new string</new>
 
-### 各工具的占位符使用
+**Important Notes:**
+- Each placeholder type is specific to its tool - using wrong type causes error
+- For `edit_file`, content format is: `<old>old_string</old><new>new_string</new>`
+- Placeholders are numbered sequentially: `#1`, `#2`, `#3`, etc.
 
-#### `write_file` 和 `append_file`
-- `content` 字段使用占位符
-- 占位符内容就是实际要写入/追加的文本
+### Placeholder Usage Examples
 
-**示例**：
+#### `write_file` and `append_file`
+- Use `WRITE_FILE_CONTENT_#N` for `write_file`
+- Use `APPEND_FILE_CONTENT_#N` for `append_file`
+
+**Example**:
 ```json
 {
   "actions": [
@@ -232,24 +247,24 @@ Note: For edit_file, the actual file content represented by the placeholder has 
       "tool": "write_file",
       "args": {
         "path": "file1.py",
-        "content": "FILE_CONTENT_#1"
+        "content": "WRITE_FILE_CONTENT_#1"
       }
     },
     {
       "tool": "append_file",
       "args": {
         "path": "file1.py",
-        "content": "FILE_CONTENT_#2"
+        "content": "APPEND_FILE_CONTENT_#1"
       }
     }
   ]
 }
 
----(FILE_CONTENT_#1)---
+---(WRITE_FILE_CONTENT_#1)---
 def hello():
     print("Hello, world!")
     return True
----(FILE_CONTENT_#2)---
+---(APPEND_FILE_CONTENT_#1)---
 
 def goodbye():
     print("Goodbye!")
@@ -270,13 +285,13 @@ def goodbye():
       "tool": "edit_file",
       "args": {
         "path": "file1.py",
-        "content": "FILE_CONTENT_#1"
+        "content": "WRITE_FILE_CONTENT_#1"
       }
     }
   ]
 }
 
----(FILE_CONTENT_#1)---
+---(WRITE_FILE_CONTENT_#1)---
 <old>def hello():
     print("Hello, world!")
     return True</old><new>def hello():
@@ -286,8 +301,8 @@ def goodbye():
 ```
 
 **Important Rules**:
-- ✅ **Must**: Each placeholder uses a unique number (FILE_CONTENT_#1, FILE_CONTENT_#2, ...)
-- ✅ **Must**: Provide corresponding file content after JSON (using `---(FILE_CONTENT_#N)---` delimiter)
+- ✅ **Must**: Each placeholder uses a unique number and correct type (WRITE_FILE_CONTENT_#1, EDIT_FILE_CONTENT_#1, etc.)
+- ✅ **Must**: Provide corresponding content after JSON (using `---(PLACEHOLDER_TYPE_#N)---` delimiter)
 - ✅ **Must**: For `edit_file`, placeholder content format is `<old>...</old><new>...</new>`
 - ✅ **Must**: Placeholder numbers correspond one-to-one with file content delimiter numbers
 - 🚨 **Mandatory Requirement**: **In all cases** when calling `write_file`, `append_file`, `edit_file`, you must use placeholders!
@@ -458,7 +473,7 @@ Your response must be in the following format:
 
 **Absolutely Forbidden**: Directly writing file content in the `content` field (even short text is not allowed). This will cause JSON format errors.
 
-**Must Use Placeholders**: All file content must be provided through placeholders `FILE_CONTENT_#N`, with actual content provided after JSON using delimiter format.
+**Must Use Type-Specific Placeholders**: All content must be provided through type-specific placeholders (WRITE_FILE_CONTENT_#N, EDIT_FILE_CONTENT_#N, PYTHON_SCRIPT_#N, etc.), with actual content provided after JSON using delimiter format.
 
 See "Placeholder Usage" section above for detailed explanation.
 
@@ -532,18 +547,18 @@ The system uses a 4-step loop workflow, each loop contains the following phases:
              "tool": "edit_file",
              "args": {
                "path": "file.py",
-               "content": "FILE_CONTENT_#1"
+               "content": "WRITE_FILE_CONTENT_#1"
              }
            }
          ],
          "stop_reason": "continue"
        }
        
-       ---(FILE_CONTENT_#1)---
+       ---(WRITE_FILE_CONTENT_#1)---
        <old>def old_function():\n    print('old')\n    return None</old><new>def new_function():\n    print('new')\n    return True</new>
        ```
      - **注意事项**：
-       * **必须使用占位符**：`content` 字段必须使用占位符 `FILE_CONTENT_#N`
+       * **必须使用类型特定占位符**：`content` 字段必须使用正确的占位符类型（如 `WRITE_FILE_CONTENT_#N`）
        * **内容格式**：占位符内容格式为 `<old>old_string</old><new>new_string</new>`
        * `old_string` 必须精确匹配（包括空格、缩进、换行）
        * 如果匹配失败，检查上下文是否足够，或使用 `read_file` 重新查看
@@ -585,14 +600,14 @@ The system uses a 4-step loop workflow, each loop contains the following phases:
              "tool": "append_file",
              "args": {
                "path": "long_document.md",
-               "content": "FILE_CONTENT_#1"
+               "content": "WRITE_FILE_CONTENT_#1"
              }
            }
          ],
          "stop_reason": "continue"
        }
        
-       ---(FILE_CONTENT_#1)---
+       ---(WRITE_FILE_CONTENT_#1)---
        
        ## 续写章节
        这里是继续的内容...

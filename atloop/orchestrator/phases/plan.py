@@ -2,8 +2,11 @@
 
 import logging
 
-from atloop.config.loop_detection import InterventionLevel
 from atloop.memory.summarizer import MemorySummarizer
+from atloop.orchestrator.loop_intervention_executor import (
+    InterventionAction,
+    LoopInterventionExecutor,
+)
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.phases.placeholder_replacer import (
     PlaceholderReplacementError,
@@ -60,44 +63,65 @@ class PlanPhase(BasePhase):
                 f"(max: {memory_summary_max_length})"
             )
 
-            # === Loop Detection ===
-            # Analyze progress and detect loops
+            # === Loop Detection and Intervention ===
+            # Use centralized intervention executor for clean separation of concerns
             loop_analysis = self.coordinator.loop_detector.analyze(
                 self.coordinator.progress_tracker
             )
             
+            # Generate and execute intervention if loop detected
+            intervention_result = None
             if loop_analysis.is_looping:
-                logger.warning(
-                    f"[PlanPhase] Loop detected: type={loop_analysis.loop_type.value}, "
-                    f"repetitions={loop_analysis.repetition_count}, "
-                    f"level={loop_analysis.intervention_level.name}"
-                )
-                
-                # Generate intervention
                 intervention = self.coordinator.loop_detector.generate_intervention(loop_analysis)
                 
-                # Log intervention details
+                # Use centralized executor to decide action
+                executor = LoopInterventionExecutor(
+                    workspace_path=getattr(self.coordinator.config, "workspace_root", "/workspace")
+                )
+                intervention_result = executor.execute(loop_analysis, intervention)
+                
                 logger.info(
                     f"[PlanPhase] Loop intervention: type={loop_analysis.loop_type.value}, "
-                    f"level={intervention.level.name}, evidence={loop_analysis.evidence[:2]}"
+                    f"action={intervention_result.action.value}, "
+                    f"repetitions={loop_analysis.repetition_count}"
                 )
                 
-                # Inject intervention into memory summary
-                if intervention.prompt_injection:
-                    memory_summary = intervention.prompt_injection + "\n\n" + memory_summary
-                    logger.info(
-                        f"[PlanPhase] Injected {intervention.level.name} intervention into prompt"
+                # Handle ABORT - terminate task
+                if intervention_result.should_abort:
+                    logger.error(f"[PlanPhase] {intervention_result.error_message}")
+                    self.coordinator.state_manager.update(phase="FAIL")
+                    self._transition(Phase.FAIL)
+                    return PhaseResult(
+                        success=False,
+                        data={},
+                        next_phase=Phase.FAIL,
+                        error=intervention_result.error_message,
                     )
                 
-                # Handle forced strategy execution
-                if intervention.level >= InterventionLevel.FORCE_STRATEGY:
-                    if intervention.forced_actions:
-                        logger.warning(
-                            f"[PlanPhase] FORCING recovery actions due to loop: "
-                            f"{len(intervention.forced_actions)} actions"
-                        )
-                        # Store forced actions for ACT phase
-                        self.coordinator.job_state.shared_data["forced_actions"] = intervention.forced_actions
+                # Handle FORCE_RECOVERY - skip LLM, use forced actions
+                if intervention_result.action == InterventionAction.FORCE_RECOVERY:
+                    logger.warning(
+                        f"[PlanPhase] FORCING recovery: skipping LLM, executing "
+                        f"{len(intervention_result.forced_actions)} recovery actions"
+                    )
+                    # Store forced actions for ACT phase
+                    self.coordinator.job_state.shared_data["actions"] = {
+                        "actions": intervention_result.forced_actions,
+                        "stop_reason": "continue",
+                    }
+                    # Transition directly to ACT
+                    self._transition(Phase.ACT)
+                    self.coordinator.state_manager.update(phase="ACT")
+                    return PhaseResult(
+                        success=True,
+                        data={"forced_recovery": True},
+                        next_phase=Phase.ACT,
+                    )
+                
+                # Handle INJECT_WARNING - add to memory summary
+                if intervention_result.prompt_injection:
+                    memory_summary = intervention_result.prompt_injection + "\n\n" + memory_summary
+                    logger.info("[PlanPhase] Injected warning into prompt")
             
             # Add progress metrics to memory summary for LLM awareness
             metrics = self.coordinator.progress_tracker.get_metrics(window=10)
@@ -276,19 +300,120 @@ class PlanPhase(BasePhase):
 
             try:
                 # Use PlaceholderReplacer service for clean, testable replacement
-                actions = PlaceholderReplacer.replace_and_validate(
+                # Returns successful actions and full result metadata
+                successful_actions, replacement_result = PlaceholderReplacer.replace_and_validate(
                     actions, file_contents, strict=False
                 )
                 logger.info(
-                    f"[PlanPhase] Successfully replaced placeholders in {len(actions)} actions"
+                    f"[PlanPhase] Placeholder replacement: {replacement_result.replaced_count}/{replacement_result.total_count} successful. "
+                    f"Pending: {len(replacement_result.pending_actions)}, "
+                    f"Missing: {len(replacement_result.missing_placeholders)}, "
+                    f"Type mismatches: {len(replacement_result.type_mismatches)}"
                 )
+
+                # Handle type mismatches (always an error)
+                if replacement_result.type_mismatches:
+                    error_msg = (
+                        f"Placeholder type validation failed: {replacement_result.type_mismatches}. "
+                        f"Each tool must use its correct placeholder type. "
+                        f"See tool documentation for correct placeholder types."
+                    )
+                    logger.error(f"[PlanPhase] {error_msg}")
+                    state.last_error.summary = error_msg
+                    self.coordinator.state_manager.update(phase="DISCOVER")
+                    self._transition(Phase.DISCOVER)
+                    return PhaseResult(
+                        success=False,
+                        data={},
+                        next_phase=Phase.DISCOVER,
+                        error=error_msg,
+                    )
+
+                # Handle missing placeholders (partial success)
+                if replacement_result.missing_placeholders:
+                    # Store pending actions for next iteration
+                    if not hasattr(state.memory, "pending_actions"):
+                        state.memory.pending_actions = []
+                    state.memory.pending_actions.extend(replacement_result.pending_actions)
+
+                    # Build error message with specific missing placeholders
+                    placeholder_types = {}
+                    for ph in replacement_result.missing_placeholders:
+                        ph_type = PlaceholderReplacer._detect_placeholder_type(ph)
+                        if ph_type not in placeholder_types:
+                            placeholder_types[ph_type] = []
+                        placeholder_types[ph_type].append(ph)
+
+                    error_parts = [
+                        f"Placeholder replacement incomplete: {len(replacement_result.missing_placeholders)} placeholders missing."
+                    ]
+                    for ph_type, ph_list in placeholder_types.items():
+                        error_parts.append(f"  Missing {ph_type}: {', '.join(ph_list)}")
+                    error_parts.append(
+                        f"Successfully processed {replacement_result.replaced_count}/{replacement_result.total_count} actions. "
+                        f"Please provide the missing placeholders in your next response using the format: "
+                        f"---({replacement_result.missing_placeholders[0]})---\n<content>\n---"
+                    )
+
+                    error_msg = "\n".join(error_parts)
+                    logger.warning(f"[PlanPhase] {error_msg}")
+                    state.last_error.summary = error_msg
+
+                    # Use only successful actions for this iteration
+                    actions = successful_actions
+
+                    # If no successful actions, transition back to DISCOVER
+                    if not actions:
+                        logger.warning(
+                            "[PlanPhase] No successful actions after placeholder replacement. "
+                            "Transitioning back to DISCOVER to allow LLM to retry."
+                        )
+                        self.coordinator.state_manager.update(phase="DISCOVER")
+                        self._transition(Phase.DISCOVER)
+                        return PhaseResult(
+                            success=False,
+                            data={},
+                            next_phase=Phase.DISCOVER,
+                            error=error_msg,
+                        )
+                else:
+                    # All placeholders replaced successfully
+                    actions = successful_actions
+
             except PlaceholderReplacementError as e:
                 logger.error(
                     f"[PlanPhase] Placeholder replacement failed: {e}. "
                     f"Missing placeholders: {e.missing_placeholders}"
                 )
-                # Continue with actions anyway - validation will catch this later
-                # This allows the workflow to continue and show the error in tool execution
+                # Set error state
+                state.last_error.summary = str(e)
+                # Transition back to DISCOVER for retry
+                self.coordinator.state_manager.update(phase="DISCOVER")
+                self._transition(Phase.DISCOVER)
+                return PhaseResult(
+                    success=False,
+                    data={},
+                    next_phase=Phase.DISCOVER,
+                    error=str(e),
+                )
+
+            # Final validation: ensure no unreplaced placeholders remain in successful actions
+            is_valid, remaining = PlaceholderReplacer.validate_replacement(actions, file_contents)
+            if not is_valid:
+                error_msg = (
+                    f"CRITICAL: {len(remaining)} actions still have unreplaced placeholders after replacement: {remaining}. "
+                    f"This indicates a bug in placeholder replacement logic."
+                )
+                logger.error(f"[PlanPhase] {error_msg}")
+                state.last_error.summary = error_msg
+                self.coordinator.state_manager.update(phase="DISCOVER")
+                self._transition(Phase.DISCOVER)
+                return PhaseResult(
+                    success=False,
+                    data={},
+                    next_phase=Phase.DISCOVER,
+                    error=error_msg,
+                )
 
             # Log LLM result
             self.coordinator.event_logger.log_llm_result(

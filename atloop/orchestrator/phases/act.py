@@ -11,6 +11,7 @@ from atloop.orchestrator.phases.act_result_processor import (
     ToolResultFormatter,
 )
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
+from atloop.orchestrator.phases.placeholder_replacer import PlaceholderReplacer
 from atloop.orchestrator.phases.stop_reason_handler import StopReasonHandler
 from atloop.orchestrator.state_machine import Phase
 
@@ -89,6 +90,8 @@ class ActPhase(BasePhase):
                 )
 
             # Execute actions
+            # Note: Loop intervention is now handled entirely in PlanPhase by LoopInterventionExecutor
+            # ActPhase simply executes whatever actions it receives
             logger.debug(f"[ActPhase] Executing {len(action_json.actions)} actions")
             results, modified_files = self._execute_actions(action_json.actions, state)
 
@@ -234,13 +237,26 @@ class ActPhase(BasePhase):
         tool = action.get("tool")
         args = action.get("args", {})
 
-        # Check for unreplaced placeholders in file content tools
-        if tool in ["write_file", "append_file", "edit_file"]:
-            content = args.get("content", "")
-            if isinstance(content, str) and content.startswith("FILE_CONTENT_#"):
+        # Check for unreplaced placeholders in all tools that use placeholders
+        if tool in PlaceholderReplacer.CONTENT_TOOLS:
+            # Determine which field to check based on tool
+            if tool in ["write_file", "append_file", "edit_file"]:
+                value = args.get("content", "")
+                field_name = "content"
+            elif tool == "run":
+                value = args.get("cmd", "")
+                field_name = "cmd"
+            elif tool in ["run_python_script_string", "run_shell_script_string"]:
+                value = args.get("script", "")
+                field_name = "script"
+            else:
+                value = ""
+                field_name = ""
+
+            if PlaceholderReplacer._is_valid_placeholder(value):
                 logger.error(
                     f"[ActPhase] ❌ CRITICAL: {tool} action {action_index} has unreplaced placeholder "
-                    f"{content}! This indicates placeholder replacement failed in PlanPhase."
+                    f"{value} in field '{field_name}'! This indicates placeholder replacement failed in PlanPhase."
                 )
 
     def _execute_single_action(self, action: Dict[str, Any]) -> Dict[str, Any]:

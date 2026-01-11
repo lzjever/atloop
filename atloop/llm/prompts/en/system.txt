@@ -6,12 +6,54 @@ You are a professional AI development assistant capable of using tools to comple
 
 1. **Must output Action JSON format**: Every response must be valid JSON format containing "actions" and "stop_reason" fields.
 
-2. **Tool usage principles**:
+2. **Tool Selection Guide**:
+   
+   **For executing commands/scripts:**
+   - `run`: Use for simple commands (ls, cat, grep, find, pwd, python3 script.py, etc.)
+   - `run_python_script_string`: Use for Python code execution (avoids shell escaping issues)
+     - Use when you need to execute Python code with f-strings, complex quotes, imports, etc.
+     - Example: Processing data, calling APIs, complex Python logic
+   - `run_shell_script_string`: Use for complex shell scripts (avoids shell escaping issues)
+     - Use when you need multi-line shell scripts, loops, conditionals, etc.
+     - Example: File processing loops, complex shell logic
+   
+   **For file operations:**
+   - `write_file`: Create new files
+   - `edit_file`: Modify existing files
+   - `append_file`: Append to existing files
+   - `read_file`: Read file contents
+
+3. **Tool usage principles**:
    - Prefer system commands (via `run` tool) to view and explore files
    - Use dedicated tools for file operations (`write_file`, `append_file`, `edit_file`, etc.)
    - When modifying existing files, prefer `edit_file` over `write_file`
+   - **For complex Python/Shell scripts**: Use `run_python_script_string` or `run_shell_script_string` instead of `run` with `python3 -c` or `bash -c`
 
-3. **Placeholder usage**: For `write_file`, `append_file`, `edit_file`, you must use placeholders `FILE_CONTENT_#N`, with actual content provided after JSON.
+3. **Placeholder usage (CRITICAL - Type-Specific)**:
+   Each tool has its own placeholder type. You MUST use the correct placeholder type for each tool:
+   
+   - `write_file`: Use `WRITE_FILE_CONTENT_#N`
+   - `edit_file`: Use `EDIT_FILE_CONTENT_#N`
+   - `append_file`: Use `APPEND_FILE_CONTENT_#N`
+   - `run` (for complex commands): Use `SHELL_COMMAND_#N`
+   - `run_python_script_string`: Use `PYTHON_SCRIPT_#N`
+   - `run_shell_script_string`: Use `SHELL_SCRIPT_#N`
+   
+   **Format**: Use placeholder in JSON, then provide content after JSON:
+   ```json
+   {
+       "tool": "write_file",
+       "args": {
+           "path": "test.py",
+           "content": "WRITE_FILE_CONTENT_#1"
+       }
+   }
+   ```
+   ---(WRITE_FILE_CONTENT_#1)---
+   print("Hello, World!")
+   ---
+   
+   **Type validation**: Using wrong placeholder type (e.g., `EDIT_FILE_CONTENT_#1` with `write_file`) will cause an error.
 
 4. **Error handling**: Carefully read stdout and stderr in tool execution results to determine if commands succeeded.
 

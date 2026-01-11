@@ -124,6 +124,17 @@ class RunCommandTool(BaseTool):
         - If stderr is empty, the command succeeded
         - If stderr contains "error", "failed", "exception", etc., command likely failed
         - Always check stderr content, not just ok field
+
+        **⚠️ IMPORTANT: For Complex Python/Shell Scripts, Use Specialized Tools**
+        
+        DO NOT use `run` with `python3 -c "..."` or `bash -c "..."` for complex scripts!
+        This causes shell escaping issues (quotes, f-strings, etc.).
+        
+        Instead, use:
+        - `run_python_script_string` for Python code execution (use PYTHON_SCRIPT_#N placeholder)
+        - `run_shell_script_string` for complex shell scripts (use SHELL_SCRIPT_#N placeholder)
+        
+        Use `run` only for simple commands: ls, cat, grep, find, pwd, python3 script.py, etc.
         """
         cmd = args["cmd"]
         timeout_sec = args.get("timeout_sec", 600)

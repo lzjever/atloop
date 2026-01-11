@@ -864,32 +864,42 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
 
 def _extract_file_contents(text: str) -> Dict[str, str]:
     """
-    Extract file contents from placeholders in the format:
-    ---(FILE_CONTENT_#1)---
+    Extract contents from type-specific placeholders in the format:
+    ---(WRITE_FILE_CONTENT_#1)---
     <file content>
-    ---(FILE_CONTENT_#2)---
-    <file content>
+    ---(EDIT_FILE_CONTENT_#1)---
+    <old>old_string</old><new>new_string</new>
+    ---(SHELL_COMMAND_#1)---
+    <command>
+    ---(PYTHON_SCRIPT_#1)---
+    <python code>
     ...
 
-    For edit_file, the content format is:
-    ---(FILE_CONTENT_#N)---
-    <old>old_string</old><new>new_string</new>
+    Also supports legacy format:
+    ---(FILE_CONTENT_#1)---
+    <content>
 
     Args:
-        text: Full text containing JSON and file contents
+        text: Full text containing JSON and placeholder contents
 
     Returns:
-        Dictionary mapping placeholder names (e.g., "FILE_CONTENT_#1") to content
+        Dictionary mapping placeholder names (e.g., "WRITE_FILE_CONTENT_#1") to content
     """
     file_contents = {}
 
-    # Pattern to match: ---(FILE_CONTENT_#N)---
-    pattern = r"---\(FILE_CONTENT_#(\d+)\)---"
+    # Pattern to match all placeholder types:
+    # ---(PLACEHOLDER_TYPE_#N)--- where PLACEHOLDER_TYPE can be:
+    # - WRITE_FILE_CONTENT, EDIT_FILE_CONTENT, APPEND_FILE_CONTENT
+    # - SHELL_COMMAND, PYTHON_SCRIPT, SHELL_SCRIPT
+    # - FILE_CONTENT (legacy)
+    pattern = r"---\((WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#(\d+)\)---"
 
     matches = list(re.finditer(pattern, text))
 
     for i, match in enumerate(matches):
-        placeholder = f"FILE_CONTENT_#{match.group(1)}"
+        placeholder_type = match.group(1)
+        placeholder_num = match.group(2)
+        placeholder = f"{placeholder_type}_#{placeholder_num}"
         start_pos = match.end()
 
         # Find the end position (next placeholder or end of text)
@@ -907,24 +917,25 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
 
 def _remove_file_content_sections(text: str) -> str:
     """
-    Remove file content sections from text, leaving only JSON.
+    Remove placeholder content sections from text, leaving only JSON.
 
     Removes sections like:
-    ---(FILE_CONTENT_#1)---
+    ---(WRITE_FILE_CONTENT_#1)---
     <content>
-    ---(FILE_CONTENT_#2)---
-    <content>
+    ---(SHELL_COMMAND_#1)---
+    <command>
+    ...
 
     Args:
-        text: Full text containing JSON and file contents
+        text: Full text containing JSON and placeholder contents
 
     Returns:
-        Text with file content sections removed
+        Text with placeholder content sections removed
     """
-    # Pattern to match: ---(FILE_CONTENT_#N)--- ... (until next placeholder or end)
-    pattern = r"---\(FILE_CONTENT_#\d+\)---.*?(?=---\(FILE_CONTENT_#\d+\)---|$)"
+    # Pattern to match all placeholder types: ---(TYPE_#N)--- ... (until next placeholder or end)
+    pattern = r"---\((WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)---.*?(?=---\((?:WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)---|$)"
 
-    # Remove all file content sections
+    # Remove all placeholder content sections
     result = re.sub(pattern, "", text, flags=re.DOTALL)
 
     return result.strip()

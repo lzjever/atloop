@@ -232,7 +232,11 @@ class ProgressTracker:
         if tool in ["write_file", "edit_file", "append_file", "multi_edit_file"]:
             return ActionCategory.MODIFY
         
-        if tool == "read_file":
+        if tool in ["read_file", "read_skill_file"]:
+            return ActionCategory.VIEW
+        
+        # skill tool is considered VIEW since it's loading information
+        if tool == "skill":
             return ActionCategory.VIEW
         
         if tool == "run":
@@ -291,7 +295,8 @@ class ProgressTracker:
             normalized["operation"] = tool
         else:
             # For other tools, use a subset of args
-            for key in ["path", "pattern", "glob"]:
+            # Include common parameter names that identify the action
+            for key in ["path", "pattern", "glob", "name", "query", "content"]:
                 if key in args:
                     normalized[key] = args[key]
         
