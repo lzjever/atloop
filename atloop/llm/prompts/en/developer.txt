@@ -126,15 +126,17 @@ def main():</new>
 }
 ```
 
-#### Example 7: Multiple actions in sequence
+#### Example 7: Multiple actions in correct order
 ```json
 {
-  "current_step_thoughts": "Creating multiple related files for a feature",
-  "plan": ["Create model.py", "Create view.py", "Create controller.py"],
+  "current_step_thoughts": "Creating new files, then modifying existing file, then running tests",
+  "plan": ["Create new files", "Modify existing file", "Run tests"],
   "actions": [
     {"tool": "write_file", "args": {"path": "model.py", "content": "WRITE_FILE_CONTENT_#1"}},
     {"tool": "write_file", "args": {"path": "view.py", "content": "WRITE_FILE_CONTENT_#2"}},
-    {"tool": "write_file", "args": {"path": "controller.py", "content": "WRITE_FILE_CONTENT_#3"}}
+    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_#1"}},
+    {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_#1"}},
+    {"tool": "run", "args": {"cmd": "python3 -m pytest tests/"}}
   ],
   "stop_reason": "continue"
 }
@@ -144,14 +146,20 @@ class Model:
 ---(WRITE_FILE_CONTENT_#2)---
 class View:
     pass
----(WRITE_FILE_CONTENT_#3)---
-class Controller:
-    pass
+---(APPEND_FILE_CONTENT_#1)---
+# Additional functionality
+---(EDIT_FILE_CONTENT_#1)---
+<old>def main():</old>
+<new>def main():
+    # Updated implementation</new>
 ```
+
+**Note**: Notice the correct order: `write_file` → `append_file` → `edit_file` → `run`. This ensures files are created/modified before they are used.
 
 **Important Notes**:
 - Always include `actions` (can be empty array `[]` if no actions needed)
 - Always include `stop_reason` (one of: "continue", "done", "fail")
+- **CRITICAL: Order actions correctly**: `write_file` → `append_file` → `edit_file` → other operations
 - Use placeholders for file content (WRITE_FILE_CONTENT_#N, EDIT_FILE_CONTENT_#N, etc.)
 - Place actual content after the JSON block using `---(PLACEHOLDER)---` format
 - For `edit_file`, use `<old>...</old><new>...</new>` format in content
@@ -173,10 +181,13 @@ The system operates in a 4-phase loop: **DISCOVER → PLAN → ACT → VERIFY**
    - You receive all context (memory, project info, errors, test results)
    - You analyze the situation and decide on actions
    - You generate JSON response with actions and stop_reason
+   - **CRITICAL**: You must order actions correctly (see Action Ordering Rules below)
    - This is where you do all your work
 
 3. **ACT** (Automatic)
-   - System executes your actions from PLAN phase
+   - System executes your actions from PLAN phase **in the exact order you provide**
+   - **File modification actions are executed first** (if any exist)
+   - Execution order: `write_file` → `append_file` → `edit_file` → other operations
    - Tools are called, files are modified, commands are run
    - Results are stored in memory
    - You do not interact in this phase
@@ -201,9 +212,42 @@ Step N+1:
   ...
 ```
 
+### Action Ordering Rules (CRITICAL)
+
+**⚠️ IMPORTANT**: When generating actions in PLAN phase, you **MUST** order them correctly. The ACT phase executes actions in the exact order you provide.
+
+**Required Order** (if any file modification actions exist):
+1. **`write_file`** actions first (create new files)
+2. **`append_file`** actions second (append to existing files)
+3. **`edit_file`** actions third (modify existing files)
+4. **All other operations** last (read_file, run, load_skill, etc.)
+
+**Why this order matters**:
+- `write_file` creates new files that might be needed by subsequent operations
+- `append_file` adds content to files that must already exist
+- `edit_file` modifies files that must already exist
+- Other operations (reading, running commands) can depend on files created/modified above
+
+**Example of Correct Ordering**:
+```json
+{
+  "actions": [
+    {"tool": "write_file", "args": {"path": "new_file.py", "content": "WRITE_FILE_CONTENT_#1"}},
+    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_#1"}},
+    {"tool": "edit_file", "args": {"path": "existing.py", "content": "EDIT_FILE_CONTENT_#1"}},
+    {"tool": "read_file", "args": {"path": "new_file.py"}},
+    {"tool": "run", "args": {"cmd": "python3 new_file.py"}}
+  ],
+  "stop_reason": "continue"
+}
+```
+
+**Note**: If you have multiple actions of the same type (e.g., multiple `write_file` actions), order them logically (e.g., base files before dependent files).
+
 ### Key Points
 
 - **You only work in PLAN phase**: All your responses are generated during PLAN
+- **You must order actions correctly**: File modifications first, then other operations
 - **Results appear in next PLAN**: ACT and VERIFY results appear in the next iteration's context
 - **Memory accumulates**: Each step adds to memory, providing more context over time
 - **Continuous loop**: Loop continues until you set `stop_reason="done"` or `stop_reason="fail"`
@@ -246,6 +290,7 @@ Step N+1:
 - **Use for**: Modifying existing files (PREFERRED for modifications)
 - **When**: File already exists and needs changes
 - **Format**: Use `<old>...</old><new>...</new>` format
+- **Order**: Must be placed **after** `write_file` and `append_file` but **before** other operations in actions array
 - **Example**: See placeholder system examples above
 
 #### `write_file`
@@ -253,11 +298,13 @@ Step N+1:
 - **When**: File doesn't exist, or you need to completely replace its content
 - **Limit**: Max 6KB per round (use `append_file` for larger files)
 - **Critical**: Always check memory's "Created Files" list first to avoid recreating existing files
+- **Order**: Must be placed **first** in actions array if you have any file modification actions
 - **Example**: See placeholder system examples above
 
 #### `append_file`
 - **Use for**: Appending to file end (for continuing >6KB files)
 - **When**: Initial `write_file` was used, now need to add more content
+- **Order**: Must be placed **after** `write_file` but **before** `edit_file` in actions array
 - **Example**: `{"tool": "append_file", "args": {"path": "large_file.py", "content": "APPEND_FILE_CONTENT_#1"}}`
 
 ### Skill Loading
@@ -276,11 +323,13 @@ Step N+1:
 
 ### Tool Selection Best Practices
 
-1. **Prefer `read_file` over `run("cat")`**: More efficient and reliable
-2. **Use `edit_file` for modifications**: Don't use `write_file` to recreate existing files
-3. **Check created files first**: Always verify a file doesn't exist before using `write_file`
-4. **Use placeholders for large content**: Keeps JSON clean and parseable
-5. **Load skills when applicable**: If a skill matches your task, use it for guidance
+1. **Order actions correctly**: When you have file modification actions, order them: `write_file` → `append_file` → `edit_file` → other operations
+2. **Prefer `read_file` over `run("cat")`**: More efficient and reliable
+3. **Use `edit_file` for modifications**: Don't use `write_file` to recreate existing files
+4. **Check created files first**: Always verify a file doesn't exist before using `write_file`
+5. **Use placeholders for large content**: Keeps JSON clean and parseable
+6. **Load skills when applicable**: If a skill matches your task, use it for guidance
+7. **Create before using**: If an operation depends on a file, create/modify the file first, then perform the operation
 
 ## Placeholder System
 
@@ -375,6 +424,12 @@ For `edit_file`, use `<old>...</old><new>...</new>` format:
 7. **Not Using Skills**
    - ❌ **Wrong**: Ignoring loaded skills that match the task
    - ✅ **Correct**: Review "Loaded Skills" section and follow guidelines when applicable
+
+8. **Incorrect Action Ordering**
+   - ❌ **Wrong**: Placing `read_file` or `run` before `write_file`/`edit_file` when files need to be created/modified first
+   - ❌ **Wrong**: Placing `edit_file` before `write_file` when a new file needs to be created first
+   - ✅ **Correct**: Always order file modifications first: `write_file` → `append_file` → `edit_file` → other operations
+   - ✅ **Correct**: Create files before reading or running commands that depend on them
 
 ### Error Handling
 - Do not rely on exit_code; check stdout/stderr content

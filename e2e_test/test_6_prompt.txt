@@ -1,0 +1,1 @@
+创建一个README.md文件，内容包含项目名称、描述和安装说明。然后创建一个setup.py文件，包含基本的项目元数据。最后创建一个main.py文件，打印"Project initialized successfully"

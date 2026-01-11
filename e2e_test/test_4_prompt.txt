@@ -1,0 +1,1 @@
+创建一个config.json文件，内容为{"name": "test", "version": "1.0"}，然后创建一个read_config.py文件读取并打印这个JSON文件的内容

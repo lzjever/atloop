@@ -1,0 +1,1 @@
+创建一个base.py文件，内容为"class Base:\n    pass"。然后使用append_file在文件末尾追加"class Derived(Base):\n    pass"。最后使用edit_file将"class Base"替换为"class Base(object)"。验证最终文件内容正确。

@@ -1,0 +1,1 @@
+创建两个文件：main.py和utils.py。main.py导入utils.py中的函数add(a, b)，并调用它打印结果。utils.py包含add函数实现。然后运行main.py验证功能。

@@ -1,0 +1,1 @@
+创建一个包含类的Python文件：创建一个Animal类，有name和sound属性，以及一个make_sound方法。然后创建一个Dog类继承Animal，sound为"Woof"。最后创建一个test.py实例化Dog并调用make_sound方法

@@ -1,0 +1,1 @@
+创建一个完整的项目结构：创建src目录下的main.py和utils.py，main.py导入utils中的helper函数，utils.py包含helper函数。创建tests目录下的test_utils.py测试utils.py。创建requirements.txt文件。最后运行测试验证项目结构

@@ -1,0 +1,1 @@
+创建一个test_sort.py文件，内容为"print('test')"。然后使用edit_file将"test"替换为"hello"。最后使用append_file在文件末尾追加"\nprint('world')"。注意：故意不按正确顺序操作，系统应该自动排序执行。

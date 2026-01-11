@@ -183,12 +183,23 @@ class ActPhase(BasePhase):
         Returns:
             Tuple of (results, modified_files)
         """
+        # Sort actions to ensure correct execution order:
+        # write_file -> append_file -> edit_file -> other operations
+        # This is a defensive measure in case LLM doesn't follow ordering instructions
+        sorted_actions = self._sort_actions(actions)
+        if sorted_actions != actions:
+            logger.info(
+                f"[ActPhase] Actions were reordered for correct execution sequence. "
+                f"Original order: {[a.get('tool') for a in actions]}, "
+                f"Sorted order: {[a.get('tool') for a in sorted_actions]}"
+            )
+        
         results = []
         modified_files = []
 
         import time
         
-        for i, action in enumerate(actions):
+        for i, action in enumerate(sorted_actions):
             logger.debug(
                 f"[ActPhase] Executing action {i + 1}/{len(actions)}: {action.get('tool')}"
             )
@@ -225,6 +236,40 @@ class ActPhase(BasePhase):
         ]
 
         return results, modified_files
+
+    def _sort_actions(self, actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Sort actions to ensure correct execution order.
+        
+        Required order:
+        1. write_file (create new files)
+        2. append_file (append to existing files)
+        3. edit_file (modify existing files)
+        4. All other operations (read_file, run, load_skill, etc.)
+        
+        Args:
+            actions: List of actions to sort
+            
+        Returns:
+            Sorted list of actions
+        """
+        # Define priority order (lower number = higher priority, executed first)
+        tool_priority = {
+            "write_file": 1,
+            "append_file": 2,
+            "edit_file": 3,
+            # All other tools have priority 4 (executed last)
+        }
+        
+        def get_priority(action: Dict[str, Any]) -> int:
+            tool = action.get("tool", "")
+            return tool_priority.get(tool, 4)
+        
+        # Sort by priority, maintaining relative order within same priority
+        # Use stable sort to preserve order of actions with same tool type
+        sorted_actions = sorted(actions, key=get_priority)
+        
+        return sorted_actions
 
     def _cache_skill_metadata(
         self, state: Any, args: Dict[str, Any], result: Dict[str, Any], tool_name: str

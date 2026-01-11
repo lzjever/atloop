@@ -1,0 +1,1 @@
+创建一个名为greeting.py的Python文件，内容包含一个函数greet(name)，返回"Hello, {name}!"，然后运行这个文件测试函数是否正常工作

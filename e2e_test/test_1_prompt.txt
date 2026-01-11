@@ -1,0 +1,1 @@
+将"hello world"写入文件1.txt，然后将"hello"替换为"hi"，保存文件

@@ -1,0 +1,1 @@
+创建一个data.txt文件，内容为"Line 1\nLine 2\nLine 3"，然后创建一个process_data.py文件读取data.txt，将每行转换为大写，并写入output.txt文件
