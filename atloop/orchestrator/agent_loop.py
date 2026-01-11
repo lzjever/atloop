@@ -13,10 +13,19 @@ logger = logging.getLogger(__name__)
 class AgentLoop:
     """Agent loop - single responsibility: coordinate workflow execution."""
 
-    def __init__(self, task_spec: TaskSpec, config: AtloopConfig, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        task_spec: TaskSpec,
+        config: AtloopConfig,
+        session_id: Optional[str] = None,
+        verbose: bool = False,
+        breakpoint: bool = False,
+    ):
         """Initialize agent loop."""
         logger.debug(f"[AgentLoop] Initializing for task: {task_spec.task_id}")
-        self.coordinator = WorkflowCoordinator(task_spec, config, session_id=session_id)
+        self.coordinator = WorkflowCoordinator(
+            task_spec, config, session_id=session_id, verbose=verbose, breakpoint=breakpoint
+        )
         self.workflow = Workflow(self.coordinator)
         logger.debug("[AgentLoop] Initialization complete")
 

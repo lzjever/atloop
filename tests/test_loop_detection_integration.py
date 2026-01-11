@@ -153,6 +153,8 @@ class TestActPhaseLoopDetectionIntegration:
         })
         
         # Mix of view and modify actions
+        # Note: ActPhase sorts actions by priority (write_file=1, run=4)
+        # So write_file will be executed before run, regardless of input order
         coordinator.job_state.shared_data["actions"] = {
             "actions": [
                 {"tool": "run", "args": {"cmd": "cat file.txt"}},
@@ -164,10 +166,10 @@ class TestActPhaseLoopDetectionIntegration:
         context = PhaseContext(step=1, phase=Phase.ACT)
         act_phase.execute(context)
         
-        # Verify categorization
+        # Verify categorization - write_file executes first due to sorting
         tracker = coordinator.progress_tracker
-        assert tracker.action_history[0].category.value == "view"
-        assert tracker.action_history[1].category.value == "modify"
+        assert tracker.action_history[0].category.value == "modify"  # write_file (priority 1)
+        assert tracker.action_history[1].category.value == "view"    # run (priority 4)
 
 
 # =============================================================================

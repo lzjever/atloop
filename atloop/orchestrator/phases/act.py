@@ -537,11 +537,20 @@ class ActPhase(BasePhase):
         elif tool_name == "load_skill_resource":
             self._cache_skill_resource(state, args, result, tool_name)
 
-        # Track file changes
+        # Track file changes - populate modified_files_content for LLM context
         if tool_name == "write_file":
             file_path = args.get("path", "")
             file_content = args.get("content", "")
             FileChangeTracker.track_file_creation(
+                state, self.coordinator, file_path, file_content, modified_files
+            )
+        elif tool_name in ("edit_file", "append_file"):
+            file_path = args.get("path", "")
+            file_content = args.get("content", "")
+            # For edit_file and append_file, track as modification
+            # Note: The content here is the edit/append content, not the full file
+            # We store it so LLM knows what was changed
+            FileChangeTracker.track_file_modification(
                 state, self.coordinator, file_path, file_content, modified_files
             )
 

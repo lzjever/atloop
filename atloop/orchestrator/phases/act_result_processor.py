@@ -281,8 +281,143 @@ class FileChangeTracker:
             logger.debug(
                 f"[FileChangeTracker] Updated current_diff after file creation: {file_path}"
             )
+            
+        # CRITICAL: Store file content in modified_files_content for LLM context
+        # This allows LLM to see what was written in the next round
+        FileChangeTracker._update_modified_files_content(
+            state, file_path, file_content, is_new=True
+        )
 
-            coordinator.state_manager.save()
+        coordinator.state_manager.save()
+    
+    @staticmethod
+    def track_file_modification(
+        state: Any,
+        coordinator: Any,
+        file_path: str,
+        file_content: str,
+        modified_files: list,
+    ) -> None:
+        """
+        Track a modified file (edit_file, append_file) and update state.
+
+        Args:
+            state: Agent state
+            coordinator: Workflow coordinator
+            file_path: Path of the modified file
+            file_content: New content of the file
+            modified_files: List to append file_path to
+        """
+        if not file_path:
+            return
+
+        modified_files.append(file_path)
+        
+        # Store file content in modified_files_content for LLM context
+        FileChangeTracker._update_modified_files_content(
+            state, file_path, file_content, is_new=False
+        )
+
+        coordinator.state_manager.save()
+    
+    @staticmethod
+    def _update_modified_files_content(
+        state: Any, 
+        file_path: str, 
+        file_content: str,
+        is_new: bool = False
+    ) -> None:
+        """
+        Update modified_files_content with file content.
+        
+        Args:
+            state: Agent state
+            file_path: Path of the file
+            file_content: Content of the file
+            is_new: Whether this is a newly created file
+        """
+        import hashlib
+        
+        # Handle None content
+        if file_content is None:
+            file_content = ""
+        
+        content_hash = hashlib.md5(file_content.encode()).hexdigest()[:8]
+        
+        # Check if file already exists in modified_files_content
+        existing_idx = None
+        for idx, record in enumerate(state.memory.modified_files_content):
+            if record.get("path") == file_path:
+                existing_idx = idx
+                break
+        
+        file_record = {
+            "path": file_path,
+            "content": file_content,
+            "content_hash": content_hash,
+            "size": len(file_content),
+            "last_modified_step": state.step,
+            "is_new": is_new,
+            "importance_score": FileChangeTracker._calculate_file_importance(file_path, file_content),
+        }
+        
+        if existing_idx is not None:
+            # Update existing record
+            state.memory.modified_files_content[existing_idx] = file_record
+            logger.debug(f"[FileChangeTracker] Updated modified_files_content: {file_path}")
+        else:
+            # Add new record
+            state.memory.modified_files_content.append(file_record)
+            logger.info(
+                f"[FileChangeTracker] Added to modified_files_content: {file_path} "
+                f"({len(file_content)} chars, total: {len(state.memory.modified_files_content)})"
+            )
+        
+        # Keep only the most recent/important files (max 10)
+        if len(state.memory.modified_files_content) > 10:
+            # Sort by importance and step, keep top 10
+            state.memory.modified_files_content.sort(
+                key=lambda x: (x.get("importance_score", 0), x.get("last_modified_step", 0)),
+                reverse=True
+            )
+            state.memory.modified_files_content = state.memory.modified_files_content[:10]
+    
+    @staticmethod
+    def _calculate_file_importance(file_path: str, content: str) -> float:
+        """
+        Calculate importance score for a file.
+        
+        Args:
+            file_path: Path of the file
+            content: Content of the file
+            
+        Returns:
+            Importance score (0.0 to 1.0)
+        """
+        score = 0.5  # Base score
+        
+        # Important file extensions
+        important_extensions = [".py", ".js", ".ts", ".java", ".go", ".rs", ".md", ".docx", ".doc"]
+        for ext in important_extensions:
+            if file_path.endswith(ext):
+                score += 0.2
+                break
+        
+        # Important file names
+        important_names = ["main", "index", "app", "config", "readme", "setup"]
+        file_name_lower = file_path.lower()
+        for name in important_names:
+            if name in file_name_lower:
+                score += 0.1
+                break
+        
+        # Larger files are potentially more important
+        if len(content) > 1000:
+            score += 0.1
+        if len(content) > 5000:
+            score += 0.1
+        
+        return min(score, 1.0)
 
     @staticmethod
     def _create_file_creation_diff(file_path: str, file_content: str) -> str:

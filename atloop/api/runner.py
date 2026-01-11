@@ -121,7 +121,11 @@ class TaskRunner:
 
             # Create agent loop (creates coordinator and sandbox adapter)
             logger.info("[TaskRunner] Creating agent loop")
-            loop = AgentLoop(task_spec, config, session_id=session_id)
+            verbose = task_config.get("verbose", False)
+            breakpoint_mode = task_config.get("breakpoint", False)
+            loop = AgentLoop(
+                task_spec, config, session_id=session_id, verbose=verbose, breakpoint=breakpoint_mode
+            )
 
             # Upload workspace files to sandbox before execution
             # This ensures files are available for indexing and execution

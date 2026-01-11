@@ -556,23 +556,6 @@ The memory section contains comprehensive context about your task. Use it strate
 
 ## Task Context
 
-### Goal
-{GOAL}
-
-**Your primary objective**: Complete this goal efficiently and correctly.
-
-### Constraints
-{CONSTRAINTS}
-
-**Follow these constraints**: They are requirements that must be satisfied.
-
-### Budget
-- Max LLM calls: {MAX_LLM_CALLS}
-- Max tool calls: {MAX_TOOL_CALLS}
-- Max execution time: {MAX_WALL_TIME_SEC} seconds
-
-**Note**: Budget is tracked automatically. If limits are approached, prioritize completing the goal efficiently. You can check your progress in the memory section.
-
 ### Memory and Context
 {STATE_SUMMARY}
 
@@ -614,3 +597,19 @@ Review this section carefully before making decisions. Use the Memory Usage Guid
 
 ### Test Results
 {TEST_RESULTS}
+
+
+
+## Goal
+{GOAL}
+
+**Your primary objective**: Complete this goal efficiently and correctly.
+
+### Budget
+- Max LLM calls: {MAX_LLM_CALLS}
+- Max tool calls: {MAX_TOOL_CALLS}
+- Max execution time: {MAX_WALL_TIME_SEC} seconds
+
+**Note**: Budget is tracked automatically. If limits are approached, prioritize completing the goal efficiently. You can check your progress in the memory section.
+
+Proceed this round!

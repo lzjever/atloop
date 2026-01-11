@@ -43,6 +43,10 @@ def cmd_execute(args: Any) -> int:
         }
         if args.session:
             task_config["session_id"] = args.session
+        if args.verbose:
+            task_config["verbose"] = True
+        if args.breakpoint:
+            task_config["breakpoint"] = True
 
         logger.debug(f"[CLI] Task config: {task_config}")
 

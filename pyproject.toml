@@ -29,6 +29,7 @@ dependencies = [
     "noxrunner>=2.0.0",  # Sandbox execution
     "rich>=13.0.0",  # Console output
     "json-repair>=0.30.0",  # JSON repair
+    "prettytable>=3.0.0",  # Table formatting for verbose mode
 ]
 
 [project.optional-dependencies]

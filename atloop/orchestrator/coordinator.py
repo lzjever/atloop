@@ -28,12 +28,21 @@ logger = logging.getLogger(__name__)
 class WorkflowCoordinator:
     """Workflow coordinator - single entry point for all components."""
 
-    def __init__(self, task_spec: TaskSpec, config: AtloopConfig, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        task_spec: TaskSpec,
+        config: AtloopConfig,
+        session_id: Optional[str] = None,
+        verbose: bool = False,
+        breakpoint: bool = False,
+    ):
         """Initialize coordinator."""
         logger.debug(f"[Coordinator] Initializing for task: {task_spec.task_id}")
 
         self.task_spec = task_spec
         self.config = config
+        self.verbose = verbose
+        self.breakpoint = breakpoint
 
         # Use provided session_id or fallback to task_id
         effective_session_id = session_id if session_id else task_spec.task_id
@@ -106,6 +115,29 @@ class WorkflowCoordinator:
             )
 
         logger.info(f"[Coordinator] Initialization complete for task: {task_spec.task_id}")
+        
+        # Initialize long-term memory with task context
+        self._initialize_long_term_memory()
+
+    def _initialize_long_term_memory(self) -> None:
+        """Initialize long-term memory with task context at startup."""
+        from atloop.memory.memory_manager import MemoryManager
+        
+        state = self.state_manager.agent_state
+        
+        # Only initialize if not already set (to support resume)
+        if not state.memory.task_summary:
+            # Create task summary from goal and constraints
+            summary_parts = [f"**Goal**: {self.task_spec.goal}"]
+            if self.task_spec.constraints:
+                summary_parts.append(f"**Constraints**: {self.task_spec.constraints}")
+            task_summary = "\n".join(summary_parts)
+            
+            MemoryManager.update_task_summary(state, task_summary)
+            logger.info(f"[Coordinator] Initialized task_summary in long-term memory")
+        
+        # Save state after initialization
+        self.state_manager.save()
 
     def initialize(self) -> bool:
         """Initialize workspace - single method."""

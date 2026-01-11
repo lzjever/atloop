@@ -437,6 +437,8 @@ class TestFileChangeTracker:
         state = MagicMock(spec=AgentState)
         state.memory = MagicMock(spec=Memory)
         state.memory.created_files = []
+        state.memory.modified_files_content = []  # For file content tracking
+        state.step = 1  # Current step number
         state.artifacts = MagicMock(spec=Artifacts)
         state.artifacts.current_diff = ""
         return state

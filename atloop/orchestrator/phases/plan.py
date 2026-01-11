@@ -1,6 +1,7 @@
 """PLAN phase implementation."""
 
 import logging
+from typing import Any, Optional
 
 from atloop.memory.summarizer import MemorySummarizer
 from atloop.orchestrator.loop_intervention_executor import (
@@ -189,6 +190,11 @@ class PlanPhase(BasePhase):
                 pass
 
             logger.debug("[PlanPhase] Calling LLM")
+            
+            # Save LLM input if verbose mode
+            if self.coordinator.verbose:
+                self._save_llm_io(state.step, user_message, None, "input")
+            
             action_json, error, usage, full_output, file_contents = (
                 self.coordinator.llm_client.plan_and_act(
                     user_message,
@@ -198,6 +204,12 @@ class PlanPhase(BasePhase):
             logger.debug(
                 f"[PlanPhase] LLM call completed: action_json={action_json is not None}, error={error}"
             )
+            
+            # Save LLM output if verbose mode
+            if self.coordinator.verbose:
+                self._save_llm_io(state.step, None, full_output, "output")
+            
+            # Note: Breakpoint is handled in Workflow after verbose output
 
             # Update budget
             state.budget_used.llm_calls += 1
@@ -438,6 +450,16 @@ class PlanPhase(BasePhase):
                 decision_record["actions"] = [
                     a.to_dict() if hasattr(a, "to_dict") else a for a in actions
                 ]
+                
+                # CRITICAL: Update state.memory.plan with LLM's plan for Long-term Memory
+                # This ensures the plan is visible in MemorySummarizer output
+                if action_json.plan:
+                    state.memory.plan = action_json.plan
+                    logger.info(
+                        f"[PlanPhase] Updated long-term memory plan: "
+                        f"{len(action_json.plan) if isinstance(action_json.plan, list) else 'string'} items"
+                    )
+                    
             if full_output:
                 decision_record["llm_output"] = full_output
             state.memory.decisions.append(decision_record)
@@ -462,6 +484,10 @@ class PlanPhase(BasePhase):
                     f"[PlanPhase] Stored LLM response to memory.llm_responses "
                     f"(total responses={len(state.memory.llm_responses)})"
                 )
+                
+            # Track important decisions for Long-term Memory
+            # Important decisions include: task completion, task failure, significant actions
+            self._track_important_decision(state, action_json, stop_reason, actions)
 
             # Handle stop_reason using unified handler
             next_phase, pending_stop_reason, phase_result = StopReasonHandler.process_stop_reason(
@@ -502,4 +528,106 @@ class PlanPhase(BasePhase):
             keywords.extend(self.coordinator.indexer.extract_keywords(state.last_error.summary))
 
         return keywords[:10]
+
+    def _track_important_decision(
+        self, state: Any, action_json: Any, stop_reason: str, actions: list
+    ) -> None:
+        """
+        Track important decisions for Long-term Memory.
+        
+        Important decisions are tracked when:
+        - Task is marked as done or failed
+        - First plan is created (significant step)
+        - Multiple file operations are planned (significant action)
+        
+        Args:
+            state: Agent state
+            action_json: Parsed action JSON from LLM
+            stop_reason: Current stop reason
+            actions: List of actions
+        """
+        from atloop.memory.memory_manager import MemoryManager
+        
+        # Track task completion or failure (always important)
+        if stop_reason == "done":
+            result_msg = ""
+            if action_json and action_json.result_message:
+                result_msg = f": {action_json.result_message}"
+            MemoryManager.add_important_decision(
+                state,
+                f"Task completed{result_msg}",
+                state.step,
+                {"stop_reason": stop_reason, "actions_count": len(actions)}
+            )
+            logger.info("[PlanPhase] Tracked important decision: task completed")
+            
+        elif stop_reason == "fail":
+            result_msg = ""
+            if action_json and action_json.result_message:
+                result_msg = f": {action_json.result_message}"
+            MemoryManager.add_important_decision(
+                state,
+                f"Task failed{result_msg}",
+                state.step,
+                {"stop_reason": stop_reason, "actions_count": len(actions)}
+            )
+            logger.info("[PlanPhase] Tracked important decision: task failed")
+            
+        # Track first plan creation (if plan has multiple steps)
+        elif action_json and action_json.plan and len(state.memory.important_decisions) == 0:
+            if isinstance(action_json.plan, list) and len(action_json.plan) >= 3:
+                # Create a more readable plan preview with full step text
+                plan_steps = action_json.plan[:5]  # Show up to 5 steps
+                plan_preview = "; ".join(str(s)[:50] for s in plan_steps)
+                if len(plan_preview) > 200:
+                    plan_preview = plan_preview[:200] + "..."
+                if len(action_json.plan) > 5:
+                    plan_preview += f" (+{len(action_json.plan) - 5} more steps)"
+                MemoryManager.add_important_decision(
+                    state,
+                    f"Initial plan ({len(action_json.plan)} steps): {plan_preview}",
+                    state.step,
+                    {"plan_steps": len(action_json.plan)}
+                )
+                logger.info("[PlanPhase] Tracked important decision: initial plan created")
+                
+        # Track significant file operations (5+ actions)
+        elif len(actions) >= 5:
+            tools_used = [a.get("tool", "?") for a in actions[:5]]
+            tools_str = ", ".join(tools_used)
+            MemoryManager.add_important_decision(
+                state,
+                f"Large batch of actions ({len(actions)} total): {tools_str}...",
+                state.step,
+                {"actions_count": len(actions)}
+            )
+            logger.info("[PlanPhase] Tracked important decision: large batch of actions")
+
+    def _save_llm_io(self, step: int, input_text: Optional[str], output_text: Optional[str], io_type: str) -> None:
+        """
+        Save LLM input or output to file for debugging.
+        
+        Args:
+            step: Step number
+            input_text: LLM input text (None if saving output)
+            output_text: LLM output text (None if saving input)
+            io_type: "input" or "output"
+        """
+        try:
+            # Get run directory from event logger
+            log_dir = self.coordinator.event_logger.log_dir
+            
+            # Create debug subdirectory
+            debug_dir = log_dir / "debug"
+            debug_dir.mkdir(exist_ok=True)
+            
+            # Save to file
+            filename = debug_dir / f"step_{step:03d}_{io_type}.txt"
+            content = input_text if input_text else output_text
+            if content:
+                filename.write_text(content, encoding="utf-8")
+                logger.debug(f"[PlanPhase] Saved LLM {io_type} to {filename}")
+        except Exception as e:
+            logger.warning(f"[PlanPhase] Failed to save LLM {io_type}: {e}")
+
 

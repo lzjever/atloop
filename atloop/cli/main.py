@@ -43,6 +43,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     execute_parser.add_argument("--local-test", action="store_true", help="Use local test mode")
     execute_parser.add_argument("--session", help="Session ID")
+    execute_parser.add_argument(
+        "--verbose", action="store_true", help="Show detailed memory statistics and save LLM I/O to files"
+    )
+    execute_parser.add_argument(
+        "--breakpoint", action="store_true", help="Pause after each LLM response, wait for user input to continue"
+    )
 
     # config
     config_parser = subparsers.add_parser("config", help="Show configuration")

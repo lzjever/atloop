@@ -106,6 +106,16 @@ class Workflow:
                     logger.error(f"[Workflow] Workflow failed with fatal error: {result.error}")
                     return self._failure(result.error or "Workflow failed")
 
+            # Print memory statistics if verbose mode is enabled
+            # Print before breakpoint so user can see stats before pausing
+            if self.coordinator.verbose:
+                self._print_memory_stats(state)
+            
+            # Breakpoint: wait for user input if breakpoint mode is enabled
+            # This happens after verbose output, so user can review stats before continuing
+            if self.coordinator.breakpoint and current_phase == Phase.PLAN:
+                self._wait_for_breakpoint(state.step)
+
             # Transition
             if result.next_phase:
                 logger.debug(f"[Workflow] Transitioning to phase: {result.next_phase}")
@@ -359,3 +369,35 @@ class Workflow:
                 "wall_time_sec": state.budget_used.wall_time_sec,
             },
         }
+
+    def _print_memory_stats(self, state: Any) -> None:
+        """Print memory statistics panel if verbose mode is enabled."""
+        from atloop.orchestrator.memory_stats import format_memory_stats
+
+        stats_panel = format_memory_stats(state)
+        print(stats_panel)
+
+    def _wait_for_breakpoint(self, step: int) -> None:
+        """
+        Wait for user input at breakpoint.
+        
+        Args:
+            step: Current step number
+        """
+        try:
+            # Get job ID (task_id) from coordinator
+            task_id = self.coordinator.task_spec.task_id
+            job_id = task_id  # task_id is the directory name in runs/
+            
+            print(f"\n{'='*70}")
+            print(f"⏸️  BREAKPOINT: Step {step} - LLM response received")
+            print(f"{'='*70}")
+            print(f"📁 Job ID: {job_id}")
+            print(f"📂 Debug files: runs/{job_id}/debug/")
+            print(f"{'='*70}")
+            print("Press Enter to continue...")
+            input()
+            print("Continuing...\n")
+        except (EOFError, KeyboardInterrupt):
+            # Handle cases where stdin is not available (e.g., in tests)
+            logger.warning("[Workflow] Breakpoint skipped (stdin not available)")
