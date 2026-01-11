@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
 from atloop.tools.base import BaseTool, ToolResult
+from atloop.tools.output_semantic_type import OutputSemanticType
 
 
 class ReadFileTool(BaseTool):
@@ -45,6 +46,11 @@ class ReadFileTool(BaseTool):
     def description(self) -> str:
         """Tool description."""
         return "读取文件内容（增强的文件读取工具，支持类型检测和大文件分块）"
+
+    @property
+    def output_semantic_type(self) -> OutputSemanticType:
+        """Return semantic type: FILE_CONTENT."""
+        return OutputSemanticType.FILE_CONTENT
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

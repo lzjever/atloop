@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
 from atloop.tools.base import BaseTool, ToolResult
+from atloop.tools.output_semantic_type import OutputSemanticType
 
 
 class RunCommandTool(BaseTool):
@@ -44,6 +45,15 @@ class RunCommandTool(BaseTool):
     def description(self) -> str:
         """Tool description."""
         return "执行shell命令（优先使用此工具执行系统命令）"
+
+    @property
+    def output_semantic_type(self) -> OutputSemanticType:
+        """Return semantic type: EXECUTION_RESULT.
+        
+        Note: File view commands are handled specially in OutputLimitStrategy
+        based on command content, not semantic type.
+        """
+        return OutputSemanticType.EXECUTION_RESULT
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

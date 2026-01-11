@@ -19,7 +19,7 @@ class ToolRegistry:
 
         Args:
             sandbox: Sandbox adapter instance (required by run, read_file, write_file, etc.)
-            skill_loader: Optional skill loader for read_skill_file and skill tools.
+            skill_loader: Optional skill loader for read_skill_file, load_skill, and load_skill_resource tools.
                 Passed automatically to tools that declare skill_loader in __init__.
         """
         self.sandbox = sandbox
@@ -80,6 +80,20 @@ class ToolRegistry:
     def get(self, name: str) -> Optional[BaseTool]:
         """Get a tool by name."""
         return self.tools.get(name)
+
+    def get_tool(self, name: str) -> Optional[BaseTool]:
+        """Get a tool by name (alias for get method).
+        
+        This method provides a consistent interface name used in the
+        output limit strategy system.
+        
+        Args:
+            name: Tool name
+        
+        Returns:
+            Tool instance or None if not found
+        """
+        return self.get(name)
 
     def list_tools(self) -> List[str]:
         """List all registered tool names."""

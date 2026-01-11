@@ -57,6 +57,7 @@ class PlanPhase(BasePhase):
                 state,
                 max_length=memory_summary_max_length,
                 task_goal=self.coordinator.task_spec.goal,
+                tool_registry=self.coordinator.tool_runtime.registry,
             )
             logger.debug(
                 f"[PlanPhase] Memory summary length: {len(memory_summary)} chars "

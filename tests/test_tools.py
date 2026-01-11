@@ -398,13 +398,14 @@ class TestToolDiscovery:
             assert tool_name in tools, f"Expected tool {tool_name} not found"
 
     def test_auto_discovery_skill_tool_registered(self):
-        """Test that skill tool is discovered and registered."""
+        """Test that load_skill and load_skill_resource tools are discovered and registered."""
         mock_sandbox = MagicMock()
         mock_skill_loader = MagicMock()
         registry = ToolRegistry(sandbox=mock_sandbox, skill_loader=mock_skill_loader)
 
         tools = registry.list_tools()
-        assert "skill" in tools
+        assert "load_skill" in tools
+        assert "load_skill_resource" in tools
 
     def test_auto_discovery_read_skill_file_registered(self):
         """Test that read_skill_file tool is discovered."""

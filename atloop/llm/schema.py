@@ -425,7 +425,6 @@ def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
             if "name" not in action["args"]:
                 return (
                     False,
-                    f"action[{i}] (tool='skill') missing required arg: 'name'. The 'skill' tool requires a 'name' string argument.",
                 )
 
     # Enforce single file creation per response

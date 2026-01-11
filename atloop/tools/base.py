@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from atloop.tools.output_semantic_type import OutputSemanticType
+
 
 @dataclass
 class ToolResult:
@@ -21,7 +23,11 @@ class ToolResult:
 
 
 class BaseTool(ABC):
-    """Base class for all tools."""
+    """Base class for all tools.
+    
+    Tools can declare their output semantic types to enable automatic
+    application of appropriate output size limits.
+    """
 
     @property
     @abstractmethod
@@ -34,6 +40,48 @@ class BaseTool(ABC):
     def description(self) -> str:
         """Tool description."""
         pass
+
+    @property
+    def output_semantic_type(self) -> OutputSemanticType:
+        """Return the semantic type of tool output.
+        
+        Default: STATUS_MESSAGE (suitable for most tools that return
+        simple success/failure messages).
+        
+        Subclasses can override this property to declare their output
+        semantic type.
+        
+        Returns:
+            OutputSemanticType enum value
+        """
+        return OutputSemanticType.STATUS_MESSAGE
+
+    @property
+    def stdout_semantic_type(self) -> OutputSemanticType:
+        """Return the semantic type of stdout output.
+        
+        Default: Uses output_semantic_type.
+        
+        Subclasses can override this if stdout has a different semantic
+        type than the general output.
+        
+        Returns:
+            OutputSemanticType enum value
+        """
+        return self.output_semantic_type
+
+    @property
+    def stderr_semantic_type(self) -> OutputSemanticType:
+        """Return the semantic type of stderr output.
+        
+        Default: ERROR_MESSAGE (stderr is typically error information).
+        
+        Subclasses can override this if stderr has a different semantic type.
+        
+        Returns:
+            OutputSemanticType enum value
+        """
+        return OutputSemanticType.ERROR_MESSAGE
 
     @abstractmethod
     def execute(self, args: Dict[str, Any]) -> ToolResult:

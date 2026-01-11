@@ -291,8 +291,8 @@ class ProgressTracker:
         if tool in ["read_file", "read_skill_file"]:
             return ActionCategory.VIEW
         
-        # skill tool is considered VIEW since it's loading information
-        if tool == "skill":
+        # load_skill and load_skill_resource tools are considered VIEW since they're loading information
+        if tool in ["load_skill", "load_skill_resource"]:
             return ActionCategory.VIEW
         
         if tool == "run":

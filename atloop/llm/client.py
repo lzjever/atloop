@@ -67,7 +67,7 @@ class LLMClient:
         skills_info = self._get_skills_info()
         self.system_prompt = system_template.replace("{TOOL_SCHEMA}", tool_schema)
         if skills_info:
-            self.system_prompt += f"\n\n⚠️ Available Skills:\n{skills_info}\n\n**Important**: If a task matches a Skill description, you must immediately use the 'skill' tool to load the Skill's detailed content. Skills provide professional domain knowledge and best practice guidance."
+            self.system_prompt += f"\n\nAvailable Skills:\n{skills_info}\n\nIf a task matches a skill description, use `load_skill` to get the skill's main content and resource list, then use `load_skill_resource` to load specific resources when needed."
             logger.info(
                 f"[LLMClient] Added {len(self.skill_loader.skills) if self.skill_loader else 0} skills to system prompt"
             )
@@ -128,22 +128,6 @@ class LLMClient:
             return ""
         return self.skill_loader.get_descriptions()
 
-    def get_skill_content(self, skill_name: str) -> Optional[str]:
-        """
-        Get full skill content (Layer 2: full SKILL.md body).
-
-        This is called when the 'skill' tool is used. The content is returned
-        as a tool result (user message), preserving cache.
-
-        Args:
-            skill_name: Skill name
-
-        Returns:
-            Full skill content, or None if skill not found
-        """
-        if not self.skill_loader:
-            return None
-        return self.skill_loader.get_skill_content(skill_name)
 
     def load_prompt_template(self, template_name: str) -> str:
         """

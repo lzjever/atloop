@@ -226,6 +226,136 @@ class ActPhase(BasePhase):
 
         return results, modified_files
 
+    def _cache_skill_metadata(
+        self, state: Any, args: Dict[str, Any], result: Dict[str, Any], tool_name: str
+    ) -> None:
+        """
+        Cache skill metadata in memory.skill_cache.
+        
+        Args:
+            state: Agent state
+            args: Tool arguments
+            result: Tool execution result
+            tool_name: Tool name
+        """
+        if not result.get("ok"):
+            return
+        
+        skill_name = args.get("name")
+        if not skill_name:
+            return
+        
+        meta = result.get("meta", {})
+        resources = meta.get("resources", {})
+        
+        # Initialize skill cache entry if not exists
+        if skill_name not in state.memory.skill_cache:
+            state.memory.skill_cache[skill_name] = {
+                "metadata": {},
+                "resources": {
+                    "scripts": {},
+                    "references": {},
+                    "assets": {},
+                },
+            }
+        
+        # Extract metadata from stdout (which contains the formatted skill content)
+        # The stdout contains: # Skill: name, Description, Main Content (body), Available Resources
+        stdout = result.get("stdout", "")
+        
+        # Parse description and body from stdout
+        # Format: # Skill: name\n**Source**: ...\n\n## Description\n...\n\n## Main Content\n...\n\n
+        description = ""
+        body = ""
+        
+        if "## Description" in stdout:
+            desc_start = stdout.find("## Description") + len("## Description")
+            if "## Main Content" in stdout:
+                desc_end = stdout.find("## Main Content")
+                description = stdout[desc_start:desc_end].strip()
+            else:
+                description = stdout[desc_start:].strip()
+        
+        if "## Main Content" in stdout:
+            body_start = stdout.find("## Main Content") + len("## Main Content")
+            if "## Available Resources" in stdout:
+                body_end = stdout.find("## Available Resources")
+                body = stdout[body_start:body_end].strip()
+            else:
+                body = stdout[body_start:].strip()
+        
+        # Update metadata
+        state.memory.skill_cache[skill_name]["metadata"] = {
+            "name": skill_name,
+            "description": description or meta.get("description", ""),
+            "body": body or stdout,  # Fallback to full stdout if parsing fails
+            "loaded_at_step": state.step,
+        }
+        
+        # Store resource list for reference
+        state.memory.skill_cache[skill_name]["_resource_list"] = resources
+        
+        logger.debug(
+            f"[ActPhase] Cached skill metadata: {skill_name} (Step {state.step})"
+        )
+
+    def _cache_skill_resource(
+        self, state: Any, args: Dict[str, Any], result: Dict[str, Any], tool_name: str
+    ) -> None:
+        """
+        Cache skill resource content in memory.skill_cache.
+        
+        Args:
+            state: Agent state
+            args: Tool arguments
+            result: Tool execution result
+            tool_name: Tool name
+        """
+        if not result.get("ok"):
+            return
+        
+        skill_name = args.get("skill_name")
+        resource_type = args.get("resource_type")
+        resource_name = args.get("resource_name")
+        
+        if not all([skill_name, resource_type, resource_name]):
+            return
+        
+        # Get content from meta (stored by tool)
+        meta = result.get("meta", {})
+        content = meta.get("_content")
+        
+        if not content:
+            logger.warning(
+                f"[ActPhase] No content found in result meta for {skill_name}/{resource_type}/{resource_name}"
+            )
+            return
+        
+        # Initialize skill cache entry if not exists
+        if skill_name not in state.memory.skill_cache:
+            state.memory.skill_cache[skill_name] = {
+                "metadata": {},
+                "resources": {
+                    "scripts": {},
+                    "references": {},
+                    "assets": {},
+                },
+            }
+        
+        # Cache resource content
+        if resource_type not in state.memory.skill_cache[skill_name]["resources"]:
+            state.memory.skill_cache[skill_name]["resources"][resource_type] = {}
+        
+        state.memory.skill_cache[skill_name]["resources"][resource_type][resource_name] = {
+            "content": content,
+            "loaded_at_step": state.step,
+        }
+        
+        logger.debug(
+            f"[ActPhase] Cached skill resource: {skill_name}/{resource_type}/{resource_name} "
+            f"({len(content)} chars, Step {state.step})"
+        )
+
     def _validate_action(self, action: Dict[str, Any], action_index: int) -> None:
         """
         Validate action before execution.
@@ -314,17 +444,56 @@ class ActPhase(BasePhase):
             state: Agent state
             modified_files: List to append modified files to
         """
-        tool = action.get("tool")
+        tool_name = action.get("tool")
         args = action.get("args", {})
+
+        # Get tool instance from registry
+        tool = self.coordinator.tool_runtime.registry.get(tool_name)
+        if not tool:
+            # Fallback: use tool name if tool instance not found
+            # This should not happen in normal operation, but provides defensive handling
+            logger.warning(
+                f"[ActPhase] Tool instance not found for '{tool_name}', creating fallback tool"
+            )
+            # Create a minimal tool-like object that implements BaseTool interface
+            from atloop.tools.base import BaseTool
+            from atloop.tools.output_semantic_type import OutputSemanticType
+
+            class FallbackTool(BaseTool):
+                def __init__(self, name: str):
+                    self._name = name
+
+                @property
+                def name(self) -> str:
+                    return self._name
+
+                @property
+                def description(self) -> str:
+                    return f"Fallback tool for {self._name}"
+
+                def execute(self, args):
+                    raise NotImplementedError("Fallback tool cannot execute")
+
+                @property
+                def output_semantic_type(self):
+                    return OutputSemanticType.STATUS_MESSAGE
+
+            tool = FallbackTool(tool_name)
 
         # Format result summary for LLM
         result_summary = ToolResultFormatter.format_result_summary(tool, args, result)
 
         # Update error state if there's an error
-        ErrorStateManager.update_error_state(state, tool, args, result, result_summary)
+        ErrorStateManager.update_error_state(state, tool_name, args, result, result_summary)
+
+        # Handle skill caching
+        if tool_name == "load_skill":
+            self._cache_skill_metadata(state, args, result, tool_name)
+        elif tool_name == "load_skill_resource":
+            self._cache_skill_resource(state, args, result, tool_name)
 
         # Track file changes
-        if tool == "write_file":
+        if tool_name == "write_file":
             file_path = args.get("path", "")
             file_content = args.get("content", "")
             FileChangeTracker.track_file_creation(

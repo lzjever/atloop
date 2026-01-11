@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from atloop.tools.base import BaseTool, ToolResult
+from atloop.tools.output_semantic_type import OutputSemanticType
 
 
 class ReadSkillFileTool(BaseTool):
@@ -53,6 +54,11 @@ class ReadSkillFileTool(BaseTool):
     def description(self) -> str:
         """Tool description."""
         return "从技能目录读取文件（⚠️ 技能文件存储在本地机器，不在远程沙盒中。当 skill 中提到其他文件时，必须使用此工具读取，不能使用 read_file 或 run 命令在沙盒中查找）"
+
+    @property
+    def output_semantic_type(self) -> OutputSemanticType:
+        """Return semantic type: FILE_CONTENT."""
+        return OutputSemanticType.FILE_CONTENT
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

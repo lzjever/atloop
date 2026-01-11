@@ -1,6 +1,6 @@
 """Memory summarizer for condensing memory into prompts."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from atloop.config.limits import (
     MEMORY_SUMMARY_DEFAULT_LIMIT,
@@ -12,6 +12,9 @@ from atloop.config.limits import (
     MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
 )
 from atloop.memory.state import AgentState
+from atloop.tools.base import BaseTool
+from atloop.tools.output_limit_strategy import OutputLimitStrategy
+from atloop.tools.output_semantic_type import OutputSemanticType
 
 
 class MemorySummarizer:
@@ -83,6 +86,7 @@ class MemorySummarizer:
         state: AgentState,
         max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT,
         task_goal: Optional[str] = None,
+        tool_registry: Optional[Any] = None,
     ) -> str:
         """
         Summarize agent state memory.
@@ -112,11 +116,75 @@ class MemorySummarizer:
         ):
             return "Initial state: Task just started, no operations executed yet."
 
+
         # Long-term memory: Task summary (shown first, persists across steps)
         if state.memory.task_summary:
             parts.append("## 📋 Task Overview (Long-term Memory)")
             parts.append(state.memory.task_summary)
             parts.append("")
+
+        # Show loaded skills from skill cache
+        skill_contents = []
+        
+        if state.memory.skill_cache:
+            for skill_name, skill_data in list(state.memory.skill_cache.items())[-3:]:
+                metadata = skill_data.get("metadata", {})
+                resources = skill_data.get("resources", {})
+                
+                skill_body = metadata.get("body", "")
+                loaded_step = metadata.get("loaded_at_step", "?")
+                
+                if skill_body:
+                    skill_contents.append({
+                        "name": skill_name,
+                        "content": skill_body,
+                        "step": loaded_step,
+                        "resources": resources,  # Include resource info
+                    })
+        
+        
+        if skill_contents:
+            parts.append("## 📚 Loaded Skills (Complete Content - Use These Guidelines)")
+            # Show most recent skills (last 3 to avoid too much content)
+            for skill in skill_contents[-3:]:
+                parts.append(f"### Skill: {skill['name']} (Loaded at Step {skill['step']})")
+                parts.append(f"```\n{skill['content']}\n```")
+                parts.append("")
+                
+                # Show cached resources if available
+                resources = skill.get("resources", {})
+                if resources:
+                    cached_resources = []
+                    for resource_type in ["scripts", "references", "assets"]:
+                        type_resources = resources.get(resource_type, {})
+                        if type_resources:
+                            resource_list = []
+                            for res_name, res_data in type_resources.items():
+                                if isinstance(res_data, dict):
+                                    res_step = res_data.get("loaded_at_step", "?")
+                                    resource_list.append(f"{res_name} (Step {res_step})")
+                                else:
+                                    resource_list.append(res_name)
+                            if resource_list:
+                                cached_resources.append(
+                                    f"**{resource_type.capitalize()}**: {', '.join(resource_list)}"
+                                )
+                    
+                    if cached_resources:
+                        parts.append("**Cached Resources:**")
+                        parts.extend(f"- {r}" for r in cached_resources)
+                        parts.append("")
+                        parts.append(
+                            "**Note**: Use `load_skill_resource` to load additional resources when needed."
+                        )
+                        parts.append("")
+            
+            if len(skill_contents) > 3:
+                parts.append(
+                    f"*Note: {len(skill_contents) - 3} more skills were loaded earlier. "
+                    f"See Recent Attempts for details.*"
+                )
+                parts.append("")
 
         # Long-term memory: Current plan (can be dynamically updated)
         if state.memory.plan:
@@ -253,18 +321,32 @@ class MemorySummarizer:
                         status_icon = "✓" if tool_ok else "✗"
                         parts.append(f"    {status_icon} [{tool}] Exit Code: {exit_code}")
 
-                        # For shell commands (run tool), show more output
-                        is_shell = tool == "run"
-                        max_stderr = (
-                            MEMORY_SUMMARY_STDOUT_STDERR_SHELL
-                            if is_shell
-                            else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
-                        )
-                        max_stdout = (
-                            MEMORY_SUMMARY_STDOUT_STDERR_SHELL
-                            if is_shell
-                            else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
-                        )
+                        # Get tool instance and use unified strategy system
+                        tool_instance: Optional[BaseTool] = None
+                        if tool_registry:
+                            tool_instance = tool_registry.get(tool)
+                        
+                        if tool_instance:
+                            # Use unified strategy system based on semantic types
+                            max_stderr = OutputLimitStrategy.get_limit_for_memory_summary(
+                                tool_instance, is_stderr=True
+                            )
+                            max_stdout = OutputLimitStrategy.get_limit_for_memory_summary(
+                                tool_instance, is_stderr=False
+                            )
+                        else:
+                            # Fallback: use tool name-based logic (backward compatibility)
+                            is_shell = tool == "run"
+                            max_stderr = (
+                                MEMORY_SUMMARY_STDOUT_STDERR_SHELL
+                                if is_shell
+                                else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
+                            )
+                            max_stdout = (
+                                MEMORY_SUMMARY_STDOUT_STDERR_SHELL
+                                if is_shell
+                                else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
+                            )
 
                         if error:
                             parts.append(f"      Error: {error}")
@@ -460,16 +542,48 @@ class MemorySummarizer:
             parts.append("\n## Recent Tool Execution Results (Enhanced Storage)")
             for tool_result in state.memory.tool_results_history[-5:]:  # Last 5 tool results
                 step = tool_result.get("step", "?")
-                tool = tool_result.get("tool", "unknown")
+                tool_name = tool_result.get("tool", "unknown")
                 result = tool_result.get("result", {})
                 ok = result.get("ok", False)
                 status = "✓" if ok else "✗"
-                parts.append(f"- Step {step}: {status} [{tool}]")
+                parts.append(f"- Step {step}: {status} [{tool_name}]")
                 if result.get("stdout"):
-                    stdout_preview = result.get("stdout", "")[:100]
-                    if len(result.get("stdout", "")) > 100:
-                        stdout_preview += "..."
-                    parts.append(f"  Stdout: {stdout_preview}")
+                    # Get tool instance and use unified strategy for preview size
+                    tool_instance: Optional[BaseTool] = None
+                    if tool_registry:
+                        tool_instance = tool_registry.get(tool_name)
+                    
+                    if tool_instance:
+                        # Use semantic type to determine preview size
+                        semantic_type = tool_instance.stdout_semantic_type
+                        # For knowledge/file content, show more preview
+                        if semantic_type in (
+                            OutputSemanticType.KNOWLEDGE_CONTENT,
+                            OutputSemanticType.FILE_CONTENT,
+                        ):
+                            stdout_preview = result.get("stdout", "")[:5000]
+                            total_len = len(result.get("stdout", ""))
+                            if total_len > 5000:
+                                stdout_preview += f"... (total {total_len} chars, see full content in Recent Attempts section above)"
+                            parts.append(f"  Stdout ({total_len} chars):\n{stdout_preview}")
+                        else:
+                            stdout_preview = result.get("stdout", "")[:100]
+                            if len(result.get("stdout", "")) > 100:
+                                stdout_preview += "..."
+                            parts.append(f"  Stdout: {stdout_preview}")
+                    else:
+                        # Fallback: use tool name-based logic
+                        if tool_name == "skill":
+                            stdout_preview = result.get("stdout", "")[:5000]
+                            total_len = len(result.get("stdout", ""))
+                            if total_len > 5000:
+                                stdout_preview += f"... (total {total_len} chars, see full content in Recent Attempts section above)"
+                            parts.append(f"  Stdout ({total_len} chars):\n{stdout_preview}")
+                        else:
+                            stdout_preview = result.get("stdout", "")[:100]
+                            if len(result.get("stdout", "")) > 100:
+                                stdout_preview += "..."
+                            parts.append(f"  Stdout: {stdout_preview}")
                 if result.get("stderr"):
                     stderr_preview = result.get("stderr", "")[:100]
                     if len(result.get("stderr", "")) > 100:

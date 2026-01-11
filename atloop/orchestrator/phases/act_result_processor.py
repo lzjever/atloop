@@ -1,17 +1,16 @@
 """Tool result processing utilities for ActPhase."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from atloop.config.limits import (
     ERROR_SUMMARY_LIMIT_FILE_VIEW,
     ERROR_SUMMARY_LIMIT_NORMAL,
     STDERR_TAIL_LIMIT,
-    STDOUT_STDERR_LIMIT_FILE_VIEW,
-    STDOUT_STDERR_LIMIT_NORMAL,
-    STDOUT_STDERR_LIMIT_OTHER,
     is_file_view_command,
 )
+from atloop.tools.base import BaseTool
+from atloop.tools.output_limit_strategy import OutputLimitStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +19,14 @@ class ToolResultFormatter:
     """Formats tool execution results for LLM consumption."""
 
     @staticmethod
-    def format_result_summary(tool: str, args: Dict[str, Any], result: Dict[str, Any]) -> str:
+    def format_result_summary(
+        tool: BaseTool, args: Dict[str, Any], result: Dict[str, Any]
+    ) -> str:
         """
         Format a tool execution result into a comprehensive summary for LLM.
 
         Args:
-            tool: Tool name
+            tool: Tool instance (not tool name)
             args: Tool arguments
             result: Tool execution result
 
@@ -37,12 +38,12 @@ class ToolResultFormatter:
         error_msg = result.get("error", "")
 
         parts = []
-        parts.append(f"Tool: {tool}")
+        parts.append(f"Tool: {tool.name}")
         parts.append(
             "⚠️ Important: Please carefully read the stdout and stderr content below to determine if the command succeeded."
         )
 
-        if tool == "run":
+        if tool.name == "run":
             cmd = args.get("cmd", "")
             if cmd:
                 parts.append(f"Command: {cmd}")
@@ -68,29 +69,27 @@ class ToolResultFormatter:
 
     @staticmethod
     def _format_output(
-        output: str, tool: str, args: Dict[str, Any], is_stderr: bool
+        output: str, tool: BaseTool, args: Dict[str, Any], is_stderr: bool
     ) -> str:
         """
         Format stdout or stderr output with appropriate limits.
 
+        Uses OutputLimitStrategy to determine limits based on semantic types
+        rather than tool names.
+
         Args:
             output: Output content
-            tool: Tool name
+            tool: Tool instance
             args: Tool arguments
             is_stderr: Whether this is stderr (True) or stdout (False)
 
         Returns:
             Formatted output string
         """
-        if tool == "run":
-            cmd = args.get("cmd", "")
-            max_size = (
-                STDOUT_STDERR_LIMIT_FILE_VIEW
-                if is_file_view_command(cmd)
-                else STDOUT_STDERR_LIMIT_NORMAL
-            )
-        else:
-            max_size = STDOUT_STDERR_LIMIT_OTHER
+        # Get limit from unified strategy system
+        max_size = OutputLimitStrategy.get_limit_for_formatting(
+            tool, is_stderr=is_stderr, args=args
+        )
 
         if len(output) > max_size:
             omitted = len(output) - max_size

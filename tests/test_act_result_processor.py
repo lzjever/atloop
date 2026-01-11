@@ -20,6 +20,10 @@ from atloop.orchestrator.phases.act_result_processor import (
     FileChangeTracker,
     ToolResultFormatter,
 )
+from atloop.tools.base import BaseTool
+from atloop.tools.interaction.load_skill import LoadSkillTool
+from atloop.tools.output_semantic_type import OutputSemanticType
+from atloop.tools.system.run_command import RunCommandTool
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +31,34 @@ logger = logging.getLogger(__name__)
 class TestToolResultFormatter:
     """Tests for ToolResultFormatter."""
 
+    def _create_tool(self, tool_name: str) -> BaseTool:
+        """Create a tool instance for testing."""
+        if tool_name == "run":
+            from unittest.mock import MagicMock
+            sandbox = MagicMock()
+            return RunCommandTool(sandbox)
+        elif tool_name == "load_skill":
+            return LoadSkillTool(skill_loader=None)
+        elif tool_name == "skill":
+            # Legacy tool name, use load_skill instead
+            return LoadSkillTool(skill_loader=None)
+        else:
+            # Create a minimal tool instance for other tools
+            from types import SimpleNamespace
+            class MockTool(BaseTool):
+                @property
+                def name(self) -> str:
+                    return tool_name
+                @property
+                def description(self) -> str:
+                    return f"Mock tool: {tool_name}"
+                def execute(self, args):
+                    pass
+            return MockTool()
+
     def test_format_result_summary_basic(self):
         """Test basic result summary formatting."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {"cmd": "echo hello"}
         result = {
             "stdout": "hello\n",
@@ -47,7 +76,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_with_error(self):
         """Test formatting result with error message."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {"cmd": "invalid_command"}
         result = {
             "stdout": "",
@@ -65,7 +94,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_non_run_tool(self):
         """Test formatting result for non-run tool."""
-        tool = "write_file"
+        tool = self._create_tool("write_file")
         args = {"path": "test.py", "content": "print('hello')"}
         result = {
             "stdout": "",
@@ -80,7 +109,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_empty_outputs(self):
         """Test formatting result with empty stdout and stderr."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {"cmd": "true"}
         result = {
             "stdout": "",
@@ -98,7 +127,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_large_output_truncation(self):
         """Test that large outputs are properly truncated."""
-        tool = "run"
+        tool = self._create_tool("run")
         # Use a command that is NOT a file view command to test normal limit
         args = {"cmd": "python script.py"}
         # Create output larger than normal limit (but smaller than file view limit)
@@ -122,7 +151,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_file_view_command(self):
         """Test formatting result for file view command (different limits)."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {"cmd": "cat file.txt"}
         large_output = "x" * (STDOUT_STDERR_LIMIT_FILE_VIEW + 1000)
         result = {
@@ -139,7 +168,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_both_stdout_stderr(self):
         """Test formatting result with both stdout and stderr."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {"cmd": "python script.py"}
         result = {
             "stdout": "Output line 1\nOutput line 2",
@@ -156,7 +185,7 @@ class TestToolResultFormatter:
 
     def test_format_result_summary_missing_cmd_in_args(self):
         """Test formatting when cmd is missing in args."""
-        tool = "run"
+        tool = self._create_tool("run")
         args = {}  # Missing cmd
         result = {
             "stdout": "output",
@@ -168,6 +197,52 @@ class TestToolResultFormatter:
 
         assert "Tool: run" in summary
         assert "Command:" not in summary  # Should not include command if missing
+
+    def test_format_result_summary_skill_tool_uses_large_limit(self):
+        """Test that load_skill tool uses large limit (like file view) for content."""
+        tool = self._create_tool("load_skill")
+        args = {"name": "long-doc-writer"}
+        # Create long skill content (50KB)
+        long_skill_content = "Skill content:\n" + "x" * 50000
+        result = {
+            "stdout": long_skill_content,
+            "stderr": "",
+            "error": "",
+            "ok": True,
+            "meta": {"skill_name": "long-doc-writer", "content_length": 50016},
+        }
+
+        summary = ToolResultFormatter.format_result_summary(tool, args, result)
+
+        assert "Tool: load_skill" in summary
+        # ✅ Skill tool should use STDOUT_STDERR_LIMIT_FILE_VIEW (60KB), not STDOUT_STDERR_LIMIT_OTHER (2KB)
+        # Content should be much more than 2KB limit
+        assert len(summary) > 40000  # Should have significant content (at least 40KB)
+        assert "Skill content:" in summary
+        # Should not be severely truncated (should have more than 2KB)
+        stdout_section = summary.split("Stdout")[1] if "Stdout" in summary else ""
+        assert len(stdout_section) > 2000  # Much more than STDOUT_STDERR_LIMIT_OTHER (2KB)
+
+    def test_format_result_summary_skill_tool_not_truncated_severely(self):
+        """Test that load_skill tool content is not severely truncated like other tools."""
+        tool = self._create_tool("load_skill")
+        args = {"name": "test-skill"}
+        # Create skill content that exceeds STDOUT_STDERR_LIMIT_OTHER (2KB)
+        skill_content = "This is a skill content.\n" + "x" * 5000  # ~5KB
+        result = {
+            "stdout": skill_content,
+            "stderr": "",
+            "error": "",
+            "ok": True,
+        }
+
+        summary = ToolResultFormatter.format_result_summary(tool, args, result)
+
+        # ✅ load_skill tool should use STDOUT_STDERR_LIMIT_FILE_VIEW (60KB), so 5KB content should be fully shown
+        assert "This is a skill content." in summary
+        # Should not be truncated to 2KB (STDOUT_STDERR_LIMIT_OTHER)
+        # Should show most of the 5KB content
+        assert len(summary) > 4000  # Much more than 2KB limit
 
 
 class TestErrorStateManager:

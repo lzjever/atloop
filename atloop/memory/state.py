@@ -70,6 +70,25 @@ class Memory:
     important_decisions: List[Dict[str, Any]] = field(default_factory=list)
     milestones: List[Dict[str, Any]] = field(default_factory=list)
     learnings: List[str] = field(default_factory=list)
+    
+    # Skill cache for lazy loading of skill resources
+    # Format:
+    # {
+    #     "skill_name": {
+    #         "metadata": {
+    #             "name": str,
+    #             "description": str,
+    #             "body": str,  # SKILL.md body
+    #             "loaded_at_step": int
+    #         },
+    #         "resources": {
+    #             "scripts": Dict[str, Dict[str, Any]],  # {filename: {content, loaded_at_step}}
+    #             "references": Dict[str, Dict[str, Any]],
+    #             "assets": Dict[str, Dict[str, Any]]  # May not cache binary content
+    #         }
+    #     }
+    # }
+    skill_cache: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     # =========================================================================
     # PARTIALLY VISIBLE - Facts only (NOT fully DEBUG-ONLY)
