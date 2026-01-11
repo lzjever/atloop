@@ -183,6 +183,8 @@ class ActPhase(BasePhase):
         results = []
         modified_files = []
 
+        import time
+        
         for i, action in enumerate(actions):
             logger.debug(
                 f"[ActPhase] Executing action {i + 1}/{len(actions)}: {action.get('tool')}"
@@ -195,6 +197,17 @@ class ActPhase(BasePhase):
 
             # Process result: format, update error state, track files
             self._process_action_result(action, result, state, modified_files)
+            
+            # Record action to progress tracker
+            tool = action.get("tool", "unknown")
+            args = action.get("args", {})
+            self.coordinator.progress_tracker.record_action(
+                step=state.step,
+                tool=tool,
+                args=args,
+                result=result,
+                timestamp=time.time(),
+            )
 
             # Update budget
             state.budget_used.tool_calls += 1
@@ -202,6 +215,11 @@ class ActPhase(BasePhase):
             logger.debug(
                 f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}"
             )
+        
+        # Save action history to memory for persistence
+        state.memory.action_history = [
+            a.to_dict() for a in self.coordinator.progress_tracker.action_history
+        ]
 
         return results, modified_files
 

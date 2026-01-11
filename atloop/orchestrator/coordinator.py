@@ -4,11 +4,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from atloop.config.loop_detection import DEFAULT_LOOP_DETECTION_CONFIG, LoopDetectionConfig
 from atloop.config.models import AtloopConfig, TaskSpec
 from atloop.llm import LLMClient
 from atloop.logging import EventLogger
+from atloop.memory.progress_tracker import ProgressTracker
 from atloop.orchestrator.budget import BudgetManager
 from atloop.orchestrator.job_state import JobState
+from atloop.orchestrator.loop_detector import LoopDetector
 from atloop.orchestrator.state.manager import StateManager
 from atloop.orchestrator.state_machine import Phase, StateMachine
 from atloop.orchestrator.verifier import Verifier
@@ -81,6 +84,26 @@ class WorkflowCoordinator:
             task_id=task_spec.task_id,
             runs_dir=config.runs_dir,
         )
+
+        # Loop detection and progress tracking
+        logger.debug("[Coordinator] Creating progress tracker and loop detector")
+        loop_detection_config = getattr(config, "loop_detection", None)
+        if loop_detection_config is None:
+            loop_detection_config = DEFAULT_LOOP_DETECTION_CONFIG
+        self.progress_tracker = ProgressTracker()
+        self.loop_detector = LoopDetector(loop_detection_config)
+        
+        # Restore progress tracker from saved state if available
+        if self.state_manager.agent_state.memory.action_history:
+            self.progress_tracker = ProgressTracker.from_dict({
+                "action_history": self.state_manager.agent_state.memory.action_history,
+                "created_files": list(self.state_manager.agent_state.memory.created_files) if self.state_manager.agent_state.memory.created_files else [],
+                "modified_files": [],
+            })
+            logger.debug(
+                f"[Coordinator] Restored progress tracker with "
+                f"{len(self.progress_tracker.action_history)} actions"
+            )
 
         logger.info(f"[Coordinator] Initialization complete for task: {task_spec.task_id}")
 

@@ -206,37 +206,27 @@ class MemorySummarizer:
                 parts.append(f"- {importance_indicator} {learning}")
             parts.append("")
 
-        # Recent decisions (last 3) - Enhanced with LLM response details
+        # Recent Steps Summary (FACTS ONLY - no LLM interpretations)
+        # NOTE: We intentionally do NOT show thought_summary or LLM plans here
+        # to prevent feedback loops where LLM's previous hypotheses become "facts"
         if state.memory.decisions:
-            parts.append("## Recent Decisions")
+            parts.append("## Recent Steps (Facts Only)")
             for decision in state.memory.decisions[-3:]:
                 step = decision.get("step", "?")
-                actions_count = len(decision.get("actions", []))
-                thought_summary = decision.get("thought_summary", "")
+                actions = decision.get("actions", [])
+                actions_count = len(actions)
                 stop_reason = decision.get("stop_reason", "?")
-
-                # Show decision with thought summary if available
-                if thought_summary:
-                    parts.append(
-                        f"- Step {step}: {thought_summary[:100]}... (executed {actions_count} actions, {stop_reason})"
-                    )
-                else:
-                    parts.append(f"- Step {step}: Executed {actions_count} actions ({stop_reason})")
-
-        # Phase 3: Enhanced - Show recent LLM responses if available
-        if state.memory.llm_responses:
-            parts.append("\n## Recent LLM Responses (Enhanced Storage)")
-            for response in state.memory.llm_responses[-3:]:  # Last 3 responses
-                step = response.get("step", "?")
-                thought = response.get("thought_summary", "")
-                plan = response.get("plan", [])
-                if thought:
-                    parts.append(f"- Step {step}: {thought[:80]}...")
-                if plan:
-                    plan_preview = ", ".join(str(p)[:30] for p in plan[:2])
-                    if len(plan) > 2:
-                        plan_preview += f" ... (total {len(plan)} steps)"
-                    parts.append(f"  Plan: {plan_preview}")
+                
+                # Show only factual information: what tools were called
+                tools_used = [a.get("tool", "?") for a in actions[:3]]
+                tools_str = ", ".join(tools_used)
+                if len(actions) > 3:
+                    tools_str += f" ... (+{len(actions) - 3} more)"
+                
+                parts.append(f"- Step {step}: {actions_count} actions [{tools_str}] ({stop_reason})")
+        
+        # NOTE: llm_responses are NOT shown to LLM to prevent feedback loops
+        # They are preserved in memory for debugging only
 
         # Recent attempts (last 3) - include detailed tool execution results
         # CRITICAL: Show ALL tool outputs, especially for shell commands
@@ -433,120 +423,9 @@ class MemorySummarizer:
             for note in state.memory.notes[-3:]:  # Last 3
                 parts.append(f"- {note}")
 
-        # Detect repetitive viewing without fixing pattern
-        if state.memory.attempts:
-            # Count file viewing actions (cat, head, tail, grep, sed) and write_file actions
-            viewing_commands = ["cat", "head", "tail", "grep", "sed -n"]
-            viewing_count = 0
-            write_file_count = 0
-            recent_viewing_without_fix = False
-
-            # Check last 3 attempts for "view without fix" pattern
-            for attempt in state.memory.attempts[-3:]:
-                results = attempt.get("results", [])
-                has_viewing = False
-                has_write_file = False
-
-                for result in results:
-                    tool = result.get("tool", "")
-                    if tool == "run":
-                        cmd = result.get("command", "") or result.get("meta", {}).get("cmd", "")
-                        cmd_lower = str(cmd).lower()
-                        # Check if this is a file viewing command
-                        if any(view_cmd in cmd_lower for view_cmd in viewing_commands):
-                            has_viewing = True
-                            viewing_count += 1
-                    elif tool == "write_file":
-                        has_write_file = True
-                        write_file_count += 1
-
-                # If this attempt had viewing but no write_file, it's a "view without fix" pattern
-                if has_viewing and not has_write_file:
-                    recent_viewing_without_fix = True
-
-            # Warn LLM if it's viewing files without fixing
-            if recent_viewing_without_fix and viewing_count >= 2:
-                parts.append('\n## Warning: Detected "View Files Without Fixing" Pattern')
-                parts.append(
-                    f"You have executed {viewing_count} file viewing operations (cat, grep, head, tail, etc.), "
-                    f"but only {write_file_count} fix operations (write_file)."
-                )
-                parts.append("")
-                parts.append("**Important Understanding**:")
-                parts.append(
-                    "- You generate all actions in PLAN phase, system executes them in ACT phase"
-                )
-                parts.append(
-                    "- **You can only see results after all actions are executed** (in next PLAN phase)"
-                )
-                parts.append(
-                    "- Therefore, if you need to view file content to fix, **do NOT view and fix in the same round**"
-                )
-                parts.append("")
-                parts.append("**Correct Fix Flow**:")
-                parts.append(
-                    "1. **If error message clearly indicates the problem** (e.g., ImportError shows missing function name):"
-                )
-                parts.append("   - **Use `write_file` directly to fix**, no need to view first")
-                parts.append(
-                    "   - Infer actual function name from error or previous context, fix directly"
-                )
-                parts.append("")
-                parts.append("2. **If you need to view file content to fix**:")
-                parts.append(
-                    '   - **Round 1**: Only execute viewing operations (e.g., `run("grep ...")`), set `stop_reason="continue"`'
-                )
-                parts.append("   - **Wait for system to execute and return results**")
-                parts.append(
-                    "   - **Round 2**: After seeing viewing results, **must immediately** execute `write_file` to fix"
-                )
-                parts.append(
-                    "   - **Forbidden**: Continue viewing other files without fixing after seeing results"
-                )
-                parts.append("")
-                parts.append("**Your Current Problem**:")
-                parts.append("- You have viewed files but haven't fixed yet")
-                parts.append(
-                    "- **Must**: In next round after seeing viewing results, immediately execute `write_file` to fix"
-                )
-                parts.append("- **Forbidden**: Continue viewing other files without fixing")
-
-        # Detect repetitive exploration actions (for new project creation)
-        if state.memory.attempts:
-            # Count exploration actions (ls, find, pwd, which, type)
-            exploration_commands = ["ls", "find", "pwd", "which", "type"]
-            exploration_count = 0
-            file_creation_count = 0
-            for attempt in state.memory.attempts:
-                results = attempt.get("results", [])
-                for result in results:
-                    tool = result.get("tool", "")
-                    if tool == "run":
-                        # Get command from result (stored in _phase_act)
-                        cmd = result.get("command", "") or result.get("meta", {}).get("cmd", "")
-                        cmd_lower = str(cmd).lower()
-                        # Check if this looks like exploration (but not file viewing)
-                        if any(explore_cmd in cmd_lower for explore_cmd in exploration_commands):
-                            exploration_count += 1
-                    elif tool == "write_file":
-                        file_creation_count += 1
-
-            # If we've done many exploration actions but no file creation, warn LLM
-            if exploration_count >= 3 and file_creation_count == 0:
-                parts.append("\n## ⚠️ Important: Please Start Creating Files")
-                parts.append(
-                    f"You have executed {exploration_count} exploration operations (ls, find, pwd, etc.), "
-                    f"but haven't started creating any files yet."
-                )
-                parts.append(
-                    "If you already understand the project structure, start creating files immediately, don't continue exploring."
-                )
-                parts.append(
-                    "Use write_file tool to create project files, use run('mkdir -p ...') to create directory structure."
-                )
-                parts.append(
-                    "For new project creation tasks, 2-3 explorations are enough, should start creating files immediately."
-                )
+        # NOTE: Loop detection and intervention is now handled by LoopDetector
+        # which provides more robust pattern detection and graduated interventions.
+        # The intervention messages are injected at PlanPhase level, not here.
 
         # Last error (includes all recent tool execution results)
         # CRITICAL: This is the PRIMARY source of tool execution info for LLM

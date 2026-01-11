@@ -32,6 +32,8 @@ class TestActPhase:
     @pytest.fixture
     def mock_coordinator(self):
         """Create a mock WorkflowCoordinator."""
+        from atloop.memory.progress_tracker import ProgressTracker
+        
         coordinator = MagicMock(spec=WorkflowCoordinator)
         
         # Setup state manager
@@ -59,6 +61,9 @@ class TestActPhase:
         
         # Setup event logger
         coordinator.event_logger = MagicMock()
+        
+        # Setup progress tracker (for loop detection)
+        coordinator.progress_tracker = ProgressTracker()
         
         return coordinator
 

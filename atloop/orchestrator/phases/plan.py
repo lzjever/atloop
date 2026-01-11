@@ -2,6 +2,7 @@
 
 import logging
 
+from atloop.config.loop_detection import InterventionLevel
 from atloop.memory.summarizer import MemorySummarizer
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.phases.placeholder_replacer import (
@@ -58,6 +59,58 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] Memory summary length: {len(memory_summary)} chars "
                 f"(max: {memory_summary_max_length})"
             )
+
+            # === Loop Detection ===
+            # Analyze progress and detect loops
+            loop_analysis = self.coordinator.loop_detector.analyze(
+                self.coordinator.progress_tracker
+            )
+            
+            if loop_analysis.is_looping:
+                logger.warning(
+                    f"[PlanPhase] Loop detected: type={loop_analysis.loop_type.value}, "
+                    f"repetitions={loop_analysis.repetition_count}, "
+                    f"level={loop_analysis.intervention_level.name}"
+                )
+                
+                # Generate intervention
+                intervention = self.coordinator.loop_detector.generate_intervention(loop_analysis)
+                
+                # Log intervention details
+                logger.info(
+                    f"[PlanPhase] Loop intervention: type={loop_analysis.loop_type.value}, "
+                    f"level={intervention.level.name}, evidence={loop_analysis.evidence[:2]}"
+                )
+                
+                # Inject intervention into memory summary
+                if intervention.prompt_injection:
+                    memory_summary = intervention.prompt_injection + "\n\n" + memory_summary
+                    logger.info(
+                        f"[PlanPhase] Injected {intervention.level.name} intervention into prompt"
+                    )
+                
+                # Handle forced strategy execution
+                if intervention.level >= InterventionLevel.FORCE_STRATEGY:
+                    if intervention.forced_actions:
+                        logger.warning(
+                            f"[PlanPhase] FORCING recovery actions due to loop: "
+                            f"{len(intervention.forced_actions)} actions"
+                        )
+                        # Store forced actions for ACT phase
+                        self.coordinator.job_state.shared_data["forced_actions"] = intervention.forced_actions
+            
+            # Add progress metrics to memory summary for LLM awareness
+            metrics = self.coordinator.progress_tracker.get_metrics(window=10)
+            if metrics.total_actions > 0:
+                progress_info = (
+                    f"\n## Progress Metrics (Last 10 Actions)\n"
+                    f"- Files created: {metrics.files_created}\n"
+                    f"- Files modified: {metrics.files_modified}\n"
+                    f"- Unique actions: {metrics.unique_actions}/{metrics.total_actions}\n"
+                    f"- View/Modify ratio: {metrics.view_to_modify_ratio:.1f}\n"
+                    f"- Consecutive same pattern: {metrics.consecutive_same_pattern}\n"
+                )
+                memory_summary = memory_summary + progress_info
 
             # Extract keywords
             logger.debug("[PlanPhase] Extracting keywords")
