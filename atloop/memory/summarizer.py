@@ -207,7 +207,7 @@ class MemorySummarizer:
             parts.append("")
 
         # Recent Steps Summary (FACTS ONLY - no LLM interpretations)
-        # NOTE: We intentionally do NOT show thought_summary or LLM plans here
+        # NOTE: We intentionally do NOT show current_step_thoughts or LLM plans here
         # to prevent feedback loops where LLM's previous hypotheses become "facts"
         if state.memory.decisions:
             parts.append("## Recent Steps (Facts Only)")

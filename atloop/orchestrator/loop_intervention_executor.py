@@ -61,7 +61,7 @@ class LoopInterventionExecutor:
     4. Returning a clear result that PlanPhase can act on
     
     Usage:
-        executor = LoopInterventionExecutor(config)
+        executor = LoopInterventionExecutor(workspace_path)
         result = executor.execute(analysis, intervention)
         
         if result.should_abort:
@@ -71,12 +71,6 @@ class LoopInterventionExecutor:
         else:
             # Call LLM with result.prompt_injection
     """
-    
-    # Threshold for forcing task abort (repetitions at ABORT level)
-    ABORT_REPETITION_THRESHOLD = 12
-    
-    # Threshold for forcing recovery (repetitions at FORCE level)  
-    FORCE_REPETITION_THRESHOLD = 6
     
     def __init__(self, workspace_path: Optional[str] = None):
         """
@@ -120,15 +114,18 @@ class LoopInterventionExecutor:
             f"level={level.name}, repetitions={repetitions}, type={analysis.loop_type.value}"
         )
         
-        # ABORT level with high repetitions - force task failure
-        if level >= InterventionLevel.ABORT and repetitions >= self.ABORT_REPETITION_THRESHOLD:
+        # Use intervention level directly - LoopDetector has already determined
+        # the correct level based on config thresholds. Trust the level.
+        
+        # ABORT level - force task failure
+        if level >= InterventionLevel.ABORT:
             return self._create_abort_result(analysis, intervention)
         
-        # FORCE_STRATEGY level with high repetitions - force recovery actions
-        if level >= InterventionLevel.FORCE_STRATEGY and repetitions >= self.FORCE_REPETITION_THRESHOLD:
+        # FORCE_STRATEGY level - force recovery actions
+        if level >= InterventionLevel.FORCE_STRATEGY:
             return self._create_force_recovery_result(analysis, intervention)
         
-        # Lower levels or low repetitions - inject warning and let LLM try
+        # HARD_WARNING and SOFT_WARNING levels - inject warning and let LLM try
         return self._create_warning_result(analysis, intervention)
     
     def _create_abort_result(

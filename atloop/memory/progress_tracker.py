@@ -95,7 +95,8 @@ class ProgressMetrics:
     
     # Streak tracking
     consecutive_view_count: int = 0    # Current streak of view-only actions
-    consecutive_same_pattern: int = 0  # Current streak of same action pattern
+    consecutive_same_pattern: int = 0  # Current streak of same action pattern (exact signature)
+    consecutive_semantic_pattern: int = 0  # Current streak of same semantic pattern
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -116,6 +117,7 @@ class ProgressMetrics:
             "repetition_rate": self.repetition_rate,
             "consecutive_view_count": self.consecutive_view_count,
             "consecutive_same_pattern": self.consecutive_same_pattern,
+            "consecutive_semantic_pattern": self.consecutive_semantic_pattern,
         }
 
 
@@ -142,6 +144,9 @@ class ProgressTracker:
         self._last_action_signature: Optional[str] = None
         self._consecutive_same_count: int = 0
         self._consecutive_view_count: int = 0
+        # Semantic pattern tracking
+        self._last_semantic_pattern: Optional[str] = None
+        self._consecutive_semantic_pattern_count: int = 0
         
     def record_action(
         self,
@@ -209,14 +214,65 @@ class ProgressTracker:
         
         return record
     
+    def _detect_semantic_pattern(self, record: ActionRecord) -> str:
+        """
+        Detect semantic pattern for an action, not just exact signature.
+        
+        This groups similar actions together for better loop detection.
+        For example, all "view file" actions viewing the same file are grouped together,
+        but viewing different files are considered different patterns.
+        
+        Args:
+            record: Action record
+            
+        Returns:
+            Semantic pattern string
+        """
+        # Group by category and target
+        if record.category == ActionCategory.VIEW:
+            # For view operations, include target file to distinguish different files
+            if record.target_file:
+                # Include target file in pattern to distinguish viewing different files
+                return f"VIEW:{record.target_file}"
+            # For run commands without target file, use tool + command structure
+            if record.tool == "run":
+                # Extract command structure (first word) for run commands
+                cmd = record.args.get("cmd", "")
+                first_word = cmd.split()[0] if cmd else "unknown"
+                return f"VIEW:run:{first_word}"
+            return f"VIEW:{record.tool}"
+        elif record.category == ActionCategory.MODIFY:
+            # Group by file being modified (different files = different patterns)
+            if record.target_file:
+                return f"MODIFY:{record.target_file}"
+            return f"MODIFY:{record.tool}"
+        elif record.category == ActionCategory.EXECUTE:
+            # Group by execution type and target
+            if record.target_file:
+                return f"EXECUTE:{record.tool}:{record.target_file}"
+            return f"EXECUTE:{record.tool}"
+        elif record.category == ActionCategory.EXPLORE:
+            # All exploration is similar (but could be refined)
+            return "EXPLORE"
+        else:
+            return f"OTHER:{record.tool}"
+
     def _update_state(self, record: ActionRecord, signature: str) -> None:
         """Update internal tracking state."""
-        # Track consecutive same patterns
+        # Track consecutive same patterns (exact signature match)
         if signature == self._last_action_signature:
             self._consecutive_same_count += 1
         else:
             self._consecutive_same_count = 1
             self._last_action_signature = signature
+        
+        # Track consecutive semantic patterns
+        semantic_pattern = self._detect_semantic_pattern(record)
+        if semantic_pattern == self._last_semantic_pattern:
+            self._consecutive_semantic_pattern_count += 1
+        else:
+            self._consecutive_semantic_pattern_count = 1
+            self._last_semantic_pattern = semantic_pattern
         
         # Track consecutive view operations
         if record.category == ActionCategory.VIEW:
@@ -379,6 +435,7 @@ class ProgressTracker:
             repetition_rate=repetition_rate,
             consecutive_view_count=self._consecutive_view_count,
             consecutive_same_pattern=self._consecutive_same_count,
+            consecutive_semantic_pattern=self._consecutive_semantic_pattern_count,
         )
     
     def get_recent_action_signatures(self, count: int = 5) -> List[str]:
@@ -407,6 +464,8 @@ class ProgressTracker:
         self._last_action_signature = None
         self._consecutive_same_count = 0
         self._consecutive_view_count = 0
+        self._last_semantic_pattern = None
+        self._consecutive_semantic_pattern_count = 0
     
     def to_dict(self) -> Dict[str, Any]:
         """Serialize tracker state for persistence."""
@@ -452,5 +511,21 @@ class ProgressTracker:
                 else:
                     break
             tracker._consecutive_view_count = view_count
+            
+            # Rebuild semantic pattern tracking
+            if tracker.action_history:
+                last_record = tracker.action_history[-1]
+                last_semantic_pattern = tracker._detect_semantic_pattern(last_record)
+                tracker._last_semantic_pattern = last_semantic_pattern
+                
+                # Count consecutive semantic pattern
+                semantic_count = 0
+                for action in reversed(tracker.action_history):
+                    semantic_pattern = tracker._detect_semantic_pattern(action)
+                    if semantic_pattern == last_semantic_pattern:
+                        semantic_count += 1
+                    else:
+                        break
+                tracker._consecutive_semantic_pattern_count = semantic_count
         
         return tracker

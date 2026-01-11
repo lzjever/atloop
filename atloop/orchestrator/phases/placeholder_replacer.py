@@ -157,24 +157,13 @@ class PlaceholderReplacer:
         return True, None
 
     @classmethod
-    def replace_placeholders(
+    def _replace_placeholders_internal(
         cls, actions: List[Dict], file_contents: Dict[str, str]
     ) -> PlaceholderReplacementResult:
         """
-        Replace type-specific placeholders with actual content.
-
-        This method creates new action dictionaries (immutable replacement)
-        to ensure the original actions are not modified.
-
-        Supports partial success: if some placeholders are missing, successful
-        actions proceed while pending actions are marked for retry.
-
-        Args:
-            actions: List of action dictionaries from LLM
-            file_contents: Dictionary mapping placeholder names to actual content
-
-        Returns:
-            PlaceholderReplacementResult with successful and pending actions
+        Internal method that returns PlaceholderReplacementResult.
+        
+        This is the core implementation used by both replace_placeholders and replace_and_validate.
         """
         successful_actions = []
         pending_actions = []
@@ -266,6 +255,31 @@ class PlaceholderReplacer:
         )
 
     @classmethod
+    def replace_placeholders(
+        cls, actions: List[Dict], file_contents: Dict[str, str]
+    ) -> Tuple[List[Dict], List[str]]:
+        """
+        Replace type-specific placeholders with actual content.
+
+        This method creates new action dictionaries (immutable replacement)
+        to ensure the original actions are not modified.
+
+        Args:
+            actions: List of action dictionaries from LLM
+            file_contents: Dictionary mapping placeholder names to actual content
+
+        Returns:
+            Tuple of (replaced_actions, missing_placeholders)
+            - replaced_actions: All actions (successful + pending with placeholders)
+            - missing_placeholders: List of placeholders that were not found
+        """
+        result = cls._replace_placeholders_internal(actions, file_contents)
+        # Return tuple for backward compatibility
+        # All actions include both successful and pending (pending still have placeholders)
+        all_actions = result.successful_actions + result.pending_actions
+        return all_actions, result.missing_placeholders
+
+    @classmethod
     def validate_replacement(
         cls, actions: List[Dict], file_contents: Dict[str, str]
     ) -> Tuple[bool, List[str]]:
@@ -304,12 +318,63 @@ class PlaceholderReplacer:
     @classmethod
     def replace_and_validate(
         cls, actions: List[Dict], file_contents: Dict[str, str], strict: bool = True
-    ) -> Tuple[List[Dict], PlaceholderReplacementResult]:
+    ) -> List[Dict]:
         """
         Replace placeholders and validate the result.
 
         This is the main entry point that combines replacement and validation.
-        Supports partial success: returns successful actions and result metadata.
+        Supports partial success: returns all actions (successful + pending).
+
+        Args:
+            actions: List of action dictionaries from LLM
+            file_contents: Dictionary mapping placeholder names to actual content
+            strict: If True, raise exception on missing placeholders. If False, allow partial success.
+
+        Returns:
+            List of actions (successful actions with placeholders replaced + pending actions with placeholders)
+
+        Raises:
+            PlaceholderReplacementError: If strict=True and placeholders are missing
+        """
+        result = cls._replace_placeholders_internal(actions, file_contents)
+
+        # Check for type mismatches (always an error)
+        if result.type_mismatches:
+            error_msg = (
+                f"Placeholder type validation failed. "
+                f"Found {len(result.type_mismatches)} type mismatches: {result.type_mismatches}"
+            )
+            if strict:
+                raise PlaceholderReplacementError(error_msg, result.missing_placeholders)
+            else:
+                logger.error(f"[PlaceholderReplacer] {error_msg}")
+
+        # Check for missing placeholders
+        if result.missing_placeholders:
+            error_msg = (
+                f"Placeholder replacement incomplete. "
+                f"Found {len(result.missing_placeholders)} missing placeholders: {result.missing_placeholders}"
+            )
+            if strict:
+                raise PlaceholderReplacementError(error_msg, result.missing_placeholders)
+            else:
+                logger.warning(
+                    f"[PlaceholderReplacer] {error_msg}. "
+                    f"Successful actions: {result.replaced_count}/{result.total_count}. "
+                    f"Pending actions will be retried in next iteration."
+                )
+
+        # Return all actions (successful + pending) for backward compatibility
+        return result.successful_actions + result.pending_actions
+
+    @classmethod
+    def replace_and_validate_with_result(
+        cls, actions: List[Dict], file_contents: Dict[str, str], strict: bool = True
+    ) -> Tuple[List[Dict], PlaceholderReplacementResult]:
+        """
+        Replace placeholders and validate the result, returning full result metadata.
+
+        This method is used by PlanPhase to get detailed information about partial success.
 
         Args:
             actions: List of action dictionaries from LLM
@@ -324,7 +389,7 @@ class PlaceholderReplacer:
         Raises:
             PlaceholderReplacementError: If strict=True and placeholders are missing
         """
-        result = cls.replace_placeholders(actions, file_contents)
+        result = cls._replace_placeholders_internal(actions, file_contents)
 
         # Check for type mismatches (always an error)
         if result.type_mismatches:

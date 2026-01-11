@@ -301,7 +301,7 @@ class PlanPhase(BasePhase):
             try:
                 # Use PlaceholderReplacer service for clean, testable replacement
                 # Returns successful actions and full result metadata
-                successful_actions, replacement_result = PlaceholderReplacer.replace_and_validate(
+                successful_actions, replacement_result = PlaceholderReplacer.replace_and_validate_with_result(
                     actions, file_contents, strict=False
                 )
                 logger.info(
@@ -432,7 +432,7 @@ class PlanPhase(BasePhase):
                 "verification_success": state.artifacts.verification_success,
             }
             if action_json:
-                decision_record["thought_summary"] = action_json.thought_summary
+                decision_record["current_step_thoughts"] = action_json.current_step_thoughts
                 decision_record["plan"] = action_json.plan
                 decision_record["actions"] = [
                     a.to_dict() if hasattr(a, "to_dict") else a for a in actions
@@ -450,7 +450,7 @@ class PlanPhase(BasePhase):
             if action_json and full_output:
                 llm_response_record = {
                     "step": state.step,
-                    "thought_summary": action_json.thought_summary,
+                    "current_step_thoughts": action_json.current_step_thoughts,
                     "plan": action_json.plan,
                     "actions": [a.to_dict() if hasattr(a, "to_dict") else a for a in actions],
                     "stop_reason": stop_reason,

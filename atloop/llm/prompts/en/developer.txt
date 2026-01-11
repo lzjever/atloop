@@ -455,7 +455,7 @@ def goodbye():
 Your response must be in the following format:
 
 {
-  "thought_summary": "Maximum 3 lines, human-readable thought summary (optional)",
+  "current_step_thoughts": "Your current thinking for this step - what you're doing and why (optional)",
   "plan": ["Step 1", "Step 2", "Step 3", ...],
   "actions": [
     {

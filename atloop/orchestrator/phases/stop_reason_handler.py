@@ -240,7 +240,7 @@ class StopReasonHandler:
 
         # Create ActionJSON with replaced actions
         action_json_with_replaced = ActionJSON(
-            thought_summary=action_json.thought_summary,
+            current_step_thoughts=action_json.current_step_thoughts,
             plan=action_json.plan,
             actions=actions,
             stop_reason=action_json.stop_reason,

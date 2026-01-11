@@ -77,11 +77,11 @@ class Memory:
     # These fields are preserved for debugging/logging but are NOT included
     # in the memory summary sent to the LLM.
     decisions: List[Dict[str, Any]] = field(default_factory=list)
-    # WARNING: Contains thought_summary - DO NOT feed back to LLM
+    # WARNING: Contains current_step_thoughts - DO NOT feed back to LLM
     
     llm_responses: List[Dict[str, Any]] = field(default_factory=list)
-    # WARNING: Contains thought_summary - DO NOT feed back to LLM
-    # Format: {"step": int, "thought_summary": str, "plan": List[str], ...}
+    # WARNING: Contains current_step_thoughts - DO NOT feed back to LLM
+    # Format: {"step": int, "current_step_thoughts": str, "plan": List[str], ...}
 
 
 @dataclass

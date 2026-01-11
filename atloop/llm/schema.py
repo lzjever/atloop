@@ -29,7 +29,7 @@ ACTION_JSON_SCHEMA = {
     "type": "object",
     "required": ["actions", "stop_reason"],
     "properties": {
-        "thought_summary": {"type": "string"},
+        "current_step_thoughts": {"type": "string"},
         "plan": {"type": "array", "items": {"type": "string"}},
         "actions": {
             "type": "array",
@@ -112,7 +112,7 @@ class ActionJSON:
         self,
         actions: List[Dict[str, Any]],
         stop_reason: str,
-        thought_summary: Optional[str] = None,
+        current_step_thoughts: Optional[str] = None,
         plan: Optional[List[str]] = None,
         result_message: Optional[str] = None,
     ):
@@ -122,7 +122,7 @@ class ActionJSON:
         Args:
             actions: List of action dictionaries
             stop_reason: Stop reason (continue, done, fail)
-            thought_summary: Optional thought summary
+            current_step_thoughts: Optional current step thoughts (not a summary)
             plan: Optional plan steps
             result_message: Optional result message
             
@@ -160,7 +160,7 @@ class ActionJSON:
         
         self.actions = actions
         self.stop_reason = stop_reason
-        self.thought_summary = thought_summary
+        self.current_step_thoughts = current_step_thoughts
         self.plan = plan or []
         self.result_message = result_message
 
@@ -170,8 +170,8 @@ class ActionJSON:
             "actions": self.actions,
             "stop_reason": self.stop_reason,
         }
-        if self.thought_summary:
-            result["thought_summary"] = self.thought_summary
+        if self.current_step_thoughts:
+            result["current_step_thoughts"] = self.current_step_thoughts
         if self.plan:
             result["plan"] = self.plan
         if self.result_message:
@@ -212,10 +212,12 @@ class ActionJSON:
                 raise ActionJSONValidationError(error_msg, data=data)
         
         # Extract and construct (data is now guaranteed to be valid)
+        # Support both old and new field names for backward compatibility
+        current_step_thoughts = data.get("current_step_thoughts") or data.get("thought_summary")
         return cls(
             actions=data.get("actions", []),
             stop_reason=data.get("stop_reason", "continue"),
-            thought_summary=data.get("thought_summary"),
+            current_step_thoughts=current_step_thoughts,
             plan=data.get("plan"),
             result_message=data.get("result_message"),
         )

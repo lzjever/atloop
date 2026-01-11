@@ -102,6 +102,64 @@ class ToolResultFormatter:
         return output
 
 
+class ErrorAnalyzer:
+    """Analyzes errors to provide better context and suggestions."""
+    
+    @staticmethod
+    def analyze_error(tool: str, args: Dict[str, Any], result: Dict[str, Any]) -> str:
+        """
+        Analyze error and provide enhanced context and suggestions.
+        
+        Args:
+            tool: Tool name
+            args: Tool arguments
+            result: Tool execution result
+            
+        Returns:
+            Enhanced error message with suggestions
+        """
+        stderr = result.get("stderr", "")
+        error_msg = result.get("error", "")
+        combined_error = error_msg + "\n" + stderr if error_msg else stderr
+        
+        suggestions = []
+        
+        # Detect shell escaping issues
+        if tool == "run":
+            cmd = args.get("cmd", "")
+            if "python3 -c" in cmd or "bash -c" in cmd:
+                if "SyntaxError" in stderr or "SyntaxError" in error_msg:
+                    if "invalid syntax" in stderr.lower() or "invalid syntax" in error_msg.lower():
+                        suggestions.append(
+                            "⚠️ **Shell Escaping Issue Detected**: "
+                            "The SyntaxError is likely caused by shell escaping problems with quotes/f-strings. "
+                            "**Solution**: Use `run_python_script_string` with `PYTHON_SCRIPT_#N` placeholder instead of `run` with `python3 -c`. "
+                            "This avoids all shell escaping issues."
+                        )
+        
+        # Detect placeholder-related errors
+        if "FILE_CONTENT" in stderr or "placeholder" in stderr.lower():
+            suggestions.append(
+                "⚠️ **Placeholder Issue**: Check that you're using the correct placeholder type for each tool. "
+                "See tool documentation for correct placeholder types."
+            )
+        
+        # Detect import errors that might be path issues
+        if "ImportError" in stderr or "ModuleNotFoundError" in stderr:
+            if "python3" in str(args.get("cmd", "")):
+                suggestions.append(
+                    "💡 **Import Error**: If importing local modules, ensure the script runs from the correct directory. "
+                    "Consider using `run_python_script_string` which automatically sets up the Python path."
+                )
+        
+        # Combine suggestions with original error
+        if suggestions:
+            enhanced = "\n\n".join(suggestions) + "\n\n" + "Original Error:\n" + combined_error
+            return enhanced
+        
+        return combined_error
+
+
 class ErrorStateManager:
     """Manages error state updates in ActPhase."""
 
@@ -148,21 +206,27 @@ class ErrorStateManager:
         else:
             max_summary = ERROR_SUMMARY_LIMIT_NORMAL
 
-        # Update error state
+        # Analyze error for better context
+        enhanced_error = ErrorAnalyzer.analyze_error(tool, args, result)
+        
+        # Update error state with enhanced error message
         if state.last_error.summary and state.last_error.summary.strip():
             # Append to existing error
             separator = "\n\n" + "=" * 80 + "\n"
-            combined = state.last_error.summary + separator + result_summary
+            # Use enhanced error if available, otherwise use result_summary
+            error_content = enhanced_error if enhanced_error != (result.get("error", "") + "\n" + result.get("stderr", "")) else result_summary
+            combined = state.last_error.summary + separator + error_content
             state.last_error.summary = combined[:max_summary]
             logger.debug(
                 f"[ErrorStateManager] Appended tool error to existing error summary "
                 f"(total length: {len(state.last_error.summary)})"
             )
         else:
-            # Set new error
-            state.last_error.summary = result_summary[:max_summary]
+            # Set new error with enhanced message
+            error_content = enhanced_error if enhanced_error != (result.get("error", "") + "\n" + result.get("stderr", "")) else result_summary
+            state.last_error.summary = error_content[:max_summary]
             logger.debug(
-                f"[ErrorStateManager] Set last_error: summary_length={len(state.last_error.summary)}"
+                f"[ErrorStateManager] Set last_error with enhanced analysis: summary_length={len(state.last_error.summary)}"
             )
 
         # Update repro command and stderr tail

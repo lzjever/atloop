@@ -108,15 +108,26 @@ class LoopDetector:
         loop_type = LoopType.NONE
         repetition_count = 0
         
-        # Check for same action repeat
-        if metrics.consecutive_same_pattern >= self.config.soft_warning_threshold:
+        # Check for same action repeat (use semantic pattern for better detection)
+        # Prefer semantic pattern if available, fall back to exact signature
+        pattern_count = max(
+            metrics.consecutive_semantic_pattern,
+            metrics.consecutive_same_pattern
+        )
+        if pattern_count >= self.config.soft_warning_threshold:
             loop_type = LoopType.SAME_ACTION_REPEAT
-            repetition_count = metrics.consecutive_same_pattern
+            repetition_count = pattern_count
             recent_actions = tracker.get_recent_actions_summary(3)
-            evidence.append(
-                f"Same action pattern repeated {metrics.consecutive_same_pattern} times: "
-                f"{recent_actions}"
-            )
+            if metrics.consecutive_semantic_pattern >= metrics.consecutive_same_pattern:
+                evidence.append(
+                    f"Same semantic pattern repeated {metrics.consecutive_semantic_pattern} times: "
+                    f"{recent_actions}"
+                )
+            else:
+                evidence.append(
+                    f"Same action pattern repeated {metrics.consecutive_same_pattern} times: "
+                    f"{recent_actions}"
+                )
         
         # Check for view without modify
         elif metrics.consecutive_view_count >= self.config.max_view_without_modify:
@@ -248,7 +259,10 @@ Please consider changing your approach if you're not making progress.
         )
     
     def _hard_warning(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
-        """Generate hard warning intervention."""
+        """Generate hard warning intervention with specific actionable guidance."""
+        # Generate specific action suggestions based on loop type
+        specific_actions = self._get_specific_action_suggestions(analysis)
+        
         prompt = f"""
 ## 🚨🚨🚨 CRITICAL: LOOP DETECTED - IMMEDIATE ACTION REQUIRED 🚨🚨🚨
 
@@ -261,8 +275,8 @@ Please consider changing your approach if you're not making progress.
 - You keep doing the same thing expecting different results
 - This is wasting resources and not solving the problem
 
-**MANDATORY ACTION:**
-{analysis.suggested_action or "You MUST do something DIFFERENT from your recent actions"}
+**MANDATORY ACTION - Choose ONE of these:**
+{specific_actions}
 
 **Rules:**
 1. Do NOT repeat the same viewing/checking commands
@@ -278,6 +292,33 @@ Please consider changing your approach if you're not making progress.
             prompt_injection=prompt,
             require_different_action=True,
         )
+    
+    def _get_specific_action_suggestions(self, analysis: LoopAnalysis) -> str:
+        """Get specific action suggestions based on loop type."""
+        loop_type = analysis.loop_type
+        
+        if loop_type == LoopType.VIEW_WITHOUT_MODIFY:
+            return """1. **EXECUTE the code/script** to get actual errors (use `run_python_script_string` or `run_shell_script_string`)
+2. **MODIFY a file** using `edit_file` or `write_file` to make progress
+3. **Create a new file** if the task requires it
+4. **Set stop_reason="done"** if the task is actually complete"""
+        
+        elif loop_type == LoopType.SAME_ACTION_REPEAT:
+            return """1. **Try a completely different tool** - if you've been using `run`, try `write_file` or `read_file`
+2. **Change your approach** - if viewing files failed, try executing them instead
+3. **Break the pattern** - do something that produces a different result
+4. **Set stop_reason="done"** if the task is actually complete"""
+        
+        elif loop_type == LoopType.NO_PROGRESS:
+            return """1. **Create or modify a file** to make measurable progress
+2. **Execute code** to verify it works
+3. **Change strategy** - try a different approach to the problem
+4. **Set stop_reason="done"** if the task is actually complete"""
+        
+        else:
+            return """1. **Do something DIFFERENT** from your recent actions
+2. **Make measurable progress** - create files, modify files, or execute code
+3. **Set stop_reason="done"** if the task is actually complete"""
     
     def _force_strategy(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
         """Generate forced strategy intervention."""
