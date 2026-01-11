@@ -1,5 +1,6 @@
 """Single workflow implementation - DISCOVER -> PLAN -> ACT -> VERIFY."""
 
+import json
 import logging
 from typing import TYPE_CHECKING, Any, Dict
 
@@ -110,6 +111,8 @@ class Workflow:
             # Print before breakpoint so user can see stats before pausing
             if self.coordinator.verbose:
                 self._print_memory_stats(state)
+                # Save memory to JSON file after memory updates (similar to LLM I/O saving)
+                self._save_memory(state)
             
             # Breakpoint: wait for user input if breakpoint mode is enabled
             # This happens after verbose output, so user can review stats before continuing
@@ -376,6 +379,30 @@ class Workflow:
 
         stats_panel = format_memory_stats(state)
         print(stats_panel)
+
+    def _save_memory(self, state: Any) -> None:
+        """
+        Save memory to JSON file for debugging (verbose mode only).
+        
+        Args:
+            state: Agent state containing memory
+        """
+        try:
+            # Get run directory from event logger
+            log_dir = self.coordinator.event_logger.log_dir
+            
+            # Create debug subdirectory
+            debug_dir = log_dir / "debug"
+            debug_dir.mkdir(exist_ok=True)
+            
+            # Save memory as JSON
+            filename = debug_dir / f"step_{state.step:03d}_memory.json"
+            memory_dict = state.to_dict()
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(memory_dict, f, indent=2, ensure_ascii=False)
+            logger.debug(f"[Workflow] Saved memory to {filename}")
+        except Exception as e:
+            logger.warning(f"[Workflow] Failed to save memory: {e}")
 
     def _wait_for_breakpoint(self, step: int) -> None:
         """
