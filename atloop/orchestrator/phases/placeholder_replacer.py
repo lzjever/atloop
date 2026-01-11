@@ -1,13 +1,13 @@
 """Placeholder replacement service for type-specific placeholders.
 
 This module provides a clean, testable service for replacing type-specific
-placeholders (WRITE_FILE_CONTENT_#N, EDIT_FILE_CONTENT_#N, etc.) with actual
-content in action dictionaries.
+placeholders (WRITE_FILE_CONTENT_descriptive-name, EDIT_FILE_CONTENT_descriptive-name, etc.) 
+with actual content in action dictionaries.
 
 Design:
 - Each tool type has its own placeholder prefix for type safety
 - Strict validation ensures tools use correct placeholder types
-- Backward compatibility: old FILE_CONTENT_#N still works (with deprecation warning)
+- Placeholders use descriptive names (not numbers) for better readability
 """
 
 import logging
@@ -43,12 +43,12 @@ class PlaceholderReplacer:
 
     # Placeholder type definitions
     PLACEHOLDER_TYPES = {
-        "WRITE_FILE_CONTENT": "WRITE_FILE_CONTENT_#",
-        "EDIT_FILE_CONTENT": "EDIT_FILE_CONTENT_#",
-        "APPEND_FILE_CONTENT": "APPEND_FILE_CONTENT_#",
-        "SHELL_COMMAND": "SHELL_COMMAND_#",
-        "PYTHON_SCRIPT": "PYTHON_SCRIPT_#",
-        "SHELL_SCRIPT": "SHELL_SCRIPT_#",
+        "WRITE_FILE_CONTENT": "WRITE_FILE_CONTENT_",
+        "EDIT_FILE_CONTENT": "EDIT_FILE_CONTENT_",
+        "APPEND_FILE_CONTENT": "APPEND_FILE_CONTENT_",
+        "SHELL_COMMAND": "SHELL_COMMAND_",
+        "PYTHON_SCRIPT": "PYTHON_SCRIPT_",
+        "SHELL_SCRIPT": "SHELL_SCRIPT_",
     }
 
     # Mapping of tools to their expected placeholder types
@@ -64,8 +64,29 @@ class PlaceholderReplacer:
     # Tools that use content placeholders
     CONTENT_TOOLS = {"write_file", "append_file", "edit_file", "run", "run_python_script_string", "run_shell_script_string"}
 
-    # Legacy placeholder (for backward compatibility)
-    LEGACY_PLACEHOLDER_PREFIX = "FILE_CONTENT_#"
+    @classmethod
+    def get_placeholder_field_value(cls, tool: str, args: Dict) -> tuple[Optional[str], Optional[str]]:
+        """
+        Get the placeholder field name and value for a tool.
+
+        Args:
+            tool: Tool name
+            args: Tool arguments
+
+        Returns:
+            Tuple of (field_name, field_value) or (None, None) if tool doesn't use placeholders
+        """
+        if tool not in cls.CONTENT_TOOLS:
+            return None, None
+
+        if tool in {"write_file", "edit_file", "append_file"}:
+            return "content", args.get("content", "")
+        elif tool == "run":
+            return "cmd", args.get("cmd", "")
+        elif tool in {"run_python_script_string", "run_shell_script_string"}:
+            return "script", args.get("script", "")
+        else:
+            return None, None
 
     @classmethod
     def _detect_placeholder_type(cls, placeholder: str) -> Optional[str]:
@@ -73,18 +94,17 @@ class PlaceholderReplacer:
         Detect the type of a placeholder.
 
         Args:
-            placeholder: Placeholder string (e.g., "WRITE_FILE_CONTENT_#1")
+            placeholder: Placeholder string (e.g., "WRITE_FILE_CONTENT_descriptive-name")
 
         Returns:
             Placeholder type name (e.g., "WRITE_FILE_CONTENT") or None if invalid
         """
         for ptype, prefix in cls.PLACEHOLDER_TYPES.items():
             if placeholder.startswith(prefix):
-                return ptype
-
-        # Check for legacy placeholder
-        if placeholder.startswith(cls.LEGACY_PLACEHOLDER_PREFIX):
-            return "LEGACY"
+                # Check that there's a name after the prefix (can be any string)
+                suffix = placeholder[len(prefix):]
+                if suffix:  # Any non-empty string is valid
+                    return ptype
 
         return None
 
@@ -105,15 +125,10 @@ class PlaceholderReplacer:
         # Check type-specific placeholders
         for prefix in cls.PLACEHOLDER_TYPES.values():
             if value.startswith(prefix):
-                suffix = value[len(prefix) :]
-                if suffix.isdigit():
+                suffix = value[len(prefix):]
+                # Name must be non-empty (can contain any characters)
+                if suffix:
                     return True
-
-        # Check legacy placeholder
-        if value.startswith(cls.LEGACY_PLACEHOLDER_PREFIX):
-            suffix = value[len(cls.LEGACY_PLACEHOLDER_PREFIX) :]
-            if suffix.isdigit():
-                return True
 
         return False
 
@@ -135,14 +150,6 @@ class PlaceholderReplacer:
             return True, None
 
         placeholder_type = cls._detect_placeholder_type(placeholder)
-        if placeholder_type == "LEGACY":
-            # Legacy placeholder - allow but warn
-            logger.warning(
-                f"[PlaceholderReplacer] Tool {tool} uses legacy placeholder {placeholder}. "
-                f"Please use type-specific placeholder: {', '.join(expected_types)}"
-            )
-            return True, None
-
         if placeholder_type is None:
             return False, f"Invalid placeholder format: {placeholder}"
 
@@ -180,22 +187,7 @@ class PlaceholderReplacer:
             args = action.get("args", {})
 
             # Determine which field contains the placeholder
-            placeholder_field = None
-            placeholder_value = None
-
-            if tool in cls.CONTENT_TOOLS:
-                # For file tools, check 'content' field
-                if tool in {"write_file", "edit_file", "append_file"}:
-                    placeholder_value = args.get("content", "")
-                    placeholder_field = "content"
-                # For run tool, check 'cmd' field
-                elif tool == "run":
-                    placeholder_value = args.get("cmd", "")
-                    placeholder_field = "cmd"
-                # For script tools, check 'script' field
-                elif tool in {"run_python_script_string", "run_shell_script_string"}:
-                    placeholder_value = args.get("script", "")
-                    placeholder_field = "script"
+            placeholder_field, placeholder_value = cls.get_placeholder_field_value(tool, args)
 
             # Check if it's a placeholder
             if placeholder_field and cls._is_valid_placeholder(placeholder_value):
@@ -300,13 +292,8 @@ class PlaceholderReplacer:
             args = action.get("args", {})
 
             # Check appropriate field based on tool
-            if tool in {"write_file", "edit_file", "append_file"}:
-                value = args.get("content", "")
-            elif tool == "run":
-                value = args.get("cmd", "")
-            elif tool in {"run_python_script_string", "run_shell_script_string"}:
-                value = args.get("script", "")
-            else:
+            field_name, value = cls.get_placeholder_field_value(tool, args)
+            if field_name is None:
                 continue
 
             if cls._is_valid_placeholder(value):

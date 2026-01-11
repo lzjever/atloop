@@ -517,12 +517,12 @@ def parse_action_json(
     """
     Parse Action JSON from text with improved error handling.
 
-    Also extracts file contents from placeholders (FILE_CONTENT_#1, FILE_CONTENT_#2, etc.)
+    Also extracts file contents from placeholders (TYPE_descriptive-name format)
     that follow the JSON in the format:
-    ---(FILE_CONTENT_#1)---
+    ---((WRITE_FILE_CONTENT_descriptive-name))---
     <file content>
-    ---(FILE_CONTENT_#2)---
-    <file content>
+    ---((SHELL_COMMAND_descriptive-name))---
+    <command>
     ...
 
     Tries multiple strategies:
@@ -539,7 +539,7 @@ def parse_action_json(
 
     Returns:
         Tuple of (ActionJSON or None, error_message, file_contents_dict)
-        file_contents_dict maps placeholder names (e.g., "FILE_CONTENT_#1") to actual content
+        file_contents_dict maps placeholder names (e.g., "WRITE_FILE_CONTENT_descriptive-name") to actual content
     """
     if not text or not text.strip():
         return None, "Empty text provided. Your response must contain valid JSON.", {}
@@ -866,42 +866,38 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
 def _extract_file_contents(text: str) -> Dict[str, str]:
     """
     Extract contents from type-specific placeholders in the format:
-    ---(WRITE_FILE_CONTENT_#1)---
+    ---((WRITE_FILE_CONTENT_descriptive-name))---
     <file content>
-    ---(EDIT_FILE_CONTENT_#1)---
+    ---((EDIT_FILE_CONTENT_descriptive-name))---
     <old>old_string</old><new>new_string</new>
-    ---(SHELL_COMMAND_#1)---
+    ---((SHELL_COMMAND_descriptive-name))---
     <command>
-    ---(PYTHON_SCRIPT_#1)---
+    ---((PYTHON_SCRIPT_descriptive-name))---
     <python code>
     ...
-
-    Also supports legacy format:
-    ---(FILE_CONTENT_#1)---
-    <content>
 
     Args:
         text: Full text containing JSON and placeholder contents
 
     Returns:
-        Dictionary mapping placeholder names (e.g., "WRITE_FILE_CONTENT_#1") to content
+        Dictionary mapping placeholder names (e.g., "WRITE_FILE_CONTENT_descriptive-name") to content
+        Content is extracted as-is without any trimming to preserve indentation and formatting.
     """
+    from atloop.llm.placeholder_patterns import (
+        find_placeholder_delimiters,
+        extract_placeholder_name,
+    )
+
     file_contents = {}
-
-    # Pattern to match all placeholder types:
-    # ---(PLACEHOLDER_TYPE_#N)--- where PLACEHOLDER_TYPE can be:
-    # - WRITE_FILE_CONTENT, EDIT_FILE_CONTENT, APPEND_FILE_CONTENT
-    # - SHELL_COMMAND, PYTHON_SCRIPT, SHELL_SCRIPT
-    # - FILE_CONTENT (legacy)
-    pattern = r"---\((WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#(\d+)\)---"
-
-    matches = list(re.finditer(pattern, text))
+    matches = find_placeholder_delimiters(text)
 
     for i, match in enumerate(matches):
-        placeholder_type = match.group(1)
-        placeholder_num = match.group(2)
-        placeholder = f"{placeholder_type}_#{placeholder_num}"
+        placeholder_type, placeholder = extract_placeholder_name(match)
+        # Start position is after the delimiter (skip the newline if present)
         start_pos = match.end()
+        # Skip leading newline if present
+        if start_pos < len(text) and text[start_pos] == '\n':
+            start_pos += 1
 
         # Find the end position (next placeholder or end of text)
         if i + 1 < len(matches):
@@ -909,8 +905,9 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
         else:
             end_pos = len(text)
 
-        # Extract content (strip leading/trailing whitespace)
-        content = text[start_pos:end_pos].strip()
+        # Extract content as-is (preserve all whitespace, indentation, etc.)
+        # This is critical for code files where indentation matters
+        content = text[start_pos:end_pos]
         file_contents[placeholder] = content
 
     return file_contents
@@ -921,9 +918,9 @@ def _remove_file_content_sections(text: str) -> str:
     Remove placeholder content sections from text, leaving only JSON.
 
     Removes sections like:
-    ---(WRITE_FILE_CONTENT_#1)---
+    ---((WRITE_FILE_CONTENT_descriptive-name))---
     <content>
-    ---(SHELL_COMMAND_#1)---
+    ---((SHELL_COMMAND_descriptive-name))---
     <command>
     ...
 
@@ -933,10 +930,9 @@ def _remove_file_content_sections(text: str) -> str:
     Returns:
         Text with placeholder content sections removed
     """
-    # Pattern to match all placeholder types: ---(TYPE_#N)--- ... (until next placeholder or end)
-    pattern = r"---\((WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)---.*?(?=---\((?:WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)---|$)"
+    from atloop.llm.placeholder_patterns import PLACEHOLDER_SECTION_REGEX
 
     # Remove all placeholder content sections
-    result = re.sub(pattern, "", text, flags=re.DOTALL)
+    result = PLACEHOLDER_SECTION_REGEX.sub("", text)
 
     return result.strip()

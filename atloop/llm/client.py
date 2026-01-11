@@ -21,10 +21,11 @@ from atloop.skills import EnhancedSkillLoader
 
 logger = logging.getLogger(__name__)
 
-# Pattern to match all placeholder types in delimiter format
-# Supports: WRITE_FILE_CONTENT, EDIT_FILE_CONTENT, APPEND_FILE_CONTENT,
-#           SHELL_COMMAND, PYTHON_SCRIPT, SHELL_SCRIPT, FILE_CONTENT (legacy)
-PLACEHOLDER_PATTERN = r"---\((WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)---"
+# Import placeholder patterns from centralized module
+from atloop.llm.placeholder_patterns import (
+    PLACEHOLDER_DELIMITER_REGEX,
+    PARTIAL_PLACEHOLDER_REGEX,
+)
 
 
 class LLMClient:
@@ -512,9 +513,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     f"[LLMClient] Using initial result (may be incomplete), length: {len(initial_result.text)} chars"
                 )
                 result = initial_result
-                placeholders_in_initial = re.findall(
-                    PLACEHOLDER_PATTERN, initial_result.text
-                )
+                placeholders_in_initial = [
+                    match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(initial_result.text)
+                ]
                 if placeholders_in_initial:
                     logger.warning(
                         f"[LLMClient] Initial result contains placeholders {placeholders_in_initial}, "
@@ -547,7 +548,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             logger.info(
                 f"[LLMClient] Continued after truncation, final full_output length: {len(full_output)} chars"
             )
-            placeholders_found = re.findall(PLACEHOLDER_PATTERN, full_output)
+            placeholders_found = [
+                match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(full_output)
+            ]
             logger.info(f"[LLMClient] Found placeholders: {placeholders_found}")
 
     def _log_file_contents_extraction(
@@ -558,34 +561,20 @@ Please output only valid JSON, do not add any other text, comments, or explanati
     ) -> None:
         """Log placeholder contents extraction results.
 
-        Placeholder contents (---(TYPE_#N)--- blocks) are expected when the LLM
+        Placeholder contents (---((TYPE_name))--- blocks) are expected when the LLM
         uses tools with placeholders. For tools without placeholders, empty file_contents is normal.
         """
         # Collect placeholders that actions expect
+        from atloop.orchestrator.phases.placeholder_replacer import PlaceholderReplacer
+
         expected_placeholders = []
         if action_json:
             for action in action_json.actions:
                 tool = action.get("tool")
                 args = action.get("args", {})
-                # Check appropriate field based on tool
-                if tool in ["write_file", "edit_file", "append_file"]:
-                    value = args.get("content", "")
-                elif tool == "run":
-                    value = args.get("cmd", "")
-                elif tool in ["run_python_script_string", "run_shell_script_string"]:
-                    value = args.get("script", "")
-                else:
-                    continue
-                # Check if it's a valid placeholder (any type)
-                if isinstance(value, str) and (
-                    value.startswith("WRITE_FILE_CONTENT_#") or
-                    value.startswith("EDIT_FILE_CONTENT_#") or
-                    value.startswith("APPEND_FILE_CONTENT_#") or
-                    value.startswith("SHELL_COMMAND_#") or
-                    value.startswith("PYTHON_SCRIPT_#") or
-                    value.startswith("SHELL_SCRIPT_#") or
-                    value.startswith("FILE_CONTENT_#")  # legacy
-                ):
+                # Use shared method to get placeholder field value
+                field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
+                if field_name and PlaceholderReplacer._is_valid_placeholder(value):
                     expected_placeholders.append(value)
 
         if file_contents:
@@ -599,13 +588,13 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             if missing:
                 logger.warning(
                     f"[LLMClient] Actions reference placeholders {missing} "
-                    f"but corresponding ---(TYPE_#N)--- blocks not found in LLM output!"
+                    f"but corresponding ---((TYPE_name))--- blocks not found in LLM output!"
                 )
         elif expected_placeholders:
             # Actions use placeholders but we extracted nothing - LLM didn't provide content blocks
             logger.warning(
                 f"[LLMClient] Actions reference placeholders {expected_placeholders} "
-                f"but no ---(TYPE_#N)--- blocks found in LLM output! "
+                f"but no ---((TYPE_name))--- blocks found in LLM output! "
                 f"full_output length: {len(full_output)}"
             )
         # else: No file-writing actions with placeholders (e.g., only run/read_file) -
@@ -698,17 +687,18 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     f"accumulated text length: {len(accumulated_text)} chars"
                 )
 
-                placeholders_in_continue = re.findall(
-                    PLACEHOLDER_PATTERN, continue_result.text
-                )
+                placeholders_in_continue = [
+                    match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(continue_result.text)
+                ]
                 if placeholders_in_continue:
                     logger.info(
                         f"[LLMClient] Continue result contains placeholders: {placeholders_in_continue}"
                     )
 
-                # Pattern to detect partial placeholders (may be cut off)
-                partial_pattern = r"---\((?:WRITE_FILE_CONTENT|EDIT_FILE_CONTENT|APPEND_FILE_CONTENT|SHELL_COMMAND|PYTHON_SCRIPT|SHELL_SCRIPT|FILE_CONTENT)_#\d+\)?---?"
-                partial_matches = re.findall(partial_pattern, continue_result.text)
+                # Detect partial placeholders (may be cut off in streaming)
+                partial_matches = [
+                    match.group(0) for match in PARTIAL_PLACEHOLDER_REGEX.finditer(continue_result.text)
+                ]
                 if partial_matches:
                     logger.warning(
                         f"[LLMClient] Continue result may contain partial placeholders: {partial_matches}"
@@ -727,7 +717,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                         f"[LLMClient] Continue failed, returning partial merged result (may be incomplete), "
                         f"length: {len(merged.text)} chars, contains {len(all_results)} results"
                     )
-                    placeholders_in_merged = re.findall(PLACEHOLDER_PATTERN, merged.text)
+                    placeholders_in_merged = [
+                        match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(merged.text)
+                    ]
                     if placeholders_in_merged:
                         logger.warning(
                             f"[LLMClient] Partial result contains placeholders {placeholders_in_merged}, "
@@ -760,7 +752,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             f"total length: {len(full_result.text)} chars, {continue_count} continues"
         )
 
-        all_placeholders = re.findall(PLACEHOLDER_PATTERN, full_result.text)
+        all_placeholders = [
+            match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(full_result.text)
+        ]
         logger.info(f"[LLMClient] Merged complete text contains placeholders: {all_placeholders}")
 
         return full_result

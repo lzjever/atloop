@@ -199,10 +199,32 @@ class ActPhase(BasePhase):
 
         import time
         
+        # Get placeholder info from job_state (saved by PlanPhase)
+        placeholder_info_dict = self.coordinator.job_state.shared_data.get("placeholder_info", {})
+        
+        # Store placeholder info for memory recording (matched by action index)
+        placeholder_info = []
+        
         for i, action in enumerate(sorted_actions):
             logger.debug(
                 f"[ActPhase] Executing action {i + 1}/{len(actions)}: {action.get('tool')}"
             )
+
+            # Get placeholder info from job_state (saved by PlanPhase)
+            # Use original action index before sorting
+            original_index = actions.index(action) if action in actions else i
+            placeholder_data = placeholder_info_dict.get(original_index, {})
+            
+            tool = action.get("tool", "unknown")
+            args = action.get("args", {})
+            placeholder_name = placeholder_data.get("placeholder")
+            
+            # If no placeholder was used, record the actual args
+            placeholder_info.append({
+                "tool": tool,
+                "placeholder": placeholder_name,
+                "args": placeholder_data.get("args") if not placeholder_name else None,
+            })
 
             # Validate and execute action
             self._validate_action(action, i + 1)
@@ -213,8 +235,6 @@ class ActPhase(BasePhase):
             self._process_action_result(action, result, state, modified_files)
             
             # Record action to progress tracker
-            tool = action.get("tool", "unknown")
-            args = action.get("args", {})
             self.coordinator.progress_tracker.record_action(
                 step=state.step,
                 tool=tool,
@@ -229,6 +249,13 @@ class ActPhase(BasePhase):
             logger.debug(
                 f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}"
             )
+        
+        # Store placeholder info for memory recording (will be used in _update_memory_after_execution)
+        state._act_phase_placeholder_info = placeholder_info
+        
+        # Clean up placeholder info from job_state after use
+        if "placeholder_info" in self.coordinator.job_state.shared_data:
+            del self.coordinator.job_state.shared_data["placeholder_info"]
         
         # Save action history to memory for persistence
         state.memory.action_history = [
@@ -413,22 +440,8 @@ class ActPhase(BasePhase):
         args = action.get("args", {})
 
         # Check for unreplaced placeholders in all tools that use placeholders
-        if tool in PlaceholderReplacer.CONTENT_TOOLS:
-            # Determine which field to check based on tool
-            if tool in ["write_file", "append_file", "edit_file"]:
-                value = args.get("content", "")
-                field_name = "content"
-            elif tool == "run":
-                value = args.get("cmd", "")
-                field_name = "cmd"
-            elif tool in ["run_python_script_string", "run_shell_script_string"]:
-                value = args.get("script", "")
-                field_name = "script"
-            else:
-                value = ""
-                field_name = ""
-
-            if PlaceholderReplacer._is_valid_placeholder(value):
+        field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
+        if field_name and PlaceholderReplacer._is_valid_placeholder(value):
                 logger.error(
                     f"[ActPhase] ❌ CRITICAL: {tool} action {action_index} has unreplaced placeholder "
                     f"{value} in field '{field_name}'! This indicates placeholder replacement failed in PlanPhase."
@@ -581,6 +594,31 @@ class ActPhase(BasePhase):
         )
         logger.debug(
             f"[ActPhase] Recorded attempt: success={success}, files={len(modified_files)}"
+        )
+        
+        # Record tool results to tool_results_history with placeholder info
+        placeholder_info = getattr(state, "_act_phase_placeholder_info", [])
+        for i, (result, placeholder_data) in enumerate(zip(results, placeholder_info)):
+            tool = placeholder_data["tool"]
+            placeholder = placeholder_data["placeholder"]
+            args = placeholder_data["args"]
+            
+            # Record to tool_results_history
+            tool_result_record = {
+                "step": state.step,
+                "tool": tool,
+                "args": args if args is not None else {},  # Use actual args if no placeholder
+                "placeholder": placeholder,  # Placeholder name if exists, None otherwise
+                "result": result,
+            }
+            state.memory.tool_results_history.append(tool_result_record)
+        
+        # Clean up temporary placeholder info
+        if hasattr(state, "_act_phase_placeholder_info"):
+            delattr(state, "_act_phase_placeholder_info")
+        
+        logger.debug(
+            f"[ActPhase] Recorded {len(results)} tool results to tool_results_history"
         )
 
         # Auto-detect milestones

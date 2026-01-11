@@ -543,10 +543,29 @@ class MemorySummarizer:
             for tool_result in state.memory.tool_results_history[-5:]:  # Last 5 tool results
                 step = tool_result.get("step", "?")
                 tool_name = tool_result.get("tool", "unknown")
+                placeholder = tool_result.get("placeholder")
+                args = tool_result.get("args", {})
                 result = tool_result.get("result", {})
                 ok = result.get("ok", False)
                 status = "✓" if ok else "✗"
-                parts.append(f"- Step {step}: {status} [{tool_name}]")
+                
+                # Show placeholder name if available, otherwise show key args info
+                if placeholder:
+                    parts.append(f"- Step {step}: {status} [{tool_name}] ({placeholder})")
+                elif args:
+                    # Show key information from args
+                    if tool_name == "run" and "cmd" in args:
+                        cmd_preview = str(args["cmd"])[:50]
+                        parts.append(f"- Step {step}: {status} [{tool_name}] (cmd: {cmd_preview}...)")
+                    elif tool_name in ["write_file", "edit_file", "append_file"] and "path" in args:
+                        path = args.get("path", "")
+                        parts.append(f"- Step {step}: {status} [{tool_name}] (path: {path})")
+                    else:
+                        # Show first few args keys
+                        args_keys = list(args.keys())[:3]
+                        parts.append(f"- Step {step}: {status} [{tool_name}] (args: {', '.join(args_keys)})")
+                else:
+                    parts.append(f"- Step {step}: {status} [{tool_name}]")
                 if result.get("stdout"):
                     # Get tool instance and use unified strategy for preview size
                     tool_instance: Optional[BaseTool] = None

@@ -48,11 +48,11 @@ All responses must be valid JSON containing "actions" and "stop_reason" fields.
   "current_step_thoughts": "Creating a new utility module for data processing",
   "plan": ["Create utils.py with helper functions"],
   "actions": [
-    {"tool": "write_file", "args": {"path": "utils.py", "content": "WRITE_FILE_CONTENT_#1"}}
+    {"tool": "write_file", "args": {"path": "utils.py", "content": "WRITE_FILE_CONTENT_file:utils.py"}}
   ],
   "stop_reason": "continue"
 }
----(WRITE_FILE_CONTENT_#1)---
+---((WRITE_FILE_CONTENT_file:utils.py))---
 def process_data(data):
     """Process input data."""
     return data.upper()
@@ -72,13 +72,13 @@ def validate_input(value):
       "tool": "edit_file",
       "args": {
         "path": "main.py",
-        "content": "EDIT_FILE_CONTENT_#1"
+        "content": "EDIT_FILE_CONTENT_file:main.py"
       }
     }
   ],
   "stop_reason": "continue"
 }
----(EDIT_FILE_CONTENT_#1)---
+---((EDIT_FILE_CONTENT_file:main.py))---
 <old>def main():
     result = process()
     print(result)</old>
@@ -96,10 +96,12 @@ def validate_input(value):
   "current_step_thoughts": "Testing the application to verify it works",
   "plan": ["Run the application", "Check output"],
   "actions": [
-    {"tool": "run", "args": {"cmd": "python3 main.py"}}
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:python3-main.py"}}
   ],
   "stop_reason": "continue"
 }
+---((SHELL_COMMAND_cmd:python3-main.py))---
+python3 main.py
 ```
 
 #### Example 5: Task completion (with final actions)
@@ -112,14 +114,14 @@ def validate_input(value):
       "tool": "edit_file",
       "args": {
         "path": "main.py",
-        "content": "EDIT_FILE_CONTENT_#1"
+        "content": "EDIT_FILE_CONTENT_file:main.py"
       }
     }
   ],
   "stop_reason": "done",
   "result_message": "Task completed successfully. All tests pass and documentation added."
 }
----(EDIT_FILE_CONTENT_#1)---
+---((EDIT_FILE_CONTENT_file:main.py))---
 <old>def main():</old>
 <new>"""
 Main entry point for the application.
@@ -138,32 +140,34 @@ def main():</new>
 }
 ```
 
-#### Example 7: Multiple actions in correct order
+#### Example 7: Multiple actions in correct order (with unique placeholder names)
 ```json
 {
   "current_step_thoughts": "Creating new files, then modifying existing file, then running tests",
   "plan": ["Create new files", "Modify existing file", "Run tests"],
   "actions": [
-    {"tool": "write_file", "args": {"path": "model.py", "content": "WRITE_FILE_CONTENT_#1"}},
-    {"tool": "write_file", "args": {"path": "view.py", "content": "WRITE_FILE_CONTENT_#2"}},
-    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_#1"}},
-    {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_#1"}},
-    {"tool": "run", "args": {"cmd": "python3 -m pytest tests/"}}
+    {"tool": "write_file", "args": {"path": "model.py", "content": "WRITE_FILE_CONTENT_file:model.py"}},
+    {"tool": "write_file", "args": {"path": "view.py", "content": "WRITE_FILE_CONTENT_file:view.py"}},
+    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_file:existing.py"}},
+    {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_file:main.py"}},
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:pytest-tests"}}
   ],
   "stop_reason": "continue"
 }
----(WRITE_FILE_CONTENT_#1)---
+---((WRITE_FILE_CONTENT_file:model.py))---
 class Model:
     pass
----(WRITE_FILE_CONTENT_#2)---
+---((WRITE_FILE_CONTENT_file:view.py))---
 class View:
     pass
----(APPEND_FILE_CONTENT_#1)---
+---((APPEND_FILE_CONTENT_file:existing.py))---
 # Additional functionality
----(EDIT_FILE_CONTENT_#1)---
+---((EDIT_FILE_CONTENT_file:main.py))---
 <old>def main():</old>
 <new>def main():
     # Updated implementation</new>
+---((SHELL_COMMAND_cmd:pytest-tests))---
+python3 -m pytest tests/
 ```
 
 **Note**: Notice the correct order: `write_file` → `append_file` → `edit_file` → `run`. This ensures files are created/modified before they are used. However, **all actions execute in parallel** - the `run` action cannot use the output of file operations. If you need to read a file's content and use it in another action, do that in separate rounds.
@@ -175,8 +179,10 @@ class View:
 - **CRITICAL: Actions are independent**: All actions in the same round execute in parallel - they cannot depend on each other's outputs
 - **CRITICAL: Action limits**: Maximum 3 actions per round (or 2 if writing files)
 - **CRITICAL: Task completion**: If task is complete in your thoughts, output no actions and set `stop_reason="done"`
-- Use placeholders for file content (WRITE_FILE_CONTENT_#N, EDIT_FILE_CONTENT_#N, etc.)
-- Place actual content after the JSON block using `---(PLACEHOLDER)---` format
+- **CRITICAL: All placeholders use descriptive names**: Use `TYPE_descriptive-name` format (e.g., `WRITE_FILE_CONTENT_file:utils.py`, `SHELL_COMMAND_cmd:ls-la`)
+- **CRITICAL: Placeholder names MUST be unique within the same round**: Generate unique names based on file paths, commands, and sequence
+- **CRITICAL: ALL `run` commands MUST use placeholders**: Direct command strings are NOT allowed
+- **CRITICAL: Use double brackets format**: Place actual content after the JSON block using `---((PLACEHOLDER))---` format (double brackets)
 - For `edit_file`, use `<old>...</old><new>...</new>` format in content
 - When `stop_reason="done"`, you can still include actions - they will be executed before completion (unless task is already complete in your thoughts)
 
@@ -245,18 +251,27 @@ Step N+1:
 - `edit_file` modifies files that must already exist
 - Other operations (reading, running commands) can depend on files created/modified above
 
-**Example of Correct Ordering**:
+**Example of Correct Ordering** (with unique placeholder names):
 ```json
 {
   "actions": [
-    {"tool": "write_file", "args": {"path": "new_file.py", "content": "WRITE_FILE_CONTENT_#1"}},
-    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_#1"}},
-    {"tool": "edit_file", "args": {"path": "existing.py", "content": "EDIT_FILE_CONTENT_#1"}},
+    {"tool": "write_file", "args": {"path": "new_file.py", "content": "WRITE_FILE_CONTENT_file:new_file.py"}},
+    {"tool": "append_file", "args": {"path": "existing.py", "content": "APPEND_FILE_CONTENT_file:existing.py"}},
+    {"tool": "edit_file", "args": {"path": "existing.py", "content": "EDIT_FILE_CONTENT_file:existing.py"}},
     {"tool": "read_file", "args": {"path": "new_file.py"}},
-    {"tool": "run", "args": {"cmd": "python3 new_file.py"}}
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:python3-new_file.py"}}
   ],
   "stop_reason": "continue"
 }
+---((WRITE_FILE_CONTENT_file:new_file.py))---
+# File content here
+---((APPEND_FILE_CONTENT_file:existing.py))---
+# Additional code
+---((EDIT_FILE_CONTENT_file:existing.py))---
+<old>old code</old>
+<new>new code</new>
+---((SHELL_COMMAND_cmd:python3-new_file.py))---
+python3 new_file.py
 ```
 
 **Note**: If you have multiple actions of the same type (e.g., multiple `write_file` actions), order them logically (e.g., base files before dependent files).
@@ -274,7 +289,7 @@ Step N+1:
 {
   "actions": [
     {"tool": "read_file", "args": {"path": "config.json"}},  // Get config
-    {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_#1"}}  // Use config data - WRONG!
+    {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_file:main.py"}}  // Use config data - WRONG!
   ]
 }
 ```
@@ -387,18 +402,33 @@ All file/script content must use type-specific placeholders in JSON, with actual
 
 | Tool | Placeholder | Field | When to Use |
 |------|-------------|-------|-------------|
-| `write_file` | `WRITE_FILE_CONTENT_#N` | `content` | Creating new files or complete rewrites |
-| `edit_file` | `EDIT_FILE_CONTENT_#N` | `content` | Modifying existing files (preferred for edits) |
-| `append_file` | `APPEND_FILE_CONTENT_#N` | `content` | Appending to file end (for files >6KB) |
-| `run` (complex) | `SHELL_COMMAND_#N` | `cmd` | Complex shell commands with special characters |
-| `run_python_script_string` | `PYTHON_SCRIPT_#N` | `script` | Python code execution (avoids shell escaping) |
-| `run_shell_script_string` | `SHELL_SCRIPT_#N` | `script` | Complex shell scripts (avoids shell escaping) |
+| `write_file` | `WRITE_FILE_CONTENT_<description>` | `content` | Creating new files or complete rewrites |
+| `edit_file` | `EDIT_FILE_CONTENT_<description>` | `content` | Modifying existing files (preferred for edits) |
+| `append_file` | `APPEND_FILE_CONTENT_<description>` | `content` | Appending to file end (for files >6KB) |
+| `run` | `SHELL_COMMAND_<description>` | `cmd` | **ALL shell commands (required)** |
+| `run_python_script_string` | `PYTHON_SCRIPT_<description>` | `script` | Python code execution (avoids shell escaping) |
+| `run_shell_script_string` | `SHELL_SCRIPT_<description>` | `script` | Complex shell scripts (avoids shell escaping) |
+
+**Placeholder Name Format**:
+- Use descriptive names that clearly identify the content
+- Names can contain ANY characters (letters, numbers, spaces, special characters, etc.)
+- **Exception**: Names cannot contain the sequence `))---` (this conflicts with delimiter end)
+- Names CAN contain `))` as long as it's not followed by `---`
+- Examples: `content-of-new-file`, `command-to-list-files`, `script-to-process-data`, `file: main.py`, `cmd: ls -la`
+- Make it clear what the placeholder represents based on the action parameters and sequence
+- **CRITICAL: Each placeholder name MUST be unique within the same round of actions**
+- Generate unique names based on:
+  - File path (for file operations): e.g., `WRITE_FILE_CONTENT_file:utils.py`
+  - Command content (for run commands): e.g., `SHELL_COMMAND_cmd:ls-la`
+  - Action sequence: e.g., `EDIT_FILE_CONTENT_action-1-main.py`, `EDIT_FILE_CONTENT_action-2-config.json`
 
 ### Basic Format
 
+**Format**: Use double brackets `---((TYPE_name))---` to reduce conflicts
+
 ```json
-{"tool": "write_file", "args": {"path": "file.py", "content": "WRITE_FILE_CONTENT_#1"}}
----(WRITE_FILE_CONTENT_#1)---
+{"tool": "write_file", "args": {"path": "file.py", "content": "WRITE_FILE_CONTENT_file:file.py"}}
+---((WRITE_FILE_CONTENT_file:file.py))---
 actual content here
 ```
 
@@ -407,20 +437,31 @@ actual content here
 For `edit_file`, use `<old>...</old><new>...</new>` format:
 
 ```json
-{"tool": "edit_file", "args": {"path": "file.py", "content": "EDIT_FILE_CONTENT_#1"}}
----(EDIT_FILE_CONTENT_#1)---
+{"tool": "edit_file", "args": {"path": "file.py", "content": "EDIT_FILE_CONTENT_file:file.py"}}
+---((EDIT_FILE_CONTENT_file:file.py))---
 <old>def old_function():
     return "old"</old>
 <new>def new_function():
     return "new"</new>
 ```
 
+### Run Command Format
+
+**CRITICAL**: All `run` commands MUST use placeholders. Direct command strings are NOT allowed.
+
+```json
+{"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:ls-la"}}
+---((SHELL_COMMAND_cmd:ls-la))---
+ls -la
+```
+
 **Important**:
-- Use sequential numbers (#1, #2, #3, etc.) for multiple placeholders
-- Each placeholder must be unique within the same response
+- **Format**: Use `---((TYPE_name))---` (double brackets) for delimiter
+- **Uniqueness**: Each placeholder name MUST be unique within the same round
+- Generate unique names based on action parameters (file path, command, etc.) and sequence
 - Place actual content immediately after the JSON block
-- For simple commands, you can use `run` without placeholders: `{"tool": "run", "args": {"cmd": "ls -la"}}`
-- Placeholders are required for file operations and complex scripts
+- **ALL `run` commands MUST use `SHELL_COMMAND_<description>` placeholder** - direct command strings are not allowed
+- Placeholders are required for all file operations and all commands
 
 ## Core Principles
 

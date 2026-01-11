@@ -298,6 +298,47 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] LLM response: stop_reason={stop_reason}, actions={len(actions)}"
             )
 
+            # Validate that run tool uses placeholders (before replacement)
+            from atloop.orchestrator.phases.placeholder_info import PlaceholderInfoTracker
+
+            is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+            if not is_valid:
+                logger.error(f"[PlanPhase] {error_msg}")
+                state.last_error.summary = error_msg
+                self.coordinator.state_manager.update(phase="DISCOVER")
+                self._transition(Phase.DISCOVER)
+                return PhaseResult(
+                    success=False,
+                    data={},
+                    next_phase=Phase.DISCOVER,
+                    error=error_msg,
+                )
+
+            # Validate placeholder name uniqueness within the same round
+            placeholder_names = []
+            for i, action in enumerate(actions):
+                tool = action.get("tool", "")
+                args = action.get("args", {})
+                field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
+                if field_name and PlaceholderReplacer._is_valid_placeholder(value):
+                    if value in placeholder_names:
+                        error_msg = (
+                            f"Duplicate placeholder name '{value}' found in action {i+1}. "
+                            f"Each placeholder must have a unique name within the same round. "
+                            f"Please generate unique placeholder names based on action parameters and sequence."
+                        )
+                        logger.error(f"[PlanPhase] {error_msg}")
+                        state.last_error.summary = error_msg
+                        self.coordinator.state_manager.update(phase="DISCOVER")
+                        self._transition(Phase.DISCOVER)
+                        return PhaseResult(
+                            success=False,
+                            data={},
+                            next_phase=Phase.DISCOVER,
+                            error=error_msg,
+                        )
+                    placeholder_names.append(value)
+
             # Replace placeholders using dedicated service
             logger.debug(
                 f"[PlanPhase] Preparing to replace placeholders, file_contents keys: "
@@ -312,10 +353,30 @@ class PlanPhase(BasePhase):
                 logger.warning("[PlanPhase] No file_contents received from LLM!")
 
             try:
+                # Extract placeholder info before replacement (for memory recording)
+                placeholder_info_list = PlaceholderInfoTracker.extract_placeholder_info(actions)
+                
                 # Use PlaceholderReplacer service for clean, testable replacement
                 # Returns successful actions and full result metadata
                 successful_actions, replacement_result = PlaceholderReplacer.replace_and_validate_with_result(
                     actions, file_contents, strict=False
+                )
+                
+                # Store placeholder info in job_state for ActPhase (not in action dicts)
+                # Match placeholder info to successful actions by index
+                # Note: successful_actions may have different length if some were pending
+                # We store info for all original actions, ActPhase will match by index
+                placeholder_info_dict = {
+                    i: {
+                        "tool": info.tool,
+                        "placeholder": info.placeholder,
+                        "args": info.args,
+                    }
+                    for i, info in enumerate(placeholder_info_list)
+                }
+                self.coordinator.job_state.shared_data["placeholder_info"] = placeholder_info_dict
+                logger.debug(
+                    f"[PlanPhase] Stored placeholder info for {len(placeholder_info_dict)} actions"
                 )
                 logger.info(
                     f"[PlanPhase] Placeholder replacement: {replacement_result.replaced_count}/{replacement_result.total_count} successful. "
@@ -365,7 +426,7 @@ class PlanPhase(BasePhase):
                     error_parts.append(
                         f"Successfully processed {replacement_result.replaced_count}/{replacement_result.total_count} actions. "
                         f"Please provide the missing placeholders in your next response using the format: "
-                        f"---({replacement_result.missing_placeholders[0]})---\n<content>\n---"
+                        f"---(({replacement_result.missing_placeholders[0]}))---\n<content>\n---"
                     )
 
                     error_msg = "\n".join(error_parts)
