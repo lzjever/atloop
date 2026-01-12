@@ -1,5 +1,6 @@
 """Append file tool."""
 
+import base64
 import shlex
 from typing import Any, Dict, Optional
 
@@ -28,6 +29,11 @@ class AppendFileTool(BaseTool):
     - Content is appended exactly as provided
     - Preserves trailing newlines in input content
     - Unlike write_file/edit_file, doesn't normalize trailing newlines
+
+    **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`,
+    `{variable}`, etc. will be written literally to the file and will NOT be populated by shell
+    variable expansion. Use proper templating in the target language instead (e.g., Python
+    f-strings, format(), etc.)
     """
 
     def __init__(self, sandbox: SandboxAdapter):
@@ -47,7 +53,7 @@ class AppendFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "追加内容到文件（在现有文件末尾添加内容）"
+        return "追加内容到文件（在现有文件末尾添加内容）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""
@@ -101,6 +107,12 @@ class AppendFileTool(BaseTool):
         - This differs from `write_file` and `edit_file`, which normalize trailing newlines
         - Use this when you need precise control over trailing newlines
 
+        **⚠️ Important: Content with {variable} patterns:**
+        Do NOT generate code or text with patterns like `{error_output}`, `{variable}`, etc.
+        expecting them to be populated by shell variable expansion. These are written literally
+        to the file and will NOT be expanded. If you need variable substitution, use proper
+        templating mechanisms in the target language (e.g., Python f-strings, format(), etc.).
+
         **Common Workflow:**
         1. First turn: Use `write_file` to create file with first 6k characters
         2. Subsequent turns: Use `append_file` to continue adding content
@@ -117,11 +129,12 @@ class AppendFileTool(BaseTool):
         # Handle paths - sandbox runs in /workspace directory
         # Relative paths are already relative to /workspace
         path_escaped = shlex.quote(path)
-        content_escaped = shlex.quote(content)
 
-        # Use printf to append content exactly as provided (no extra newline)
-        # printf '%s' ensures exact content without heredoc's trailing newline
-        cmd = f"printf '%s' {content_escaped} >> {path_escaped}"
+        # Use base64 encoding to safely append file content
+        # This avoids shell interpretation issues with special characters like {, }, $, etc.
+        # Content is appended exactly as provided (preserves trailing newlines)
+        content_b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
+        cmd = f"echo {shlex.quote(content_b64)} | base64 -d >> {path_escaped}"
         result = self.sandbox.exec_shell(
             command=cmd,
             workdir="/workspace",

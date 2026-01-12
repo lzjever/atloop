@@ -370,6 +370,7 @@ The second action cannot use data from the first action because they execute in 
 - **Use for**: Appending to file end (for continuing >6KB files)
 - **When**: Initial `write_file` was used, now need to add more content
 - **Order**: Must be placed **after** `write_file` but **before** `edit_file` in actions array
+- **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`, `{variable}`, etc. will be written literally to the file and will NOT be populated by shell variable expansion. Use proper templating in the target language instead (e.g., Python f-strings, format(), etc.)
 - **Example**: `{"tool": "append_file", "args": {"path": "large_file.py", "content": "APPEND_FILE_CONTENT_#1"}}`
 
 ### Skill Loading
