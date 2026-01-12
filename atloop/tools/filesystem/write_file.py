@@ -1,5 +1,6 @@
 """Write file tool."""
 
+import base64
 import shlex
 from typing import Any, Dict, Optional
 
@@ -16,6 +17,10 @@ class WriteFileTool(BaseTool):
     - **Do NOT use for**: Modifying parts of existing files (use `edit_file` instead)
     - **Character limit**: Maximum 6,000 characters per turn
     - **Directory creation**: Automatically creates parent directories if they don't exist
+    - **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`,
+      `{variable}`, etc. will be written literally to the file and will NOT be populated by shell
+      variable expansion. Use proper templating in the target language instead (e.g., Python
+      f-strings, format(), etc.)
 
     **When to use write_file vs edit_file:**
     - ✅ Creating a new file → use `write_file`
@@ -50,7 +55,7 @@ class WriteFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "写入文件（完全覆盖整个文件内容。如果要修改文件的部分内容，请使用 edit_file；如果要追加内容，请使用 append_file）"
+        return "写入文件（完全覆盖整个文件内容。如果要修改文件的部分内容，请使用 edit_file；如果要追加内容，请使用 append_file）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""
@@ -102,12 +107,17 @@ class WriteFileTool(BaseTool):
             # ---(FILE_CONTENT_#1)---
 
         **Note on Trailing Newlines:**
-        This tool uses heredoc (cat > file <<'FILE_EOF') which automatically adds a trailing
-        newline. The tool normalizes input to ensure files always end with exactly one newline:
-        - If content ends with '\\n', it's removed before writing (heredoc adds one)
-        - If content doesn't end with '\\n', heredoc adds one
+        Files always end with exactly one newline character:
+        - If content ends with '\\n', it's preserved
+        - If content doesn't end with '\\n', one is added
         - Result: File always ends with exactly one newline character
         - Exception: Empty string content results in a file with one newline
+
+        **⚠️ Important: Content with {variable} patterns:**
+        Do NOT generate code or text with patterns like `{error_output}`, `{variable}`, etc.
+        expecting them to be populated by shell variable expansion. These are written literally
+        to the file and will NOT be expanded. If you need variable substitution, use proper
+        templating mechanisms in the target language (e.g., Python f-strings, format(), etc.).
 
         **Error Handling:**
         - Success is determined by stderr content, not exit code
@@ -139,14 +149,16 @@ class WriteFileTool(BaseTool):
                 # The write operation will fail if directory doesn't exist
                 pass
 
-        # Use heredoc to write file
-        # Heredoc automatically adds a newline before FILE_EOF, so we need to handle trailing newlines
-        # If content ends with \n, remove it to avoid double newline
+        # Use base64 encoding to safely write file content
+        # This avoids shell interpretation issues with special characters like {, }, $, etc.
+        # Ensure content ends with exactly one newline
         content_for_write = content
-        if content_for_write.endswith("\n"):
-            content_for_write = content_for_write[:-1]
-
-        cmd = f"cat > {path_escaped} <<'FILE_EOF'\n{content_for_write}\nFILE_EOF"
+        if not content_for_write.endswith("\n"):
+            content_for_write = content_for_write + "\n"
+        
+        # Encode content to base64 for safe transmission through shell
+        content_b64 = base64.b64encode(content_for_write.encode('utf-8')).decode('ascii')
+        cmd = f"echo {shlex.quote(content_b64)} | base64 -d > {path_escaped}"
         result = self.sandbox.exec_shell(
             command=cmd,
             workdir="/workspace",

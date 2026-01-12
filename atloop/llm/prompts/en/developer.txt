@@ -354,6 +354,7 @@ The second action cannot use data from the first action because they execute in 
 - **When**: File already exists and needs changes
 - **Format**: Use `<old>...</old><new>...</new>` format
 - **Order**: Must be placed **after** `write_file` and `append_file` but **before** other operations in actions array
+- **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`, `{variable}`, etc. will be written literally to the file and will NOT be populated by shell variable expansion. Use proper templating in the target language instead (e.g., Python f-strings, format(), etc.)
 - **Example**: See placeholder system examples above
 
 #### `write_file`
@@ -362,6 +363,7 @@ The second action cannot use data from the first action because they execute in 
 - **Limit**: Max 6KB per round (use `append_file` for larger files)
 - **Critical**: Always check memory's "Created Files" list first to avoid recreating existing files
 - **Order**: Must be placed **first** in actions array if you have any file modification actions
+- **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`, `{variable}`, etc. will be written literally to the file and will NOT be populated by shell variable expansion. Use proper templating in the target language instead (e.g., Python f-strings, format(), etc.)
 - **Example**: See placeholder system examples above
 
 #### `append_file`

@@ -1,5 +1,6 @@
 """Edit file tool with Git-style diff editing."""
 
+import base64
 import shlex
 from typing import Any, Dict, Optional
 
@@ -18,6 +19,11 @@ class EditFileTool(BaseTool):
     - ✅ Safer: Doesn't risk overwriting unrelated code
     - ✅ More efficient: No need to read and rewrite entire file
     - ✅ Better for local modifications: Functions, classes, paragraphs, etc.
+
+    **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`,
+    `{variable}`, etc. will be written literally to the file and will NOT be populated by shell
+    variable expansion. Use proper templating in the target language instead (e.g., Python
+    f-strings, format(), etc.)
 
     **Safety features:**
     - Match count validation: Only replaces if old_string appears exactly once
@@ -49,7 +55,7 @@ class EditFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "编辑文件（Git 风格 diff 编辑，使用 content 参数，格式为 <old>old_string</old><new>new_string</new>）"
+        return "编辑文件（Git 风格 diff 编辑，使用 content 参数，格式为 <old>old_string</old><new>new_string</new>）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""
@@ -139,6 +145,12 @@ class EditFileTool(BaseTool):
         **Note on Trailing Newlines:**
         Files always end with exactly one newline character after editing, regardless of
         whether new_string ends with a newline or not.
+
+        **⚠️ Important: Content with {variable} patterns:**
+        Do NOT generate code or text with patterns like `{error_output}`, `{variable}`, etc.
+        expecting them to be populated by shell variable expansion. These are written literally
+        to the file and will NOT be expanded. If you need variable substitution, use proper
+        templating mechanisms in the target language (e.g., Python f-strings, format(), etc.).
         """
         path = args["path"]
         content = args["content"]
@@ -245,14 +257,16 @@ class EditFileTool(BaseTool):
                     meta={"path": path},
                 )
 
-        # Write updated content
-        # Heredoc automatically adds a newline before FILE_EOF, so we need to handle trailing newlines
-        # If content ends with \n, remove it to avoid double newline
+        # Write updated content using base64 encoding to safely write file content
+        # This avoids shell interpretation issues with special characters like {, }, $, etc.
+        # Ensure content ends with exactly one newline
         content_for_write = updated_content
-        if content_for_write.endswith("\n"):
-            content_for_write = content_for_write[:-1]
-
-        write_cmd = f"cat > {path_escaped} <<'FILE_EOF'\n{content_for_write}\nFILE_EOF"
+        if not content_for_write.endswith("\n"):
+            content_for_write = content_for_write + "\n"
+        
+        # Encode content to base64 for safe transmission through shell
+        content_b64 = base64.b64encode(content_for_write.encode('utf-8')).decode('ascii')
+        write_cmd = f"echo {shlex.quote(content_b64)} | base64 -d > {path_escaped}"
         write_result = self._run_command(write_cmd, timeout_sec=30)
 
         # Check for write errors in stderr, not exit code
