@@ -9,12 +9,12 @@ from atloop.tools.output_semantic_type import OutputSemanticType
 class LoadSkillTool(BaseTool):
     """
     Tool for loading skill metadata and resource list (without resource content).
-    
+
     This tool loads the skill's main content (SKILL.md body) and lists available
     resource files (scripts, references, assets) without loading their content.
     Use this tool first to explore a skill's capabilities, then use
     `load_skill_resource` to incrementally load specific resource files when needed.
-    
+
     **Use cases:**
     - Exploring available skills
     - Getting skill guidance without loading all resources
@@ -24,7 +24,7 @@ class LoadSkillTool(BaseTool):
     def __init__(self, skill_loader=None):
         """
         Initialize load skill tool.
-        
+
         Args:
             skill_loader: SkillLoader or EnhancedSkillLoader instance
         """
@@ -62,10 +62,10 @@ class LoadSkillTool(BaseTool):
     def execute(self, args: Dict[str, Any]) -> ToolResult:
         """
         Load skill metadata and resource list.
-        
+
         Args:
             args: Must contain 'name' (str) - the skill name to load
-        
+
         Returns:
             ToolResult with skill metadata and resource list in stdout
         """

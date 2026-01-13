@@ -50,7 +50,7 @@ def temp_atloop_dir() -> Generator[Path, None, None]:
 def setup_config(temp_atloop_dir: Path) -> Generator[AtloopConfig, None, None]:
     """
     Auto-setup ConfigLoader for all tests.
-    
+
     Creates a minimal test config if no real config exists.
     This fixture is automatically used by all tests (autouse=True).
     """
@@ -80,9 +80,9 @@ runtime:
     max_wall_time_sec: 3600
 """)
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
-    
+
     config = ConfigLoader.get()
     yield config
-    
+
     # Cleanup (if needed)
     # ConfigLoader doesn't need explicit cleanup

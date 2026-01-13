@@ -3,25 +3,21 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from atloop.llm import ActionJSON
-from atloop.memory.state import AgentState, Artifacts, BudgetUsed, LastError, Memory
+from atloop.memory.state import AgentState, BudgetUsed
 from atloop.orchestrator.coordinator import WorkflowCoordinator
 from atloop.orchestrator.executor.tool_executor import ToolExecutor
 from atloop.orchestrator.job_state import JobState
 from atloop.orchestrator.phases.act import ActPhase
 from atloop.orchestrator.phases.base import PhaseContext
 from atloop.orchestrator.state_machine import Phase
-from atloop.tools.base import BaseTool, ToolResult
 from atloop.tools.registry import ToolRegistry
 
 # Add tests directory to path to import MockTool
 sys.path.insert(0, str(Path(__file__).parent))
-from test_tools import MockTool  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -33,38 +29,38 @@ class TestActPhase:
     def mock_coordinator(self):
         """Create a mock WorkflowCoordinator."""
         from atloop.memory.progress_tracker import ProgressTracker
-        
+
         coordinator = MagicMock(spec=WorkflowCoordinator)
-        
+
         # Setup state manager
         coordinator.state_manager = MagicMock()
         state = AgentState()
         coordinator.state_manager.agent_state = state
         coordinator.state_manager.update = MagicMock()
         coordinator.state_manager.save = MagicMock()
-        
+
         # Setup job state
         coordinator.job_state = JobState()
         coordinator.job_state.shared_data = {}
-        
+
         # Setup tool runtime
         coordinator.tool_runtime = MagicMock()
         coordinator.tool_runtime.registry = ToolRegistry(sandbox=MagicMock())
-        
+
         # Setup budget manager
         coordinator.budget_manager = MagicMock()
         coordinator.budget_manager.budget_used = BudgetUsed()
-        
+
         # Setup state machine
         coordinator.state_machine = MagicMock()
         coordinator.state_machine.transition = MagicMock(return_value=True)
-        
+
         # Setup event logger
         coordinator.event_logger = MagicMock()
-        
+
         # Setup progress tracker (for loop detection)
         coordinator.progress_tracker = ProgressTracker()
-        
+
         return coordinator
 
     @pytest.fixture
@@ -96,7 +92,7 @@ class TestActPhase:
         mock_coordinator.job_state.shared_data = {
             "actions": {
                 "actions": "not a list",  # Invalid: should be a list
-                "stop_reason": "continue"
+                "stop_reason": "continue",
             }
         }
         context = PhaseContext(step=1, phase=Phase.ACT)
@@ -108,7 +104,9 @@ class TestActPhase:
         assert result.next_phase == Phase.DISCOVER
         assert "Invalid Action JSON" in result.error
         assert "must be a list/array" in result.error
-        assert "Invalid Action JSON" in mock_coordinator.state_manager.agent_state.last_error.summary
+        assert (
+            "Invalid Action JSON" in mock_coordinator.state_manager.agent_state.last_error.summary
+        )
 
     def test_execute_no_actions_key(self, act_phase, mock_coordinator):
         """Test execute when actions dict doesn't have 'actions' key."""
@@ -140,27 +138,25 @@ class TestActPhase:
         """Test execute with a single successful action."""
         # Use real tool (run) and mock its execution
         # This tests ActPhase logic without bypassing validation
-        from atloop.tools.base import ToolResult
-        
+
         # Mock the tool execution to return success
-        original_execute = act_phase.executor._execute_action
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Command executed successfully",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Command executed successfully",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         # Setup actions with complete ActionJSON structure using real tool
         actions_dict = {
-            "actions": [
-                {"tool": "run", "args": {"cmd": "echo test"}}
-            ],
-            "stop_reason": "continue"
+            "actions": [{"tool": "run", "args": {"cmd": "echo test"}}],
+            "stop_reason": "continue",
         }
         mock_coordinator.job_state.shared_data = {"actions": actions_dict}
         context = PhaseContext(step=1, phase=Phase.ACT)
@@ -176,23 +172,25 @@ class TestActPhase:
     def test_execute_multiple_actions(self, act_phase, mock_coordinator):
         """Test execute with multiple actions."""
         # Mock tool execution to return success
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Success",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Success",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         actions_dict = {
             "actions": [
                 {"tool": "run", "args": {"cmd": "echo test1"}},
                 {"tool": "run", "args": {"cmd": "echo test2"}},
             ],
-            "stop_reason": "continue"
+            "stop_reason": "continue",
         }
         mock_coordinator.job_state.shared_data = {"actions": actions_dict}
         context = PhaseContext(step=1, phase=Phase.ACT)
@@ -207,22 +205,22 @@ class TestActPhase:
     def test_execute_action_with_error(self, act_phase, mock_coordinator):
         """Test execute with an action that fails."""
         # Mock tool execution to return error
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": False,
-            "ok": False,
-            "tool": "run",
-            "stdout": "",
-            "stderr": "Command failed: command not found",
-            "error": "Command failed",
-            "exit_code": 1,
-            "command": "invalid_command"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": False,
+                "ok": False,
+                "tool": "run",
+                "stdout": "",
+                "stderr": "Command failed: command not found",
+                "error": "Command failed",
+                "exit_code": 1,
+                "command": "invalid_command",
+            }
+        )
 
         actions_dict = {
-            "actions": [
-                {"tool": "run", "args": {"cmd": "invalid_command"}}
-            ],
-            "stop_reason": "continue"
+            "actions": [{"tool": "run", "args": {"cmd": "invalid_command"}}],
+            "stop_reason": "continue",
         }
         mock_coordinator.job_state.shared_data = {"actions": actions_dict}
         context = PhaseContext(step=1, phase=Phase.ACT)
@@ -240,13 +238,13 @@ class TestActPhase:
     def test_execute_action_exception_handling(self, act_phase, mock_coordinator):
         """Test that exceptions during action execution are handled."""
         # Make executor raise an exception
-        act_phase.executor._execute_action = MagicMock(side_effect=Exception("Tool execution failed"))
+        act_phase.executor._execute_action = MagicMock(
+            side_effect=Exception("Tool execution failed")
+        )
 
         actions_dict = {
-            "actions": [
-                {"tool": "run", "args": {"cmd": "test"}}
-            ],
-            "stop_reason": "continue"
+            "actions": [{"tool": "run", "args": {"cmd": "test"}}],
+            "stop_reason": "continue",
         }
         mock_coordinator.job_state.shared_data = {"actions": actions_dict}
         context = PhaseContext(step=1, phase=Phase.ACT)
@@ -263,10 +261,7 @@ class TestActPhase:
         """Test that unreplaced placeholders are detected."""
         action = {
             "tool": "write_file",
-            "args": {
-                "path": "test.py",
-                "content": "FILE_CONTENT_#12345"
-            }
+            "args": {"path": "test.py", "content": "FILE_CONTENT_#12345"},
         }
 
         # Should not raise, but log error
@@ -276,16 +271,18 @@ class TestActPhase:
     def test_execute_single_action_success(self, act_phase, mock_coordinator):
         """Test _execute_single_action with successful execution."""
         # Mock executor to return success
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Command output",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Command output",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         action = {"tool": "run", "args": {"cmd": "echo test"}}
         result = act_phase._execute_single_action(action)
@@ -344,13 +341,7 @@ class TestActPhase:
     def test_process_action_result_file_tracking(self, act_phase, mock_coordinator):
         """Test _process_action_result tracks file creation."""
         state = mock_coordinator.state_manager.agent_state
-        action = {
-            "tool": "write_file",
-            "args": {
-                "path": "test.py",
-                "content": "print('hello')"
-            }
-        }
+        action = {"tool": "write_file", "args": {"path": "test.py", "content": "print('hello')"}}
         result = {
             "ok": True,
             "stdout": "",
@@ -399,7 +390,7 @@ class TestActPhase:
         attempt = state.memory.attempts[0]
         assert attempt["success"] is False
         # Should not add milestone for failed execution
-        initial_milestones = len(state.memory.milestones)
+        len(state.memory.milestones)
 
     def test_update_memory_milestone_threshold(self, act_phase, mock_coordinator):
         """Test that milestones are only added for 3+ files."""
@@ -421,6 +412,7 @@ class TestActPhase:
 
     def test_execute_actions_error_aggregation(self, act_phase, mock_coordinator):
         """Test that errors from multiple actions are aggregated."""
+
         # Mock executor to return errors
         def mock_execute(action):
             return {
@@ -431,13 +423,13 @@ class TestActPhase:
                 "stderr": f"Error from {action['args']['cmd']}",
                 "error": "Command failed",
                 "exit_code": 1,
-                "command": action['args']['cmd']
+                "command": action["args"]["cmd"],
             }
-        
+
         act_phase.executor._execute_action = MagicMock(side_effect=mock_execute)
 
         state = mock_coordinator.state_manager.agent_state
-        
+
         actions = [
             {"tool": "run", "args": {"cmd": "command1"}},
             {"tool": "run", "args": {"cmd": "command2"}},
@@ -456,16 +448,18 @@ class TestActPhase:
     def test_execute_actions_success_clears_previous_error(self, act_phase, mock_coordinator):
         """Test that successful actions clear previous errors (errors are resolved)."""
         # Mock executor to return success
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Success",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Success",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         state = mock_coordinator.state_manager.agent_state
         # Set a previous error
@@ -486,16 +480,18 @@ class TestActPhase:
     def test_execute_actions_budget_tracking(self, act_phase, mock_coordinator):
         """Test that budget is properly tracked for each action."""
         # Mock executor to return success
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Success",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Success",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         state = mock_coordinator.state_manager.agent_state
         initial_budget = state.budget_used.tool_calls
@@ -514,32 +510,34 @@ class TestActPhase:
     def test_execute_pending_stop_reason(self, act_phase, mock_coordinator):
         """Test that pending stop_reason is handled."""
         # Mock executor to return success
-        act_phase.executor._execute_action = MagicMock(return_value={
-            "success": True,
-            "ok": True,
-            "tool": "run",
-            "stdout": "Success",
-            "stderr": "",
-            "error": "",
-            "exit_code": 0,
-            "command": "echo test"
-        })
+        act_phase.executor._execute_action = MagicMock(
+            return_value={
+                "success": True,
+                "ok": True,
+                "tool": "run",
+                "stdout": "Success",
+                "stderr": "",
+                "error": "",
+                "exit_code": 0,
+                "command": "echo test",
+            }
+        )
 
         actions_dict = {
-            "actions": [
-                {"tool": "run", "args": {"cmd": "echo test"}}
-            ],
-            "stop_reason": "continue"
+            "actions": [{"tool": "run", "args": {"cmd": "echo test"}}],
+            "stop_reason": "continue",
         }
         mock_coordinator.job_state.shared_data = {
             "actions": actions_dict,
-            "pending_stop_reason": "done"
+            "pending_stop_reason": "done",
         }
         context = PhaseContext(step=1, phase=Phase.ACT)
 
-        with patch("atloop.orchestrator.phases.act.StopReasonHandler.apply_pending_stop_reason") as mock_handler:
+        with patch(
+            "atloop.orchestrator.phases.act.StopReasonHandler.apply_pending_stop_reason"
+        ) as mock_handler:
             mock_handler.return_value = MagicMock(success=True, next_phase=Phase.DONE)
-            result = act_phase.execute(context)
+            act_phase.execute(context)
 
             # Should call stop reason handler
             mock_handler.assert_called_once()

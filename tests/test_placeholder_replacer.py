@@ -61,26 +61,30 @@ class TestPlaceholderReplacerReplacePlaceholders:
                 },
             }
         ]
-        file_contents = {
-            "EDIT_FILE_CONTENT_file:test.py": "<old>old code</old><new>new code</new>"
-        }
+        file_contents = {"EDIT_FILE_CONTENT_file:test.py": "<old>old code</old><new>new code</new>"}
 
         replaced, missing = PlaceholderReplacer.replace_placeholders(actions, file_contents)
 
         assert len(replaced) == 1
         assert replaced[0]["tool"] == "edit_file"
-        assert (
-            replaced[0]["args"]["content"]
-            == "<old>old code</old><new>new code</new>"
-        )
+        assert replaced[0]["args"]["content"] == "<old>old code</old><new>new code</new>"
         assert len(missing) == 0
 
     def test_replace_multiple_placeholders(self):
         """Test replacing multiple placeholders in different actions."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "append_file", "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"}},
-            {"tool": "edit_file", "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "append_file",
+                "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"},
+            },
         ]
         file_contents = {
             "WRITE_FILE_CONTENT_file:a.py": "content1",
@@ -117,8 +121,14 @@ class TestPlaceholderReplacerReplacePlaceholders:
     def test_multiple_missing_placeholders(self):
         """Test reporting multiple missing placeholders."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "append_file", "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "append_file",
+                "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"},
+            },
         ]
         file_contents = {}  # Both missing
 
@@ -232,8 +242,14 @@ class TestPlaceholderReplacerReplacePlaceholders:
     def test_partial_replacement_mixed_placeholders(self):
         """Test scenario where some placeholders exist, some don't."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_file:a.py": "content1"}  # b.py missing
 
@@ -316,9 +332,18 @@ class TestPlaceholderReplacerValidateReplacement:
     def test_validate_multiple_unreplaced(self):
         """Test validation detects multiple unreplaced placeholders."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "append_file", "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"}},
-            {"tool": "edit_file", "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "append_file",
+                "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"},
+            },
         ]
 
         is_valid, remaining = PlaceholderReplacer.validate_replacement(actions, {})
@@ -347,7 +372,10 @@ class TestPlaceholderReplacerValidateReplacement:
         """Test validation with mix of replaced and unreplaced."""
         actions = [
             {"tool": "write_file", "args": {"path": "a.py", "content": "actual content"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
 
         is_valid, remaining = PlaceholderReplacer.validate_replacement(actions, {})
@@ -411,18 +439,24 @@ class TestPlaceholderReplacerReplaceAndValidate:
         file_contents = {}  # Missing
 
         # Should not raise, but return actions with unreplaced placeholder
-        replaced = PlaceholderReplacer.replace_and_validate(
-            actions, file_contents, strict=False
-        )
+        replaced = PlaceholderReplacer.replace_and_validate(actions, file_contents, strict=False)
 
         assert len(replaced) == 1
-        assert replaced[0]["args"]["content"] == "WRITE_FILE_CONTENT_file:test.py"  # Still unreplaced
+        assert (
+            replaced[0]["args"]["content"] == "WRITE_FILE_CONTENT_file:test.py"
+        )  # Still unreplaced
 
     def test_replace_and_validate_multiple_actions(self):
         """Test replace_and_validate with multiple actions."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "append_file", "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "append_file",
+                "args": {"path": "b.py", "content": "APPEND_FILE_CONTENT_file:b.py"},
+            },
             {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:echo-hello"}},
         ]
         file_contents = {
@@ -442,8 +476,14 @@ class TestPlaceholderReplacerReplaceAndValidate:
     def test_replace_and_validate_strict_mode_multiple_missing(self):
         """Test strict mode with multiple missing placeholders."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
         file_contents = {}  # Both missing
 
@@ -461,8 +501,14 @@ class TestPlaceholderReplacerEdgeCases:
     def test_placeholder_with_different_descriptive_names(self):
         """Test placeholders with different descriptive names."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
         file_contents = {
             "WRITE_FILE_CONTENT_file:a.py": "content1",
@@ -528,8 +574,14 @@ class TestPlaceholderReplacerEdgeCases:
     def test_placeholder_like_string_but_not_placeholder(self):
         """Test strings that look like placeholders but aren't."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "FILE_CONTENT_#X"}},  # X not a number
-            {"tool": "write_file", "args": {"path": "test2.py", "content": "FILE_CONTENT"}},  # Missing #N
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "FILE_CONTENT_#X"},
+            },  # X not a number
+            {
+                "tool": "write_file",
+                "args": {"path": "test2.py", "content": "FILE_CONTENT"},
+            },  # Missing #N
         ]
         file_contents = {"WRITE_FILE_CONTENT_file:test.py": "content"}
 
@@ -545,7 +597,10 @@ class TestPlaceholderReplacerEdgeCases:
         """Test replacement with unicode content."""
         unicode_content = "你好世界\nこんにちは\n안녕하세요"
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_file:test.py": unicode_content}
 

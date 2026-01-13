@@ -1,10 +1,11 @@
 """Tests for MemoryCompressor improvements."""
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from atloop.memory.compressor import MemoryCompressor
-from atloop.memory.state import AgentState, Memory
+from atloop.memory.state import AgentState
 
 
 class TestMemoryCompressorFiltering:
@@ -263,7 +264,7 @@ class TestCompressionIntegration:
         # Verify learnings contains improved summary
         assert len(state.memory.learnings) > 0
         learning = state.memory.learnings[-1]
-        
+
         # ✓ Verify improved summary contains key facts
         assert "历史" in learning
         assert "停止原因分布" in learning or "验证结果" in learning or "常用工具" in learning

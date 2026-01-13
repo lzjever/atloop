@@ -76,24 +76,24 @@ class PlanPhase(BasePhase):
             loop_analysis = self.coordinator.loop_detector.analyze(
                 self.coordinator.progress_tracker
             )
-            
+
             # Generate and execute intervention if loop detected
             intervention_result = None
             if loop_analysis.is_looping:
                 intervention = self.coordinator.loop_detector.generate_intervention(loop_analysis)
-                
+
                 # Use centralized executor to decide action
                 executor = LoopInterventionExecutor(
                     workspace_path=getattr(self.coordinator.config, "workspace_root", "/workspace")
                 )
                 intervention_result = executor.execute(loop_analysis, intervention)
-                
+
                 logger.info(
                     f"[PlanPhase] Loop intervention: type={loop_analysis.loop_type.value}, "
                     f"action={intervention_result.action.value}, "
                     f"repetitions={loop_analysis.repetition_count}"
                 )
-                
+
                 # Handle ABORT - terminate task
                 if intervention_result.should_abort:
                     logger.error(f"[PlanPhase] {intervention_result.error_message}")
@@ -105,7 +105,7 @@ class PlanPhase(BasePhase):
                         next_phase=Phase.FAIL,
                         error=intervention_result.error_message,
                     )
-                
+
                 # Handle FORCE_RECOVERY - skip LLM, use forced actions
                 if intervention_result.action == InterventionAction.FORCE_RECOVERY:
                     logger.warning(
@@ -125,12 +125,12 @@ class PlanPhase(BasePhase):
                         data={"forced_recovery": True},
                         next_phase=Phase.ACT,
                     )
-                
+
                 # Handle INJECT_WARNING - add to memory context
                 if intervention_result.prompt_injection:
                     memory_context = intervention_result.prompt_injection + "\n\n" + memory_context
                     logger.info("[PlanPhase] Injected warning into prompt")
-            
+
             # Add progress metrics to memory context for LLM awareness
             metrics = self.coordinator.progress_tracker.get_metrics(window=10)
             if metrics.total_actions > 0:
@@ -194,13 +194,14 @@ class PlanPhase(BasePhase):
                 pass
 
             logger.debug("[PlanPhase] Calling LLM")
-            
+
             # Save LLM input if debug mode enabled
             from atloop.config.loader import ConfigLoader
+
             config = ConfigLoader.get()
             if config.debug.save_llm_io:
                 self._save_llm_io(state.step, user_message, None, "input")
-            
+
             action_json, error, usage, full_output, file_contents = (
                 self.coordinator.llm_client.plan_and_act(
                     user_message,
@@ -210,11 +211,11 @@ class PlanPhase(BasePhase):
             logger.debug(
                 f"[PlanPhase] LLM call completed: action_json={action_json is not None}, error={error}"
             )
-            
+
             # Save LLM output if debug mode enabled
             if config.debug.save_llm_io:
                 self._save_llm_io(state.step, None, full_output, "output")
-            
+
             # Note: Breakpoint is handled in Workflow after verbose output
 
             # Update budget
@@ -307,7 +308,9 @@ class PlanPhase(BasePhase):
             # Validate that run tool uses placeholders (before replacement)
             from atloop.orchestrator.phases.placeholder_info import PlaceholderInfoTracker
 
-            is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+            is_valid, error_msg, action_index = (
+                PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+            )
             if not is_valid:
                 logger.error(f"[PlanPhase] {error_msg}")
                 state.last_error.summary = error_msg
@@ -329,7 +332,7 @@ class PlanPhase(BasePhase):
                 if field_name and PlaceholderReplacer._is_valid_placeholder(value):
                     if value in placeholder_names:
                         error_msg = (
-                            f"Duplicate placeholder name '{value}' found in action {i+1}. "
+                            f"Duplicate placeholder name '{value}' found in action {i + 1}. "
                             f"Each placeholder must have a unique name within the same round. "
                             f"Please generate unique placeholder names based on action parameters and sequence."
                         )
@@ -350,7 +353,7 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] Preparing to replace placeholders, file_contents keys: "
                 f"{list(file_contents.keys())}"
             )
-            
+
             # Check if any actions require placeholders
             expected_placeholders = []
             for action in actions:
@@ -359,7 +362,7 @@ class PlanPhase(BasePhase):
                 field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
                 if field_name and PlaceholderReplacer._is_valid_placeholder(value):
                     expected_placeholders.append(value)
-            
+
             if file_contents:
                 logger.info(
                     f"[PlanPhase] Received {len(file_contents)} file content placeholders: "
@@ -377,13 +380,15 @@ class PlanPhase(BasePhase):
             try:
                 # Extract placeholder info before replacement (for memory recording)
                 placeholder_info_list = PlaceholderInfoTracker.extract_placeholder_info(actions)
-                
+
                 # Use PlaceholderReplacer service for clean, testable replacement
                 # Returns successful actions and full result metadata
-                successful_actions, replacement_result = PlaceholderReplacer.replace_and_validate_with_result(
-                    actions, file_contents, strict=False
+                successful_actions, replacement_result = (
+                    PlaceholderReplacer.replace_and_validate_with_result(
+                        actions, file_contents, strict=False
+                    )
                 )
-                
+
                 # Store placeholder info in job_state for ActPhase (not in action dicts)
                 # Match placeholder info to successful actions by index
                 # Note: successful_actions may have different length if some were pending
@@ -533,7 +538,7 @@ class PlanPhase(BasePhase):
                 decision_record["actions"] = [
                     a.to_dict() if hasattr(a, "to_dict") else a for a in actions
                 ]
-                
+
                 # CRITICAL: Update state.memory.plan with LLM's plan for Long-term Memory
                 # This ensures the plan is visible in formatted memory context
                 if action_json.plan:
@@ -542,7 +547,7 @@ class PlanPhase(BasePhase):
                         f"[PlanPhase] Updated long-term memory plan: "
                         f"{len(action_json.plan) if isinstance(action_json.plan, list) else 'string'} items"
                     )
-                    
+
             if full_output:
                 decision_record["llm_output"] = full_output
             state.memory.decisions.append(decision_record)
@@ -567,7 +572,7 @@ class PlanPhase(BasePhase):
                     f"[PlanPhase] Stored LLM response to memory.llm_responses "
                     f"(total responses={len(state.memory.llm_responses)})"
                 )
-                
+
             # Track important decisions for Long-term Memory
             # Important decisions include: task completion, task failure, significant actions
             self._track_important_decision(state, action_json, stop_reason, actions)
@@ -617,12 +622,12 @@ class PlanPhase(BasePhase):
     ) -> None:
         """
         Track important decisions for Long-term Memory.
-        
+
         Important decisions are tracked when:
         - Task is marked as done or failed
         - First plan is created (significant step)
         - Multiple file operations are planned (significant action)
-        
+
         Args:
             state: Agent state
             action_json: Parsed action JSON from LLM
@@ -630,7 +635,7 @@ class PlanPhase(BasePhase):
             actions: List of actions
         """
         from atloop.memory.memory_manager import MemoryManager
-        
+
         # Track task completion or failure (always important)
         if stop_reason == "done":
             result_msg = ""
@@ -640,10 +645,10 @@ class PlanPhase(BasePhase):
                 state,
                 f"Task completed{result_msg}",
                 state.step,
-                {"stop_reason": stop_reason, "actions_count": len(actions)}
+                {"stop_reason": stop_reason, "actions_count": len(actions)},
             )
             logger.info("[PlanPhase] Tracked important decision: task completed")
-            
+
         elif stop_reason == "fail":
             result_msg = ""
             if action_json and action_json.result_message:
@@ -652,10 +657,10 @@ class PlanPhase(BasePhase):
                 state,
                 f"Task failed{result_msg}",
                 state.step,
-                {"stop_reason": stop_reason, "actions_count": len(actions)}
+                {"stop_reason": stop_reason, "actions_count": len(actions)},
             )
             logger.info("[PlanPhase] Tracked important decision: task failed")
-            
+
         # Track first plan creation (if plan has multiple steps)
         elif action_json and action_json.plan and len(state.memory.important_decisions) == 0:
             if isinstance(action_json.plan, list) and len(action_json.plan) >= 3:
@@ -670,10 +675,10 @@ class PlanPhase(BasePhase):
                     state,
                     f"Initial plan ({len(action_json.plan)} steps): {plan_preview}",
                     state.step,
-                    {"plan_steps": len(action_json.plan)}
+                    {"plan_steps": len(action_json.plan)},
                 )
                 logger.info("[PlanPhase] Tracked important decision: initial plan created")
-                
+
         # Track significant file operations (5+ actions)
         elif len(actions) >= 5:
             tools_used = [a.get("tool", "?") for a in actions[:5]]
@@ -682,14 +687,16 @@ class PlanPhase(BasePhase):
                 state,
                 f"Large batch of actions ({len(actions)} total): {tools_str}...",
                 state.step,
-                {"actions_count": len(actions)}
+                {"actions_count": len(actions)},
             )
             logger.info("[PlanPhase] Tracked important decision: large batch of actions")
 
-    def _save_llm_io(self, step: int, input_text: Optional[str], output_text: Optional[str], io_type: str) -> None:
+    def _save_llm_io(
+        self, step: int, input_text: Optional[str], output_text: Optional[str], io_type: str
+    ) -> None:
         """
         Save LLM input or output to file for debugging.
-        
+
         Args:
             step: Step number
             input_text: LLM input text (None if saving output)
@@ -699,11 +706,11 @@ class PlanPhase(BasePhase):
         try:
             # Get run directory from event logger
             log_dir = self.coordinator.event_logger.log_dir
-            
+
             # Create debug subdirectory
             debug_dir = log_dir / "debug"
             debug_dir.mkdir(exist_ok=True)
-            
+
             # Save to file
             filename = debug_dir / f"step_{step:03d}_{io_type}.txt"
             content = input_text if input_text else output_text
@@ -712,5 +719,3 @@ class PlanPhase(BasePhase):
                 logger.debug(f"[PlanPhase] Saved LLM {io_type} to {filename}")
         except Exception as e:
             logger.warning(f"[PlanPhase] Failed to save LLM {io_type}: {e}")
-
-

@@ -1,7 +1,5 @@
 """Tests for Memory state module."""
 
-import pytest
-
 from atloop.memory.state import AgentState, Artifacts, BudgetUsed, LastError, Memory
 from tests.memory.fixtures.sample_state import create_sample_state
 from tests.memory.test_helpers import assert_memory_format_valid

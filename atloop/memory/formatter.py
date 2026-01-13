@@ -225,7 +225,7 @@ class ToolResultFormatter:
         return (
             output[:half_length]
             + f"\n... [Omitted {len(output) - max_length} chars] ...\n"
-                + output[-half_length:]
+            + output[-half_length:]
         )
 
 
@@ -282,9 +282,7 @@ class MemoryFormatter:
 
         # 5. Recent Activity
         parts.append(
-            self._format_recent_activity(
-                state, steps_count=options.get("steps_summary_count", 20)
-            )
+            self._format_recent_activity(state, steps_count=options.get("steps_summary_count", 20))
         )
 
         # 6. Tool Execution Results
@@ -332,9 +330,7 @@ class MemoryFormatter:
 
         return "\n".join(parts)
 
-    def _format_task_overview(
-        self, state: "AgentState", task_goal: Optional[str] = None
-    ) -> str:
+    def _format_task_overview(self, state: "AgentState", task_goal: Optional[str] = None) -> str:
         """格式化任务概览"""
         parts = ["### ≡ Task Overview"]
 
@@ -440,34 +436,36 @@ class MemoryFormatter:
     def _get_current_plan_item(self, state: "AgentState") -> Optional[str]:
         """
         Get the current plan item being executed (marked with ↻).
-        
+
         Args:
             state: AgentState instance
-            
+
         Returns:
             The plan item description without emoji, or None if not found
         """
         plan = state.memory.plan
         if not plan:
             return None
-        
+
         # Handle list format
         if isinstance(plan, list) and plan:
             # Check first item to determine format
             first_item = plan[0]
-            
+
             # Handle list of strings (with emoji markers)
             if isinstance(first_item, str):
                 for item in plan:
                     if "↻" in str(item):
                         # Remove emoji markers and return clean description
-                        clean_item = str(item).replace("↻", "").replace("✓", "").replace("≡", "").strip()
+                        clean_item = (
+                            str(item).replace("↻", "").replace("✓", "").replace("≡", "").strip()
+                        )
                         return clean_item if clean_item else None
-            
+
             # Handle PlanStep objects or dicts
             else:
                 from atloop.memory.plan import PlanStep
-                
+
                 for item in plan:
                     # Check if it's a PlanStep object
                     if isinstance(item, PlanStep):
@@ -488,7 +486,7 @@ class MemoryFormatter:
                             if description:
                                 return description
                             return getattr(item, "id", "")
-        
+
         # Handle string format (old format)
         elif isinstance(plan, str):
             lines = plan.split("\n")
@@ -496,7 +494,7 @@ class MemoryFormatter:
                 if "↻" in line:
                     clean_line = line.replace("↻", "").replace("✓", "").replace("≡", "").strip()
                     return clean_line if clean_line else None
-        
+
         return None
 
     def _format_recent_activity(self, state: "AgentState", steps_count: int = 3) -> str:
@@ -517,7 +515,7 @@ class MemoryFormatter:
                 if len(actions) > 5:
                     tools_str += f" ... (+{len(actions) - 5} more)"
                 stop_reason = decision.get("stop_reason", "?")
-                
+
                 # Add current plan item if available
                 step_entry = f"- Step {step}: [{tools_str}] → {stop_reason}"
                 if current_plan_item:
@@ -554,9 +552,7 @@ class MemoryFormatter:
 
         return "\n".join(parts)
 
-    def _format_tool_execution_results(
-        self, state: "AgentState", max_count: int = 5
-    ) -> str:
+    def _format_tool_execution_results(self, state: "AgentState", max_count: int = 5) -> str:
         """格式化工具执行结果"""
         parts = [f"### 🔧 Tool Execution Results (Last {max_count})"]
 
@@ -575,9 +571,7 @@ class MemoryFormatter:
 
         return "\n".join(parts)
 
-    def _format_modified_files_content(
-        self, state: "AgentState", max_length: int = 20000
-    ) -> str:
+    def _format_modified_files_content(self, state: "AgentState", max_length: int = 20000) -> str:
         """格式化修改的文件内容"""
         if not state.memory.modified_files_content:
             return ""
@@ -603,9 +597,13 @@ class MemoryFormatter:
             if total_size + size > max_length:
                 remaining = max_length - total_size
                 if remaining > 100:
-                    content = content[:remaining] + f"\n... [File truncated, full content {size} bytes]"
+                    content = (
+                        content[:remaining] + f"\n... [File truncated, full content {size} bytes]"
+                    )
                 else:
-                    parts.append(f"**{path}** (Step {step}, Importance: {importance:.2f}): [File too large, content not shown]")
+                    parts.append(
+                        f"**{path}** (Step {step}, Importance: {importance:.2f}): [File too large, content not shown]"
+                    )
                     continue
 
             parts.append(f"**{path}** (Step {step}, Importance: {importance:.2f}):")

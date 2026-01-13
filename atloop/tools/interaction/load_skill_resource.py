@@ -9,12 +9,12 @@ from atloop.tools.output_semantic_type import OutputSemanticType
 class LoadSkillResourceTool(BaseTool):
     """
     Tool for incrementally loading resource files from a skill into memory cache.
-    
+
     This tool loads a specific resource file (script, reference, or asset) from
     a skill and caches it in memory. The cached content will be available in
     future memory summaries. Use this tool after `load_skill` to load specific
     resources that you need.
-    
+
     **Use cases:**
     - Loading specific scripts when needed
     - Loading reference documentation on demand
@@ -24,7 +24,7 @@ class LoadSkillResourceTool(BaseTool):
     def __init__(self, skill_loader=None):
         """
         Initialize load skill resource tool.
-        
+
         Args:
             skill_loader: SkillLoader or EnhancedSkillLoader instance
         """
@@ -69,13 +69,13 @@ class LoadSkillResourceTool(BaseTool):
     def execute(self, args: Dict[str, Any]) -> ToolResult:
         """
         Load a specific resource file and cache it in memory.
-        
+
         Args:
             args: Must contain:
                 - skill_name (str): Skill name
                 - resource_type (str): "scripts", "references", or "assets"
                 - resource_name (str): Resource file name
-        
+
         Returns:
             ToolResult with confirmation message (resource content is cached, not returned)
         """
@@ -96,9 +96,7 @@ class LoadSkillResourceTool(BaseTool):
             )
 
         # Load resource content
-        content = self.skill_loader.load_skill_resource(
-            skill_name, resource_type, resource_name
-        )
+        content = self.skill_loader.load_skill_resource(skill_name, resource_type, resource_name)
 
         if content is None:
             # Try to get available resources for better error message
@@ -114,10 +112,14 @@ class LoadSkillResourceTool(BaseTool):
                         "resource_name": resource_name,
                     },
                 )
-            
+
             available = skill_data["resources"].get(resource_type, [])
-            available_str = f" Available {resource_type}: {', '.join(available)}" if available else f" No {resource_type} available for this skill."
-            
+            available_str = (
+                f" Available {resource_type}: {', '.join(available)}"
+                if available
+                else f" No {resource_type} available for this skill."
+            )
+
             return ToolResult(
                 ok=False,
                 stdout="",

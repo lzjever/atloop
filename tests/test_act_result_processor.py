@@ -1,7 +1,6 @@
 """Tests for ActPhase result processing utilities."""
 
 import logging
-from typing import Any, Dict
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,7 +14,6 @@ from atloop.orchestrator.phases.act_result_processor import (
 )
 from atloop.tools.base import BaseTool
 from atloop.tools.interaction.load_skill import LoadSkillTool
-from atloop.tools.output_semantic_type import OutputSemanticType
 from atloop.tools.system.run_command import RunCommandTool
 
 logger = logging.getLogger(__name__)
@@ -28,6 +26,7 @@ class TestToolResultFormatter:
         """Create a tool instance for testing."""
         if tool_name == "run":
             from unittest.mock import MagicMock
+
             sandbox = MagicMock()
             return RunCommandTool(sandbox)
         elif tool_name == "load_skill":
@@ -37,16 +36,19 @@ class TestToolResultFormatter:
             return LoadSkillTool(skill_loader=None)
         else:
             # Create a minimal tool instance for other tools
-            from types import SimpleNamespace
+
             class MockTool(BaseTool):
                 @property
                 def name(self) -> str:
                     return tool_name
+
                 @property
                 def description(self) -> str:
                     return f"Mock tool: {tool_name}"
+
                 def execute(self, args):
                     pass
+
             return MockTool()
 
     def test_format_result_summary_basic(self):
@@ -212,7 +214,7 @@ class TestToolResultFormatter:
         summary = ToolResultFormatter.format_result_summary(tool, args, result)
 
         assert "Tool: load_skill" in summary
-        config = ConfigLoader.get()
+        ConfigLoader.get()
         # ✓ Skill tool should use file_view limit (60KB), not other limit (2KB)
         # Content should be much more than 2KB limit
         assert len(summary) > 40000  # Should have significant content (at least 40KB)

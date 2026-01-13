@@ -13,19 +13,15 @@ These tests are written based on interface specification, not implementation det
 They challenge the implementation to ensure correctness.
 """
 
-import pytest
-
 from atloop.llm.schema import (
     _extract_file_contents,
     _remove_file_content_sections,
     parse_action_json,
 )
 from atloop.orchestrator.phases.placeholder_info import (
-    PlaceholderInfo,
     PlaceholderInfoTracker,
 )
 from atloop.orchestrator.phases.placeholder_replacer import (
-    PlaceholderReplacementError,
     PlaceholderReplacer,
 )
 
@@ -50,7 +46,7 @@ def hello():
         assert len(contents) == 1, f"Expected 1 placeholder, got {len(contents)}"
         assert "WRITE_FILE_CONTENT_file:test.py" in contents
         assert "def hello():" in contents["WRITE_FILE_CONTENT_file:test.py"]
-        assert "print(\"Hello, world!\")" in contents["WRITE_FILE_CONTENT_file:test.py"]
+        assert 'print("Hello, world!")' in contents["WRITE_FILE_CONTENT_file:test.py"]
 
     def test_extract_multiple_placeholders_double_brackets(self):
         """Test extracting multiple placeholders with double brackets."""
@@ -322,6 +318,7 @@ def hello():
 
         # Should be valid JSON after removal
         import json
+
         parsed = json.loads(result)
         assert "actions" in parsed
         assert "stop_reason" in parsed
@@ -341,9 +338,14 @@ class TestPlaceholderValidationAnyString:
 
     def test_validate_placeholder_with_special_chars(self):
         """Test validation of placeholder with special characters."""
-        assert PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_file:(test).py") is True
+        assert (
+            PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_file:(test).py") is True
+        )
         assert PlaceholderReplacer._is_valid_placeholder("SHELL_COMMAND_cmd:ls -la") is True
-        assert PlaceholderReplacer._is_valid_placeholder("EDIT_FILE_CONTENT_file:test.py#backup") is True
+        assert (
+            PlaceholderReplacer._is_valid_placeholder("EDIT_FILE_CONTENT_file:test.py#backup")
+            is True
+        )
 
     def test_validate_placeholder_with_unicode(self):
         """Test validation of placeholder with unicode characters."""
@@ -370,9 +372,18 @@ class TestPlaceholderValidationAnyString:
 
     def test_detect_placeholder_type(self):
         """Test placeholder type detection."""
-        assert PlaceholderReplacer._detect_placeholder_type("WRITE_FILE_CONTENT_file:test.py") == "WRITE_FILE_CONTENT"
-        assert PlaceholderReplacer._detect_placeholder_type("EDIT_FILE_CONTENT_file:test.py") == "EDIT_FILE_CONTENT"
-        assert PlaceholderReplacer._detect_placeholder_type("SHELL_COMMAND_cmd:ls-la") == "SHELL_COMMAND"
+        assert (
+            PlaceholderReplacer._detect_placeholder_type("WRITE_FILE_CONTENT_file:test.py")
+            == "WRITE_FILE_CONTENT"
+        )
+        assert (
+            PlaceholderReplacer._detect_placeholder_type("EDIT_FILE_CONTENT_file:test.py")
+            == "EDIT_FILE_CONTENT"
+        )
+        assert (
+            PlaceholderReplacer._detect_placeholder_type("SHELL_COMMAND_cmd:ls-la")
+            == "SHELL_COMMAND"
+        )
         assert PlaceholderReplacer._detect_placeholder_type("not_a_placeholder") is None
 
 
@@ -400,7 +411,10 @@ class TestPlaceholderReplacementNewFormat:
         actions = [
             {
                 "tool": "write_file",
-                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file: test.py with spaces"},
+                "args": {
+                    "path": "test.py",
+                    "content": "WRITE_FILE_CONTENT_file: test.py with spaces",
+                },
             }
         ]
         file_contents = {"WRITE_FILE_CONTENT_file: test.py with spaces": "content"}
@@ -427,9 +441,18 @@ class TestPlaceholderReplacementNewFormat:
     def test_replace_multiple_different_names(self):
         """Test replacing multiple placeholders with different descriptive names."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
-            {"tool": "edit_file", "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"},
+            },
         ]
         file_contents = {
             "WRITE_FILE_CONTENT_file:a.py": "content_a",
@@ -452,8 +475,14 @@ class TestPlaceholderUniqueness:
     def test_duplicate_placeholder_names_detected(self):
         """Test that duplicate placeholder names are detected."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},  # Duplicate!
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },  # Duplicate!
         ]
 
         # This should be caught by PlanPhase validation
@@ -467,8 +496,14 @@ class TestPlaceholderUniqueness:
     def test_unique_placeholder_names_allowed(self):
         """Test that unique placeholder names are allowed."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
 
         placeholder_info = PlaceholderInfoTracker.extract_placeholder_info(actions)
@@ -481,8 +516,14 @@ class TestPlaceholderUniqueness:
     def test_mixed_placeholder_types_unique(self):
         """Test that different placeholder types can have same descriptive name."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
-            {"tool": "edit_file", "args": {"path": "test.py", "content": "EDIT_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "test.py", "content": "EDIT_FILE_CONTENT_file:test.py"},
+            },
         ]
 
         placeholder_info = PlaceholderInfoTracker.extract_placeholder_info(actions)
@@ -501,7 +542,10 @@ class TestPlaceholderInfoTracker:
     def test_extract_placeholder_info_write_file(self):
         """Test extracting placeholder info from write_file action."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
         ]
 
         info_list = PlaceholderInfoTracker.extract_placeholder_info(actions)
@@ -556,7 +600,9 @@ class TestPlaceholderInfoTracker:
             {"tool": "run", "args": {"cmd": "ls -la"}},  # Direct command - should fail
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         assert is_valid is False
         assert error_msg is not None
@@ -569,7 +615,9 @@ class TestPlaceholderInfoTracker:
             {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:ls-la"}},
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         assert is_valid is True
         assert error_msg is None
@@ -581,7 +629,9 @@ class TestPlaceholderInfoTracker:
             {"tool": "run", "args": {"cmd": ""}},
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         # Empty command should be valid (not a placeholder, but also not a direct command)
         assert is_valid is True
@@ -646,7 +696,9 @@ python3 a.py
         action_json, error, file_contents = parse_action_json(text)
 
         # Focus on file_contents extraction (action validation is separate concern)
-        assert len(file_contents) == 3, f"Expected 3 placeholders, got {len(file_contents)}: {list(file_contents.keys())}"
+        assert len(file_contents) == 3, (
+            f"Expected 3 placeholders, got {len(file_contents)}: {list(file_contents.keys())}"
+        )
         assert "WRITE_FILE_CONTENT_file:a.py" in file_contents
         assert "EDIT_FILE_CONTENT_file:b.py" in file_contents
         assert "SHELL_COMMAND_cmd:python3-a.py" in file_contents
@@ -677,11 +729,15 @@ class TestPlaceholderEdgeCases:
 
     def test_placeholder_name_with_only_underscore(self):
         """Test placeholder name with only underscore."""
-        assert PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_") is False  # Empty name
+        assert (
+            PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_") is False
+        )  # Empty name
 
     def test_placeholder_name_with_only_space(self):
         """Test placeholder name with only space."""
-        assert PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_ ") is True  # Space is valid
+        assert (
+            PlaceholderReplacer._is_valid_placeholder("WRITE_FILE_CONTENT_ ") is True
+        )  # Space is valid
 
     def test_placeholder_name_very_long(self):
         """Test placeholder name that is very long."""

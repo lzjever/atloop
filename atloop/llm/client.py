@@ -54,14 +54,11 @@ class LLMClient:
 
         # Initialize enhanced skill loader with multiple directories
         from atloop.config.loader import ConfigLoader
-        
+
         builtin_skills_dir = Path(__file__).parent.parent / "skills" / "builtin"
         project_dir = Path(workspace_root) if workspace_root else None
         atloop_dir = ConfigLoader.get_atloop_dir()
-        additional_dirs = [
-            atloop_dir / "skills",
-            Path.home() / ".atloop" / "skills"
-        ]
+        additional_dirs = [atloop_dir / "skills", Path.home() / ".atloop" / "skills"]
         # Filter out non-existent directories
         additional_dirs = [d for d in additional_dirs if d.exists()]
         self.skill_loader = EnhancedSkillLoader(
@@ -136,7 +133,6 @@ class LLMClient:
         if not self.skill_loader:
             return ""
         return self.skill_loader.get_descriptions()
-
 
     def load_prompt_template(self, template_name: str) -> str:
         """
@@ -215,8 +211,10 @@ class LLMClient:
 """
 
         # Use memory_context if provided, otherwise fall back to state_summary (backward compatibility)
-        memory_content = memory_context if memory_context is not None else (state_summary or "Initial state")
-        
+        memory_content = (
+            memory_context if memory_context is not None else (state_summary or "Initial state")
+        )
+
         logger.debug(
             f"[LLMClient] build_user_message: memory_content length={len(memory_content) if memory_content else 0}"
         )
@@ -520,7 +518,8 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                 )
                 result = initial_result
                 placeholders_in_initial = [
-                    match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(initial_result.text)
+                    match.group(0)
+                    for match in PLACEHOLDER_DELIMITER_REGEX.finditer(initial_result.text)
                 ]
                 if placeholders_in_initial:
                     logger.warning(
@@ -694,7 +693,8 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                 )
 
                 placeholders_in_continue = [
-                    match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(continue_result.text)
+                    match.group(0)
+                    for match in PLACEHOLDER_DELIMITER_REGEX.finditer(continue_result.text)
                 ]
                 if placeholders_in_continue:
                     logger.info(
@@ -703,7 +703,8 @@ Please output only valid JSON, do not add any other text, comments, or explanati
 
                 # Detect partial placeholders (may be cut off in streaming)
                 partial_matches = [
-                    match.group(0) for match in PARTIAL_PLACEHOLDER_REGEX.finditer(continue_result.text)
+                    match.group(0)
+                    for match in PARTIAL_PLACEHOLDER_REGEX.finditer(continue_result.text)
                 ]
                 if partial_matches:
                     logger.warning(
@@ -724,7 +725,8 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                         f"length: {len(merged.text)} chars, contains {len(all_results)} results"
                     )
                     placeholders_in_merged = [
-                        match.group(0) for match in PLACEHOLDER_DELIMITER_REGEX.finditer(merged.text)
+                        match.group(0)
+                        for match in PLACEHOLDER_DELIMITER_REGEX.finditer(merged.text)
                     ]
                     if placeholders_in_merged:
                         logger.warning(

@@ -9,11 +9,6 @@ Tests cover:
 6. Error handling for missing placeholders
 """
 
-import pytest
-from unittest.mock import MagicMock, Mock, patch
-
-from atloop.llm import ActionJSON
-from atloop.memory.state import AgentState, Memory
 from atloop.orchestrator.job_state import JobState
 from atloop.orchestrator.phases.placeholder_info import PlaceholderInfoTracker
 from atloop.orchestrator.phases.placeholder_replacer import PlaceholderReplacer
@@ -25,8 +20,14 @@ class TestPlaceholderInfoFlowPlanToAct:
     def test_placeholder_info_stored_in_job_state(self):
         """Test that placeholder info is stored in job_state by PlanPhase logic."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
             {"tool": "read_file", "args": {"path": "c.py"}},  # No placeholder
         ]
 
@@ -69,7 +70,7 @@ class TestPlaceholderInfoFlowPlanToAct:
 
         # Simulate ActPhase retrieval
         placeholder_info_dict = job_state.shared_data.get("placeholder_info", {})
-        
+
         assert len(placeholder_info_dict) == 2
         assert placeholder_info_dict[0]["placeholder"] == "WRITE_FILE_CONTENT_file:test.py"
         assert placeholder_info_dict[1]["placeholder"] is None
@@ -80,8 +81,14 @@ class TestPlaceholderInfoFlowPlanToAct:
         # PlanPhase stores by original index
         original_actions = [
             {"tool": "read_file", "args": {"path": "a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
-            {"tool": "edit_file", "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "c.py", "content": "EDIT_FILE_CONTENT_file:c.py"},
+            },
         ]
 
         placeholder_info_list = PlaceholderInfoTracker.extract_placeholder_info(original_actions)
@@ -95,13 +102,15 @@ class TestPlaceholderInfoFlowPlanToAct:
         }
 
         # ActPhase sorts actions (write_file first)
-        sorted_actions = sorted(original_actions, key=lambda a: (a.get("tool") != "write_file", a.get("tool")))
+        sorted_actions = sorted(
+            original_actions, key=lambda a: (a.get("tool") != "write_file", a.get("tool"))
+        )
 
         # Match by finding original index
         for sorted_action in sorted_actions:
             original_index = original_actions.index(sorted_action)
             placeholder_data = placeholder_info_dict.get(original_index, {})
-            
+
             # Verify we can retrieve the correct info
             assert placeholder_data["tool"] == sorted_action["tool"]
 
@@ -112,8 +121,14 @@ class TestPlaceholderUniquenessInPlanPhase:
     def test_duplicate_detection_raises_error(self):
         """Test that duplicate placeholder names are detected and cause error."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},  # Duplicate
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },  # Duplicate
         ]
 
         # Simulate PlanPhase validation
@@ -138,8 +153,14 @@ class TestPlaceholderUniquenessInPlanPhase:
     def test_unique_names_pass_validation(self):
         """Test that unique placeholder names pass validation."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
         ]
 
         placeholder_names = []
@@ -250,23 +271,24 @@ class TestPlaceholderErrorScenarios:
     def test_missing_placeholder_in_file_contents(self):
         """Test handling when placeholder is referenced but not in file_contents."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
         ]
         file_contents = {}  # Missing
 
         replaced, missing = PlaceholderReplacer.replace_placeholders(actions, file_contents)
 
         assert len(replaced) == 1
-        assert replaced[0]["args"]["content"] == "WRITE_FILE_CONTENT_file:test.py"  # Still unreplaced
+        assert (
+            replaced[0]["args"]["content"] == "WRITE_FILE_CONTENT_file:test.py"
+        )  # Still unreplaced
         assert len(missing) == 1
         assert "WRITE_FILE_CONTENT_file:test.py" in missing
 
     def test_type_mismatch_detection(self):
         """Test that placeholder type mismatches are detected."""
-        actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "EDIT_FILE_CONTENT_file:test.py"}},  # Wrong type
-        ]
-        file_contents = {"EDIT_FILE_CONTENT_file:test.py": "content"}
 
         # Should detect type mismatch
         is_valid, error_msg = PlaceholderReplacer._validate_placeholder_type(
@@ -282,7 +304,9 @@ class TestPlaceholderErrorScenarios:
             {"tool": "run", "args": {"cmd": "ls -la"}},  # Direct command
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         assert is_valid is False
         assert error_msg is not None
@@ -292,8 +316,14 @@ class TestPlaceholderErrorScenarios:
     def test_duplicate_placeholder_causes_error(self):
         """Test that duplicate placeholder names cause validation error."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},  # Duplicate
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },  # Duplicate
         ]
 
         # Simulate PlanPhase validation

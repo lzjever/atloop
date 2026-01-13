@@ -59,7 +59,9 @@ class PlaceholderInfoTracker:
         return placeholder_info_list
 
     @staticmethod
-    def validate_run_tool_placeholders(actions: List[Dict]) -> tuple[bool, Optional[str], Optional[int]]:
+    def validate_run_tool_placeholders(
+        actions: List[Dict],
+    ) -> tuple[bool, Optional[str], Optional[int]]:
         """
         Validate that all run tool actions use placeholders.
 
@@ -76,7 +78,7 @@ class PlaceholderInfoTracker:
                 cmd = action.get("args", {}).get("cmd", "")
                 if cmd and not PlaceholderReplacer._is_valid_placeholder(cmd):
                     error_msg = (
-                        f"run tool action {i+1} must use SHELL_COMMAND_<description> placeholder, "
+                        f"run tool action {i + 1} must use SHELL_COMMAND_<description> placeholder, "
                         f"not direct command string. Got: {cmd[:50]}..."
                     )
                     return False, error_msg, i + 1

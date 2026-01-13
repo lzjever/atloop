@@ -1,7 +1,7 @@
 """Placeholder replacement service for type-specific placeholders.
 
 This module provides a clean, testable service for replacing type-specific
-placeholders (WRITE_FILE_CONTENT_descriptive-name, EDIT_FILE_CONTENT_descriptive-name, etc.) 
+placeholders (WRITE_FILE_CONTENT_descriptive-name, EDIT_FILE_CONTENT_descriptive-name, etc.)
 with actual content in action dictionaries.
 
 Design:
@@ -62,10 +62,19 @@ class PlaceholderReplacer:
     }
 
     # Tools that use content placeholders
-    CONTENT_TOOLS = {"write_file", "append_file", "edit_file", "run", "run_python_script_string", "run_shell_script_string"}
+    CONTENT_TOOLS = {
+        "write_file",
+        "append_file",
+        "edit_file",
+        "run",
+        "run_python_script_string",
+        "run_shell_script_string",
+    }
 
     @classmethod
-    def get_placeholder_field_value(cls, tool: str, args: Dict) -> tuple[Optional[str], Optional[str]]:
+    def get_placeholder_field_value(
+        cls, tool: str, args: Dict
+    ) -> tuple[Optional[str], Optional[str]]:
         """
         Get the placeholder field name and value for a tool.
 
@@ -102,7 +111,7 @@ class PlaceholderReplacer:
         for ptype, prefix in cls.PLACEHOLDER_TYPES.items():
             if placeholder.startswith(prefix):
                 # Check that there's a name after the prefix (can be any string)
-                suffix = placeholder[len(prefix):]
+                suffix = placeholder[len(prefix) :]
                 if suffix:  # Any non-empty string is valid
                     return ptype
 
@@ -125,7 +134,7 @@ class PlaceholderReplacer:
         # Check type-specific placeholders
         for prefix in cls.PLACEHOLDER_TYPES.values():
             if value.startswith(prefix):
-                suffix = value[len(prefix):]
+                suffix = value[len(prefix) :]
                 # Name must be non-empty (can contain any characters)
                 if suffix:
                     return True
@@ -169,7 +178,7 @@ class PlaceholderReplacer:
     ) -> PlaceholderReplacementResult:
         """
         Internal method that returns PlaceholderReplacementResult.
-        
+
         This is the core implementation used by both replace_placeholders and replace_and_validate.
         """
         successful_actions = []
@@ -194,7 +203,7 @@ class PlaceholderReplacer:
                 # Validate placeholder type matches tool
                 is_valid, error_msg = cls._validate_placeholder_type(tool, placeholder_value)
                 if not is_valid:
-                    type_mismatches.append(f"Action {i+1} ({tool}): {error_msg}")
+                    type_mismatches.append(f"Action {i + 1} ({tool}): {error_msg}")
                     # Still add to pending - LLM needs to fix the type
                     pending_actions.append(action.copy())
                     continue
@@ -217,7 +226,7 @@ class PlaceholderReplacer:
                     missing_placeholders.append(placeholder_value)
                     logger.warning(
                         f"[PlaceholderReplacer] Missing placeholder {placeholder_value} for {tool} "
-                        f"(action {i+1}) - will retry in next iteration"
+                        f"(action {i + 1}) - will retry in next iteration"
                     )
                     pending_actions.append(action.copy())
             else:
@@ -297,7 +306,7 @@ class PlaceholderReplacer:
                 continue
 
             if cls._is_valid_placeholder(value):
-                remaining_placeholders.append(f"Action {i+1} ({tool}): {value}")
+                remaining_placeholders.append(f"Action {i + 1} ({tool}): {value}")
 
         is_valid = len(remaining_placeholders) == 0
         return is_valid, remaining_placeholders

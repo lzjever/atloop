@@ -49,7 +49,7 @@ def load_task_spec(
         task_id=task_id,
         goal=goal,
         workspace_root=str(Path(workspace_root).resolve()),
-        budget=budget_obj
+        budget=budget_obj,
     )
 
 
@@ -64,7 +64,9 @@ class TaskRunner:
         ConfigLoader.setup(atloop_dir=atloop_dir)
         logger.debug("[TaskRunner] Config setup complete")
 
-    def execute(self, task_config: Dict[str, Any], console: bool = False, upload_workspace: bool = False) -> Dict[str, Any]:
+    def execute(
+        self, task_config: Dict[str, Any], console: bool = False, upload_workspace: bool = False
+    ) -> Dict[str, Any]:
         """
         Execute task - single method.
 
@@ -109,7 +111,7 @@ class TaskRunner:
             if not sandbox_session_id:
                 # Use config default (will fallback to task_id in Coordinator)
                 sandbox_session_id = config.sandbox.default_session_id
-            
+
             # Agent session: from task_config or config default
             agent_session_id = task_config.get("agent_session_id")
             if not agent_session_id:
@@ -117,9 +119,7 @@ class TaskRunner:
 
             # Create agent loop (creates coordinator and sandbox adapter)
             logger.info("[TaskRunner] Creating agent loop")
-            loop = AgentLoop(
-                task_spec, config, agent_session_id=agent_session_id
-            )
+            loop = AgentLoop(task_spec, config, agent_session_id=agent_session_id)
 
             # Upload workspace files to sandbox before execution (only if requested)
             if upload_workspace:

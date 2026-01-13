@@ -45,7 +45,7 @@ class WorkflowCoordinator:
         if not sandbox_session_id:
             sandbox_session_id = task_spec.task_id
         logger.debug(f"[Coordinator] Using sandbox session: {sandbox_session_id}")
-        
+
         # Agent session: for resuming/continuing runs (optional)
         self.agent_session_id = agent_session_id
         if agent_session_id:
@@ -71,7 +71,7 @@ class WorkflowCoordinator:
         # State
         logger.debug("[Coordinator] Creating state manager")
         from atloop.config.loader import ConfigLoader
-        
+
         atloop_dir = ConfigLoader.get_atloop_dir()
         runs_dir = atloop_dir / "runs"
         job_state = JobState(flow_id=f"atloop-{task_spec.task_id}")
@@ -104,39 +104,43 @@ class WorkflowCoordinator:
             loop_detection_config = DEFAULT_LOOP_DETECTION_CONFIG
         self.progress_tracker = ProgressTracker()
         self.loop_detector = LoopDetector(loop_detection_config)
-        
+
         # Restore progress tracker from saved state if available
         if self.state_manager.agent_state.memory.action_history:
-            self.progress_tracker = ProgressTracker.from_dict({
-                "action_history": self.state_manager.agent_state.memory.action_history,
-                "created_files": list(self.state_manager.agent_state.memory.created_files) if self.state_manager.agent_state.memory.created_files else [],
-                "modified_files": [],
-            })
+            self.progress_tracker = ProgressTracker.from_dict(
+                {
+                    "action_history": self.state_manager.agent_state.memory.action_history,
+                    "created_files": list(self.state_manager.agent_state.memory.created_files)
+                    if self.state_manager.agent_state.memory.created_files
+                    else [],
+                    "modified_files": [],
+                }
+            )
             logger.debug(
                 f"[Coordinator] Restored progress tracker with "
                 f"{len(self.progress_tracker.action_history)} actions"
             )
 
         logger.info(f"[Coordinator] Initialization complete for task: {task_spec.task_id}")
-        
+
         # Initialize long-term memory with task context
         self._initialize_long_term_memory()
 
     def _initialize_long_term_memory(self) -> None:
         """Initialize long-term memory with task context at startup."""
         from atloop.memory.memory_manager import MemoryManager
-        
+
         state = self.state_manager.agent_state
-        
+
         # Only initialize if not already set (to support resume)
         if not state.memory.task_summary:
             # Create task summary from goal
             summary_parts = [f"**Goal**: {self.task_spec.goal}"]
             task_summary = "\n".join(summary_parts)
-            
+
             MemoryManager.update_task_summary(state, task_summary)
             logger.info(f"[Coordinator] Initialized task_summary in long-term memory")
-        
+
         # Save state after initialization
         self.state_manager.save()
 

@@ -141,8 +141,10 @@ class SandboxConfig:
         default=None, metadata={"description": "Ephemeral storage limit"}
     )
     default_session_id: Optional[str] = field(
-        default=None, 
-        metadata={"description": "Default sandbox session ID (falls back to task_id if not provided)"}
+        default=None,
+        metadata={
+            "description": "Default sandbox session ID (falls back to task_id if not provided)"
+        },
     )
 
     def __post_init__(self):
@@ -154,52 +156,50 @@ class SandboxConfig:
 @dataclass(frozen=True)
 class RuntimeConfig:
     """Runtime behavior configuration."""
-    
+
     default_budget: Budget = field(
-        default_factory=Budget, 
-        metadata={"description": "Default budget for task execution"}
+        default_factory=Budget, metadata={"description": "Default budget for task execution"}
     )
     stuck_signature_repeats: int = field(
-        default=3, 
-        metadata={"description": "Number of repeated error signatures before considering agent stuck"}
+        default=3,
+        metadata={
+            "description": "Number of repeated error signatures before considering agent stuck"
+        },
     )
     breakpoint: bool = field(
-        default=False, 
-        metadata={"description": "Pause after each LLM response for debugging"}
+        default=False, metadata={"description": "Pause after each LLM response for debugging"}
     )
     default_agent_session_id: Optional[str] = field(
-        default=None, 
-        metadata={"description": "Default agent session ID for resuming/continuing runs"}
+        default=None,
+        metadata={"description": "Default agent session ID for resuming/continuing runs"},
     )
 
 
 @dataclass(frozen=True)
 class DebugConfig:
     """Debugging and diagnostics configuration."""
-    
+
     show_memory_diagnostics: bool = field(
-        default=False, 
-        metadata={"description": "Print memory statistics panel after each step"}
+        default=False, metadata={"description": "Print memory statistics panel after each step"}
     )
     save_llm_io: bool = field(
-        default=False, 
-        metadata={"description": "Save LLM input/output to files in debug/ directory"}
+        default=False,
+        metadata={"description": "Save LLM input/output to files in debug/ directory"},
     )
     save_memory_dump: bool = field(
-        default=False, 
-        metadata={"description": "Save memory state to JSON files after each step"}
+        default=False, metadata={"description": "Save memory state to JSON files after each step"}
     )
 
 
 @dataclass(frozen=True)
 class OutputConfig:
     """Output style configuration for console output."""
-    
+
     style: Literal["minimal", "verbose"] = field(
         default="minimal",
         metadata={
             "description": "Console output style: minimal (key info only) or verbose (detailed step-by-step)"
-        }
+        },
     )
 
 
@@ -212,7 +212,6 @@ class TaskSpec:
     workspace_root: str = field(metadata={"description": "Workspace root directory"})
     budget: Budget = field(default_factory=Budget, metadata={"description": "Task budget"})
 
-
     def __post_init__(self):
         """Validate task specification."""
         if not self.goal:
@@ -224,7 +223,7 @@ class TaskSpec:
 @dataclass(frozen=True)
 class MemoryConfig:
     """Memory configuration for managing agent memory.
-    
+
     This configuration controls memory compression, retention policies, and
     summary size limits. Memory summary limits are included here because
     they are closely related to memory compression and management.
@@ -239,42 +238,42 @@ class MemoryConfig:
         default=24000,  # 24KB
         metadata={"description": "Minimum effective memory summary length"},
     )
-    
+
     # Memory summary default and output limits
     summary_default_limit: int = field(
         default=64000,  # 64KB
         metadata={
             "description": "Default maximum memory summary length",
             "unit": "characters",
-            "rationale": "Utilizes ~12.5% of 128k token input context for long-term memory"
-        }
+            "rationale": "Utilizes ~12.5% of 128k token input context for long-term memory",
+        },
     )
-    
+
     summary_stdout_stderr_shell: int = field(
         default=12000,  # 12KB
         metadata={
             "description": "Shell command output limit in memory summary",
             "unit": "characters",
-            "rationale": "Memory summary needs more context than regular output to track history"
-        }
+            "rationale": "Memory summary needs more context than regular output to track history",
+        },
     )
-    
+
     summary_stdout_stderr_other: int = field(
         default=4000,  # 4KB
         metadata={
             "description": "Other tool output limit in memory summary",
             "unit": "characters",
-            "rationale": "Non-shell tools typically have shorter output"
-        }
+            "rationale": "Non-shell tools typically have shorter output",
+        },
     )
-    
+
     summary_stderr_tail: int = field(
         default=5000,  # 5KB
         metadata={
             "description": "stderr tail limit in memory summary",
             "unit": "characters",
-            "rationale": "Last error is important, needs sufficient space for tracebacks"
-        }
+            "rationale": "Last error is important, needs sufficient space for tracebacks",
+        },
     )
 
     # Compression thresholds
@@ -328,265 +327,263 @@ class MemoryConfig:
 @dataclass(frozen=True)
 class OutputLimitsConfig:
     """Output size limits for tool execution results.
-    
+
     These limits control how much output from tool executions (stdout/stderr)
     is retained and passed to the LLM. Different limits apply based on the
     semantic type of the output (file content, execution result, etc.).
-    
+
     Design rationale:
     - File view commands need larger limits to show complete file content
     - Normal commands need moderate limits to balance information vs token usage
     - Other tools (non-shell) typically have short output, need smaller limits
     """
-    
+
     # Standard output limits (characters)
     normal: int = field(
         default=8000,  # 8KB
         metadata={
             "description": "Output limit for normal commands (non-file-view)",
             "unit": "characters",
-            "rationale": "Balances information retention with token usage for typical command output"
-        }
+            "rationale": "Balances information retention with token usage for typical command output",
+        },
     )
-    
+
     file_view: int = field(
         default=60000,  # 60KB
         metadata={
             "description": "Output limit for file view commands (cat, head, tail, sed -n)",
             "unit": "characters",
-            "rationale": "File content needs larger limits to ensure LLM can see complete files for error fixing"
-        }
+            "rationale": "File content needs larger limits to ensure LLM can see complete files for error fixing",
+        },
     )
-    
+
     other: int = field(
         default=2000,  # 2KB
         metadata={
             "description": "Output limit for non-shell tools (write_file, edit_file, etc.)",
             "unit": "characters",
-            "rationale": "Non-shell tools typically have short success/failure messages"
-        }
+            "rationale": "Non-shell tools typically have short success/failure messages",
+        },
     )
-    
+
     # Error summary limits (characters)
     error_summary_normal: int = field(
         default=25000,  # 25KB
         metadata={
             "description": "Error summary limit for normal commands",
             "unit": "characters",
-            "rationale": "Ensures complete error information including long tracebacks"
-        }
+            "rationale": "Ensures complete error information including long tracebacks",
+        },
     )
-    
+
     error_summary_file_view: int = field(
         default=50000,  # 50KB
         metadata={
             "description": "Error summary limit for file view commands",
             "unit": "characters",
-            "rationale": "File view errors may include file content, need larger limit"
-        }
+            "rationale": "File view errors may include file content, need larger limit",
+        },
     )
-    
+
     # stderr tail limit (characters)
     stderr_tail: int = field(
         default=10000,  # 10KB
         metadata={
             "description": "stderr tail storage limit for detailed error analysis",
             "unit": "characters",
-            "rationale": "Error information is typically at the end of stderr output"
-        }
+            "rationale": "Error information is typically at the end of stderr output",
+        },
     )
 
 
 @dataclass(frozen=True)
 class ContextPackLimitsConfig:
     """Size limits for context pack construction.
-    
+
     Context packs are assembled from various sources (recent errors, diffs,
     test results) and passed to the LLM in prompts. These limits control
     how much of each component is included.
     """
-    
+
     # Maximum total size (bytes)
     max_size: int = field(
         default=200 * 1024,  # 200KB
         metadata={
             "description": "Maximum total size of context pack",
             "unit": "bytes",
-            "rationale": "Balances context richness with token usage for 128k token context window"
-        }
+            "rationale": "Balances context richness with token usage for 128k token context window",
+        },
     )
-    
+
     # Recent error limits (characters)
     recent_error_normal: int = field(
         default=20000,  # 20KB
         metadata={
             "description": "Recent error limit for normal errors",
             "unit": "characters",
-            "rationale": "Provides sufficient error context without overwhelming the prompt"
-        }
+            "rationale": "Provides sufficient error context without overwhelming the prompt",
+        },
     )
-    
+
     recent_error_file_content: int = field(
         default=40000,  # 40KB
         metadata={
             "description": "Recent error limit when error includes file content",
             "unit": "characters",
-            "rationale": "Errors with file content need more space to show relevant context"
-        }
+            "rationale": "Errors with file content need more space to show relevant context",
+        },
     )
-    
+
     # Diff limit (characters)
     diff: int = field(
         default=10000,  # 10KB
         metadata={
             "description": "Diff information limit",
             "unit": "characters",
-            "rationale": "Shows sufficient file changes without excessive token usage"
-        }
+            "rationale": "Shows sufficient file changes without excessive token usage",
+        },
     )
-    
+
     # Test results limits (characters)
     test_results: int = field(
         default=15000,  # 15KB
         metadata={
             "description": "Test results limit in agent loop",
             "unit": "characters",
-            "rationale": "Test output can be long, need sufficient space for complete results"
-        }
+            "rationale": "Test output can be long, need sufficient space for complete results",
+        },
     )
-    
+
     test_results_context: int = field(
         default=10000,  # 10KB
         metadata={
             "description": "Test results limit in context pack",
             "unit": "characters",
-            "rationale": "Context pack has multiple components, test results need smaller limit"
-        }
+            "rationale": "Context pack has multiple components, test results need smaller limit",
+        },
     )
 
 
 @dataclass(frozen=True)
 class VerifierLimitsConfig:
     """Size limits for verifier error extraction.
-    
+
     The verifier runs test/build commands and extracts error information
     from their output. These limits control how much error information
     is extracted and formatted.
     """
-    
+
     # Error summary limit (characters)
     error_summary: int = field(
         default=15000,  # 15KB
         metadata={
             "description": "Error summary limit for verifier output",
             "unit": "characters",
-            "rationale": "Must be large enough to include complete ImportError tracebacks"
-        }
+            "rationale": "Must be large enough to include complete ImportError tracebacks",
+        },
     )
-    
+
     # Error line extraction
     error_lines_max: int = field(
         default=30,
         metadata={
             "description": "Maximum number of error-related lines to extract",
             "unit": "lines",
-            "rationale": "Captures relevant error context without excessive output"
-        }
+            "rationale": "Captures relevant error context without excessive output",
+        },
     )
-    
+
     # Error signature line limit (characters)
     error_signature_line: int = field(
         default=200,
         metadata={
             "description": "Single line limit for error signature extraction",
             "unit": "characters",
-            "rationale": "Error signatures are typically single lines, 200 chars is sufficient"
-        }
+            "rationale": "Error signatures are typically single lines, 200 chars is sufficient",
+        },
     )
 
 
 @dataclass(frozen=True)
 class EventLoggerLimitsConfig:
     """Size limits for event logging.
-    
+
     Event logs record execution history for debugging and analysis.
     These limits control how much output is stored in logs to balance
     information retention with log file size.
     """
-    
+
     # Output limit (characters)
     output_normal: int = field(
         default=12000,  # 12KB
         metadata={
             "description": "Normal tool output limit in event logs",
             "unit": "characters",
-            "rationale": "Logs need key information for debugging, not full output"
-        }
+            "rationale": "Logs need key information for debugging, not full output",
+        },
     )
-    
+
     # Prompt preview limit (characters)
     prompt_preview: int = field(
         default=4000,  # 4KB
         metadata={
             "description": "Prompt preview limit in event logs",
             "unit": "characters",
-            "rationale": "Only store prompt beginning for debugging, not full prompt"
-        }
+            "rationale": "Only store prompt beginning for debugging, not full prompt",
+        },
     )
 
 
 @dataclass(frozen=True)
 class LoggingLimitsConfig:
     """Size limits for log file management.
-    
+
     Controls log file rotation and size management.
     """
-    
+
     # Log file max size (MB)
     file_max_size_mb: int = field(
         default=100,  # 100MB
         metadata={
             "description": "Maximum log file size before rotation",
             "unit": "MB",
-            "rationale": "Balances log retention with disk space usage"
-        }
+            "rationale": "Balances log retention with disk space usage",
+        },
     )
 
 
 @dataclass(frozen=True)
 class LimitsConfig:
     """Runtime limits configuration.
-    
+
     This configuration controls all size and length limits used throughout
     the system. These are runtime limits (not user-configurable application
     settings) but can be adjusted via configuration files for tuning.
-    
+
     All limits are in characters unless otherwise specified (bytes, lines, MB).
     """
-    
+
     output: OutputLimitsConfig = field(
-        default_factory=OutputLimitsConfig,
-        metadata={"description": "Tool execution output limits"}
+        default_factory=OutputLimitsConfig, metadata={"description": "Tool execution output limits"}
     )
-    
+
     context_pack: ContextPackLimitsConfig = field(
         default_factory=ContextPackLimitsConfig,
-        metadata={"description": "Context pack size limits"}
+        metadata={"description": "Context pack size limits"},
     )
-    
+
     verifier: VerifierLimitsConfig = field(
         default_factory=VerifierLimitsConfig,
-        metadata={"description": "Verifier error extraction limits"}
+        metadata={"description": "Verifier error extraction limits"},
     )
-    
+
     event_logger: EventLoggerLimitsConfig = field(
         default_factory=EventLoggerLimitsConfig,
-        metadata={"description": "Event logger output limits"}
+        metadata={"description": "Event logger output limits"},
     )
-    
+
     logging: LoggingLimitsConfig = field(
-        default_factory=LoggingLimitsConfig,
-        metadata={"description": "Log file size limits"}
+        default_factory=LoggingLimitsConfig, metadata={"description": "Log file size limits"}
     )
 
 
@@ -606,7 +603,7 @@ class AtloopConfig:
     memory: MemoryConfig = field(
         default_factory=MemoryConfig, metadata={"description": "Memory configuration"}
     )
-    
+
     # Runtime limits configuration
     limits: LimitsConfig = field(
         default_factory=LimitsConfig, metadata={"description": "Runtime limits configuration"}
@@ -614,20 +611,18 @@ class AtloopConfig:
 
     # Runtime configuration
     runtime: RuntimeConfig = field(
-        default_factory=RuntimeConfig,
-        metadata={"description": "Runtime behavior configuration"}
+        default_factory=RuntimeConfig, metadata={"description": "Runtime behavior configuration"}
     )
-    
+
     # Debug configuration
     debug: DebugConfig = field(
         default_factory=DebugConfig,
-        metadata={"description": "Debugging and diagnostics configuration"}
+        metadata={"description": "Debugging and diagnostics configuration"},
     )
-    
+
     # Output configuration
     output: OutputConfig = field(
-        default_factory=OutputConfig,
-        metadata={"description": "Output style configuration"}
+        default_factory=OutputConfig, metadata={"description": "Output style configuration"}
     )
 
     def __post_init__(self):

@@ -263,9 +263,9 @@ class EditFileTool(BaseTool):
         content_for_write = updated_content
         if not content_for_write.endswith("\n"):
             content_for_write = content_for_write + "\n"
-        
+
         # Encode content to base64 for safe transmission through shell
-        content_b64 = base64.b64encode(content_for_write.encode('utf-8')).decode('ascii')
+        content_b64 = base64.b64encode(content_for_write.encode("utf-8")).decode("ascii")
         write_cmd = f"echo {shlex.quote(content_b64)} | base64 -d > {path_escaped}"
         write_result = self._run_command(write_cmd, timeout_sec=30)
 

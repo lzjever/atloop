@@ -21,9 +21,7 @@ class AgentLoop:
     ):
         """Initialize agent loop."""
         logger.debug(f"[AgentLoop] Initializing for task: {task_spec.task_id}")
-        self.coordinator = WorkflowCoordinator(
-            task_spec, config, agent_session_id=agent_session_id
-        )
+        self.coordinator = WorkflowCoordinator(task_spec, config, agent_session_id=agent_session_id)
         self.workflow = Workflow(self.coordinator)
         logger.debug("[AgentLoop] Initialization complete")
 

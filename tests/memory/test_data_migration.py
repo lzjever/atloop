@@ -1,9 +1,6 @@
 """Tests for data storage structure migration."""
 
-import pytest
-
 from atloop.memory.summarizer import MemorySummarizer
-from atloop.orchestrator.phases.act import ActPhase
 from tests.memory.fixtures.sample_state import create_sample_state
 
 
@@ -14,7 +11,7 @@ class TestActPhaseDataStorage:
         """Verify that ActPhase writes tool results to tool_results_history with modified_files."""
         # Create a clean state
         from atloop.memory.state import AgentState, Artifacts, BudgetUsed, LastError, Memory
-        
+
         state = AgentState(
             step=7,
             phase="ACT",
@@ -23,7 +20,7 @@ class TestActPhaseDataStorage:
             artifacts=Artifacts(),
             budget_used=BudgetUsed(),
         )
-        
+
         # Simulate what ActPhase does
         modified_files = ["generate_data.py"]
         results = [
@@ -34,7 +31,7 @@ class TestActPhaseDataStorage:
                 "stderr": "",
             }
         ]
-        
+
         # Simulate tool_results_history append (as ActPhase does)
         tool_result_record = {
             "step": state.step,
@@ -45,7 +42,7 @@ class TestActPhaseDataStorage:
             "modified_files": modified_files,  # New field
         }
         state.memory.tool_results_history.append(tool_result_record)
-        
+
         # Verify structure
         assert len(state.memory.tool_results_history) == 1
         assert state.memory.tool_results_history[0]["modified_files"] == modified_files
@@ -55,7 +52,7 @@ class TestActPhaseDataStorage:
         """Verify that attempts no longer contain results field."""
         # Create a clean state
         from atloop.memory.state import AgentState, Artifacts, BudgetUsed, LastError, Memory
-        
+
         state = AgentState(
             step=7,
             phase="ACT",
@@ -64,7 +61,7 @@ class TestActPhaseDataStorage:
             artifacts=Artifacts(),
             budget_used=BudgetUsed(),
         )
-        
+
         # Simulate what ActPhase does (new structure)
         state.memory.attempts.append(
             {
@@ -74,7 +71,7 @@ class TestActPhaseDataStorage:
                 # NOTE: results field should NOT be present
             }
         )
-        
+
         # Verify structure
         assert len(state.memory.attempts) == 1
         attempt = state.memory.attempts[0]
@@ -89,7 +86,7 @@ class TestSummarizerExtractsFiles:
     def test_summarizer_extracts_files_from_tool_results(self):
         """Verify that summarizer can extract file modifications from tool_results_history."""
         state = create_sample_state(step=7, stage="mid")
-        
+
         # Add tool results with modified_files
         state.memory.tool_results_history = [
             {
@@ -109,9 +106,9 @@ class TestSummarizerExtractsFiles:
                 "modified_files": ["plot_kline.py"],
             },
         ]
-        
+
         summary = MemorySummarizer.summarize(state)
-        
+
         # Verify file modifications are extracted
         assert "## Recent File Modifications" in summary
         assert "Step 7" in summary
@@ -122,7 +119,7 @@ class TestSummarizerExtractsFiles:
     def test_summarizer_handles_multiple_files_per_step(self):
         """Verify that summarizer handles multiple files modified in the same step."""
         state = create_sample_state(step=7, stage="mid")
-        
+
         # Add tool results with multiple files in same step
         state.memory.tool_results_history = [
             {
@@ -142,9 +139,9 @@ class TestSummarizerExtractsFiles:
                 "modified_files": ["file2.py"],
             },
         ]
-        
+
         summary = MemorySummarizer.summarize(state)
-        
+
         # Verify both files are shown
         assert "Step 7" in summary
         assert "Modified 2 files" in summary or "file1.py" in summary and "file2.py" in summary
@@ -152,10 +149,10 @@ class TestSummarizerExtractsFiles:
     def test_summarizer_backward_compatibility_with_attempts(self):
         """Verify that summarizer falls back to attempts if tool_results_history is empty."""
         state = create_sample_state(step=7, stage="mid")
-        
+
         # Clear tool_results_history
         state.memory.tool_results_history = []
-        
+
         # Add old-style attempts (with files but no results)
         state.memory.attempts = [
             {
@@ -164,9 +161,9 @@ class TestSummarizerExtractsFiles:
                 "success": True,
             }
         ]
-        
+
         summary = MemorySummarizer.summarize(state)
-        
+
         # Verify it falls back to attempts
         assert "## Recent File Modifications" in summary
         assert "Step 7" in summary

@@ -119,7 +119,6 @@ class EnhancedSkillLoader:
 
         return "\n".join(lines)
 
-
     def list_skills(self) -> List[str]:
         """Return list of available skill names."""
         return sorted(self.skills.keys())
@@ -136,10 +135,10 @@ class EnhancedSkillLoader:
         """Get skill metadata and resource list (without resource content)."""
         if name not in self.skills:
             return None
-        
+
         skill = self.skills[name]
         source = self.skill_sources.get(name, "unknown")
-        
+
         metadata = {
             "name": skill["name"],
             "description": skill["description"],
@@ -147,33 +146,40 @@ class EnhancedSkillLoader:
             "source": source,
             "dir": str(skill["dir"]),
         }
-        
+
         resources = {"scripts": [], "references": [], "assets": []}
-        
-        for folder, key in [("scripts", "scripts"), ("references", "references"), ("assets", "assets")]:
+
+        for folder, key in [
+            ("scripts", "scripts"),
+            ("references", "references"),
+            ("assets", "assets"),
+        ]:
             folder_path = skill["dir"] / folder
             if folder_path.exists():
                 files = [f.name for f in folder_path.glob("*") if f.is_file()]
                 resources[key] = sorted(files)
-        
+
         return {"metadata": metadata, "resources": resources}
 
     def load_skill_resource(
         self, skill_name: str, resource_type: str, resource_name: str
     ) -> Optional[str]:
         """Load a specific resource file content from a skill."""
-        if skill_name not in self.skills or resource_type not in ["scripts", "references", "assets"]:
+        if skill_name not in self.skills or resource_type not in [
+            "scripts",
+            "references",
+            "assets",
+        ]:
             return None
-        
+
         skill = self.skills[skill_name]
         resource_path = skill["dir"] / resource_type / resource_name
-        
+
         if not resource_path.exists() or not resource_path.is_file():
             return None
-        
+
         try:
             return resource_path.read_text(encoding="utf-8")
         except Exception as e:
             logger.warning(f"[EnhancedSkillLoader] Failed to read resource {resource_name}: {e}")
             return None
-

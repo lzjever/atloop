@@ -133,7 +133,7 @@ class AppendFileTool(BaseTool):
         # Use base64 encoding to safely append file content
         # This avoids shell interpretation issues with special characters like {, }, $, etc.
         # Content is appended exactly as provided (preserves trailing newlines)
-        content_b64 = base64.b64encode(content.encode('utf-8')).decode('ascii')
+        content_b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
         cmd = f"echo {shlex.quote(content_b64)} | base64 -d >> {path_escaped}"
         result = self.sandbox.exec_shell(
             command=cmd,

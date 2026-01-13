@@ -5,10 +5,8 @@ These tests verify the centralized intervention execution logic.
 """
 
 import pytest
-from unittest.mock import MagicMock
 
-from atloop.config.loop_detection import InterventionLevel, LoopDetectionConfig
-from atloop.memory.progress_tracker import ProgressMetrics
+from atloop.config.loop_detection import InterventionLevel
 from atloop.orchestrator.loop_detector import (
     Intervention,
     LoopAnalysis,
@@ -20,10 +18,10 @@ from atloop.orchestrator.loop_intervention_executor import (
     LoopInterventionExecutor,
 )
 
-
 # =============================================================================
 # Test Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def executor() -> LoopInterventionExecutor:
@@ -104,6 +102,7 @@ def create_intervention(level: InterventionLevel, prompt: str = "Warning") -> In
 # Tests for InterventionResult
 # =============================================================================
 
+
 class TestInterventionResult:
     """Tests for InterventionResult dataclass."""
 
@@ -160,15 +159,16 @@ class TestInterventionResult:
 # Tests for LoopInterventionExecutor
 # =============================================================================
 
+
 class TestLoopInterventionExecutor:
     """Tests for LoopInterventionExecutor."""
 
     def test_no_loop_returns_continue_normal(self, executor, no_loop_analysis):
         """No loop detected should return CONTINUE_NORMAL."""
         intervention = create_intervention(InterventionLevel.NONE, "")
-        
+
         result = executor.execute(no_loop_analysis, intervention)
-        
+
         assert result.action == InterventionAction.CONTINUE_NORMAL
         assert result.prompt_injection == ""
         assert result.forced_actions == []
@@ -177,12 +177,11 @@ class TestLoopInterventionExecutor:
     def test_soft_warning_returns_inject_warning(self, executor, soft_warning_analysis):
         """Soft warning should return INJECT_WARNING."""
         intervention = create_intervention(
-            InterventionLevel.SOFT_WARNING,
-            "## Warning\nYou are repeating actions."
+            InterventionLevel.SOFT_WARNING, "## Warning\nYou are repeating actions."
         )
-        
+
         result = executor.execute(soft_warning_analysis, intervention)
-        
+
         assert result.action == InterventionAction.INJECT_WARNING
         assert "Warning" in result.prompt_injection
         assert not result.should_skip_llm
@@ -190,12 +189,11 @@ class TestLoopInterventionExecutor:
     def test_hard_warning_returns_inject_warning(self, executor, hard_warning_analysis):
         """Hard warning should still return INJECT_WARNING (below threshold)."""
         intervention = create_intervention(
-            InterventionLevel.HARD_WARNING,
-            "## CRITICAL WARNING\nStop repeating!"
+            InterventionLevel.HARD_WARNING, "## CRITICAL WARNING\nStop repeating!"
         )
-        
+
         result = executor.execute(hard_warning_analysis, intervention)
-        
+
         assert result.action == InterventionAction.INJECT_WARNING
         assert "CRITICAL" in result.prompt_injection
         assert not result.should_skip_llm
@@ -205,12 +203,11 @@ class TestLoopInterventionExecutor:
     ):
         """Force strategy with high repetitions should return FORCE_RECOVERY."""
         intervention = create_intervention(
-            InterventionLevel.FORCE_STRATEGY,
-            "## FORCED RECOVERY\nSystem is taking over."
+            InterventionLevel.FORCE_STRATEGY, "## FORCED RECOVERY\nSystem is taking over."
         )
-        
+
         result = executor.execute(force_strategy_analysis, intervention)
-        
+
         assert result.action == InterventionAction.FORCE_RECOVERY
         assert len(result.forced_actions) > 0
         assert result.should_skip_llm
@@ -218,12 +215,11 @@ class TestLoopInterventionExecutor:
     def test_abort_with_high_repetitions_returns_abort(self, executor, abort_analysis):
         """Abort with high repetitions should return ABORT_TASK."""
         intervention = create_intervention(
-            InterventionLevel.ABORT,
-            "## ABORT\nTask is being terminated."
+            InterventionLevel.ABORT, "## ABORT\nTask is being terminated."
         )
-        
+
         result = executor.execute(abort_analysis, intervention)
-        
+
         assert result.action == InterventionAction.ABORT_TASK
         assert result.should_abort
         assert len(result.error_message) > 0
@@ -239,12 +235,12 @@ class TestLoopInterventionExecutor:
             evidence=["Viewed files without modification"],
         )
         intervention = create_intervention(InterventionLevel.FORCE_STRATEGY, "")
-        
+
         result = executor.execute(analysis, intervention)
-        
+
         assert result.action == InterventionAction.FORCE_RECOVERY
         assert len(result.forced_actions) > 0
-        
+
         # Check that forced action contains relevant information
         action = result.forced_actions[0]
         assert action["tool"] == "run"
@@ -260,9 +256,9 @@ class TestLoopInterventionExecutor:
             evidence=["Same action repeated"],
         )
         intervention = create_intervention(InterventionLevel.FORCE_STRATEGY, "")
-        
+
         result = executor.execute(analysis, intervention)
-        
+
         assert result.action == InterventionAction.FORCE_RECOVERY
         action = result.forced_actions[0]
         assert "SAME_ACTION_REPEAT" in action["args"]["cmd"]
@@ -278,9 +274,9 @@ class TestLoopInterventionExecutor:
             evidence=["Test"],
         )
         intervention = create_intervention(InterventionLevel.FORCE_STRATEGY, "Warning")
-        
+
         result = executor.execute(force_analysis, intervention)
-        
+
         # FORCE_STRATEGY level should return FORCE_RECOVERY (trust the level)
         assert result.action == InterventionAction.FORCE_RECOVERY
 
@@ -295,9 +291,9 @@ class TestLoopInterventionExecutor:
             evidence=["Test"],
         )
         intervention = create_intervention(InterventionLevel.ABORT, "Warning")
-        
+
         result = executor.execute(abort_analysis, intervention)
-        
+
         # ABORT level should return ABORT_TASK (trust the level)
         assert result.action == InterventionAction.ABORT_TASK
 
@@ -306,6 +302,7 @@ class TestLoopInterventionExecutor:
 # Integration Tests
 # =============================================================================
 
+
 class TestInterventionExecutorIntegration:
     """Integration tests for intervention executor with real detector."""
 
@@ -313,12 +310,12 @@ class TestInterventionExecutorIntegration:
         """Test the full flow from progress tracking to intervention execution."""
         from atloop.memory.progress_tracker import ProgressTracker
         from atloop.orchestrator.loop_detector import LoopDetector
-        
+
         # Setup
         tracker = ProgressTracker()
         detector = LoopDetector()
         executor = LoopInterventionExecutor()
-        
+
         # Simulate VIEW_WITHOUT_MODIFY loop
         for i in range(10):
             tracker.record_action(
@@ -327,16 +324,16 @@ class TestInterventionExecutorIntegration:
                 args={"cmd": "cat file.txt"},
                 result={"ok": True},
             )
-        
+
         # Analyze
         analysis = detector.analyze(tracker)
-        
+
         # Generate intervention
         intervention = detector.generate_intervention(analysis)
-        
+
         # Execute intervention
         result = executor.execute(analysis, intervention)
-        
+
         # With 10 repetitions, config says abort_threshold=8, so should be ABORT
         # But could also be FORCE_STRATEGY or INJECT_WARNING depending on exact thresholds
         # The key is that the level from LoopDetector is respected
@@ -350,18 +347,20 @@ class TestInterventionExecutorIntegration:
         """Test that normal workflow doesn't trigger intervention."""
         from atloop.memory.progress_tracker import ProgressTracker
         from atloop.orchestrator.loop_detector import LoopDetector
-        
+
         tracker = ProgressTracker()
         detector = LoopDetector()
         executor = LoopInterventionExecutor()
-        
+
         # Normal workflow with varied actions
         tracker.record_action(step=0, tool="run", args={"cmd": "ls"}, result={"ok": True})
-        tracker.record_action(step=1, tool="write_file", args={"path": "f.txt"}, result={"ok": True})
+        tracker.record_action(
+            step=1, tool="write_file", args={"path": "f.txt"}, result={"ok": True}
+        )
         tracker.record_action(step=2, tool="run", args={"cmd": "cat f.txt"}, result={"ok": True})
-        
+
         analysis = detector.analyze(tracker)
         intervention = detector.generate_intervention(analysis)
         result = executor.execute(analysis, intervention)
-        
+
         assert result.action == InterventionAction.CONTINUE_NORMAL

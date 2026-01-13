@@ -10,7 +10,7 @@ from enum import Enum
 
 class OutputSemanticType(Enum):
     """Semantic types for tool outputs.
-    
+
     These types represent the nature of the output content, not the tool that
     produces it. This allows us to apply appropriate size limits based on
     what the output contains, rather than which tool produced it.

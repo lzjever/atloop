@@ -22,15 +22,12 @@ def cmd_config(args: Any) -> int:
         config = ConfigLoader.get()
 
         from pathlib import Path
-        
+
         atloop_dir = ConfigLoader.get_atloop_dir()
-        skills_dirs = [
-            atloop_dir / "skills",
-            Path.home() / ".atloop" / "skills"
-        ]
+        skills_dirs = [atloop_dir / "skills", Path.home() / ".atloop" / "skills"]
         skills_dirs = [str(d) for d in skills_dirs if d.exists()]
         mcp_config_path = atloop_dir / "mcp.json"
-        
+
         print("atloop Configuration:")
         print(f"  Completion API: {config.ai.completion.api_base}")
         print(f"  Completion Model: {config.ai.completion.model}")

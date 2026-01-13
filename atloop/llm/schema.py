@@ -101,7 +101,7 @@ class ActionJSONValidationError(ValueError):
 
 class ActionJSON:
     """Action JSON data structure.
-    
+
     Design principle: Fail Fast
     - Data validation happens at construction time
     - Invalid data is rejected immediately with clear error messages
@@ -125,7 +125,7 @@ class ActionJSON:
             current_step_thoughts: Optional current step thoughts (not a summary)
             plan: Optional plan steps
             result_message: Optional result message
-            
+
         Raises:
             ActionJSONValidationError: If data is invalid
         """
@@ -142,7 +142,7 @@ class ActionJSON:
             raise ActionJSONValidationError(
                 f"Invalid stop_reason: '{stop_reason}'. Must be one of: 'continue', 'done', 'fail'."
             )
-        
+
         # Validate each action
         for i, action in enumerate(actions):
             if not isinstance(action, dict):
@@ -150,14 +150,10 @@ class ActionJSON:
                     f"action[{i}] must be a dictionary, but got {type(action).__name__}."
                 )
             if "tool" not in action:
-                raise ActionJSONValidationError(
-                    f"action[{i}] missing required field: 'tool'."
-                )
+                raise ActionJSONValidationError(f"action[{i}] missing required field: 'tool'.")
             if "args" not in action:
-                raise ActionJSONValidationError(
-                    f"action[{i}] missing required field: 'args'."
-                )
-        
+                raise ActionJSONValidationError(f"action[{i}] missing required field: 'args'.")
+
         self.actions = actions
         self.stop_reason = stop_reason
         self.current_step_thoughts = current_step_thoughts
@@ -182,19 +178,19 @@ class ActionJSON:
     def from_dict(cls, data: Dict[str, Any], validate: bool = True) -> "ActionJSON":
         """
         Create from dictionary with validation.
-        
+
         Design principle: Validate at the boundary
         - Data entering the system is validated immediately
         - Invalid data is rejected with clear error messages
         - Downstream code can trust the data structure
-        
+
         Args:
             data: Dictionary containing action JSON data
             validate: Whether to validate the data (default: True)
-            
+
         Returns:
             ActionJSON instance
-            
+
         Raises:
             ActionJSONValidationError: If data is invalid and validate=True
             TypeError: If data is not a dictionary
@@ -204,13 +200,13 @@ class ActionJSON:
             raise TypeError(
                 f"ActionJSON.from_dict() expects a dict, but got {type(data).__name__}."
             )
-        
+
         # Validate data structure if requested
         if validate:
             is_valid, error_msg = validate_action_json(data)
             if not is_valid:
                 raise ActionJSONValidationError(error_msg, data=data)
-        
+
         # Extract and construct (data is now guaranteed to be valid)
         # Support both old and new field names for backward compatibility
         current_step_thoughts = data.get("current_step_thoughts") or data.get("thought_summary")
@@ -423,9 +419,7 @@ def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
                     )
         elif tool == "skill":
             if "name" not in action["args"]:
-                return (
-                    False,
-                )
+                return (False,)
 
     # Enforce single file creation per response
     if write_file_count > 1:
@@ -896,7 +890,7 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
         # Start position is after the delimiter (skip the newline if present)
         start_pos = match.end()
         # Skip leading newline if present
-        if start_pos < len(text) and text[start_pos] == '\n':
+        if start_pos < len(text) and text[start_pos] == "\n":
             start_pos += 1
 
         # Find the end position (next placeholder or end of text)

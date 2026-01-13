@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 
 class LoopType(Enum):
     """Types of detected loops."""
-    NONE = "none"                          # No loop detected
+
+    NONE = "none"  # No loop detected
     VIEW_WITHOUT_MODIFY = "view_without_modify"  # Viewing files but not fixing
-    SAME_ACTION_REPEAT = "same_action_repeat"    # Same action repeated
-    NO_PROGRESS = "no_progress"                  # Actions taken but no measurable progress
-    EXPLORATION_LOOP = "exploration_loop"        # Stuck in exploration (ls, find, etc.)
+    SAME_ACTION_REPEAT = "same_action_repeat"  # Same action repeated
+    NO_PROGRESS = "no_progress"  # Actions taken but no measurable progress
+    EXPLORATION_LOOP = "exploration_loop"  # Stuck in exploration (ls, find, etc.)
 
 
 @dataclass
 class LoopAnalysis:
     """Result of loop analysis."""
+
     is_looping: bool
     loop_type: LoopType
     intervention_level: InterventionLevel
@@ -44,7 +46,7 @@ class LoopAnalysis:
     evidence: List[str]  # Evidence for the loop detection
     suggested_action: Optional[str] = None
     metrics: Optional[ProgressMetrics] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -61,13 +63,14 @@ class LoopAnalysis:
 @dataclass
 class Intervention:
     """Intervention to be applied."""
+
     level: InterventionLevel
     message: str
     prompt_injection: str  # Text to inject into the prompt
     forced_actions: List[Dict[str, Any]] = field(default_factory=list)
     blocked_patterns: List[str] = field(default_factory=list)  # Action patterns to block
     require_different_action: bool = False  # Force LLM to do something different
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -83,23 +86,23 @@ class Intervention:
 class LoopDetector:
     """
     Detects execution loops and generates interventions.
-    
+
     This class analyzes progress metrics to detect various types of loops
     and generates appropriate interventions based on severity.
     """
-    
+
     def __init__(self, config: Optional[LoopDetectionConfig] = None):
         """Initialize loop detector with configuration."""
         self.config = config or DEFAULT_LOOP_DETECTION_CONFIG
         self._last_analysis: Optional[LoopAnalysis] = None
-    
+
     def analyze(self, tracker: ProgressTracker) -> LoopAnalysis:
         """
         Analyze progress tracker for loop patterns.
-        
+
         Args:
             tracker: ProgressTracker with action history
-            
+
         Returns:
             LoopAnalysis with detection results
         """
@@ -107,13 +110,10 @@ class LoopDetector:
         evidence: List[str] = []
         loop_type = LoopType.NONE
         repetition_count = 0
-        
+
         # Check for same action repeat (use semantic pattern for better detection)
         # Prefer semantic pattern if available, fall back to exact signature
-        pattern_count = max(
-            metrics.consecutive_semantic_pattern,
-            metrics.consecutive_same_pattern
-        )
+        pattern_count = max(metrics.consecutive_semantic_pattern, metrics.consecutive_same_pattern)
         if pattern_count >= self.config.soft_warning_threshold:
             loop_type = LoopType.SAME_ACTION_REPEAT
             repetition_count = pattern_count
@@ -128,7 +128,7 @@ class LoopDetector:
                     f"Same action pattern repeated {metrics.consecutive_same_pattern} times: "
                     f"{recent_actions}"
                 )
-        
+
         # Check for view without modify
         elif metrics.consecutive_view_count >= self.config.max_view_without_modify:
             loop_type = LoopType.VIEW_WITHOUT_MODIFY
@@ -140,7 +140,7 @@ class LoopDetector:
                 f"View/Modify ratio: {metrics.view_to_modify_ratio:.1f} "
                 f"(view={metrics.view_actions}, modify={metrics.modify_actions})"
             )
-        
+
         # Check for no progress (high repetition rate)
         elif metrics.repetition_rate > 0.7 and metrics.total_actions > 5:
             loop_type = LoopType.NO_PROGRESS
@@ -152,14 +152,14 @@ class LoopDetector:
             evidence.append(
                 f"Only {metrics.unique_actions} unique actions out of {metrics.total_actions}"
             )
-        
+
         # Determine intervention level
         is_looping = loop_type != LoopType.NONE
         intervention_level = self.config.get_intervention_level(repetition_count)
-        
+
         # Generate suggested action
         suggested_action = self._get_suggested_action(loop_type, tracker)
-        
+
         analysis = LoopAnalysis(
             is_looping=is_looping,
             loop_type=loop_type,
@@ -169,22 +169,18 @@ class LoopDetector:
             suggested_action=suggested_action,
             metrics=metrics,
         )
-        
+
         self._last_analysis = analysis
-        
+
         if is_looping:
             logger.warning(
                 f"[LoopDetector] Loop detected: type={loop_type.value}, "
                 f"repetitions={repetition_count}, level={intervention_level.name}"
             )
-        
+
         return analysis
-    
-    def _get_suggested_action(
-        self, 
-        loop_type: LoopType, 
-        tracker: ProgressTracker
-    ) -> Optional[str]:
+
+    def _get_suggested_action(self, loop_type: LoopType, tracker: ProgressTracker) -> Optional[str]:
         """Get suggested action to break the loop."""
         if loop_type == LoopType.VIEW_WITHOUT_MODIFY:
             # Find what file was being viewed
@@ -192,54 +188,56 @@ class LoopDetector:
                 if action.category == ActionCategory.VIEW and action.target_file:
                     ext = action.target_file.split(".")[-1] if "." in action.target_file else ""
                     if ext in ("py", "js", "ts", "sh"):
-                        return f"Execute the file to get actual errors: run the {action.target_file}"
+                        return (
+                            f"Execute the file to get actual errors: run the {action.target_file}"
+                        )
             return "Stop viewing and either MODIFY the file or EXECUTE it to verify"
-        
+
         elif loop_type == LoopType.SAME_ACTION_REPEAT:
             return "Do something DIFFERENT. Your previous actions are not working."
-        
+
         elif loop_type == LoopType.NO_PROGRESS:
             return "Make concrete progress: create or modify a file, or execute code"
-        
+
         return None
-    
+
     def generate_intervention(self, analysis: LoopAnalysis) -> Intervention:
         """
         Generate intervention based on loop analysis.
-        
+
         Args:
             analysis: LoopAnalysis from analyze()
-            
+
         Returns:
             Intervention to apply
         """
         level = analysis.intervention_level
         loop_type = analysis.loop_type
-        
+
         # Build evidence string
         evidence_str = "\n".join(f"  - {e}" for e in analysis.evidence)
-        
+
         if level == InterventionLevel.NONE:
             return Intervention(
                 level=level,
                 message="",
                 prompt_injection="",
             )
-        
+
         elif level == InterventionLevel.SOFT_WARNING:
             return self._soft_warning(analysis, evidence_str)
-        
+
         elif level == InterventionLevel.HARD_WARNING:
             return self._hard_warning(analysis, evidence_str)
-        
+
         elif level == InterventionLevel.FORCE_STRATEGY:
             return self._force_strategy(analysis, evidence_str)
-        
+
         elif level == InterventionLevel.ABORT:
             return self._abort_intervention(analysis, evidence_str)
-        
+
         return Intervention(level=level, message="", prompt_injection="")
-    
+
     def _soft_warning(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
         """Generate soft warning intervention."""
         prompt = f"""
@@ -257,12 +255,12 @@ Please consider changing your approach if you're not making progress.
             message=f"Soft warning: {analysis.loop_type.value}",
             prompt_injection=prompt,
         )
-    
+
     def _hard_warning(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
         """Generate hard warning intervention with specific actionable guidance."""
         # Generate specific action suggestions based on loop type
         specific_actions = self._get_specific_action_suggestions(analysis)
-        
+
         prompt = f"""
 ## 🚨🚨🚨 CRITICAL: LOOP DETECTED - IMMEDIATE ACTION REQUIRED 🚨🚨🚨
 
@@ -292,38 +290,38 @@ Please consider changing your approach if you're not making progress.
             prompt_injection=prompt,
             require_different_action=True,
         )
-    
+
     def _get_specific_action_suggestions(self, analysis: LoopAnalysis) -> str:
         """Get specific action suggestions based on loop type."""
         loop_type = analysis.loop_type
-        
+
         if loop_type == LoopType.VIEW_WITHOUT_MODIFY:
             return """1. **EXECUTE the code/script** to get actual errors (use `run_python_script_string` or `run_shell_script_string`)
 2. **MODIFY a file** using `edit_file` or `write_file` to make progress
 3. **Create a new file** if the task requires it
 4. **Set stop_reason="done"** if the task is actually complete"""
-        
+
         elif loop_type == LoopType.SAME_ACTION_REPEAT:
             return """1. **Try a completely different tool** - if you've been using `run`, try `write_file` or `read_file`
 2. **Change your approach** - if viewing files failed, try executing them instead
 3. **Break the pattern** - do something that produces a different result
 4. **Set stop_reason="done"** if the task is actually complete"""
-        
+
         elif loop_type == LoopType.NO_PROGRESS:
             return """1. **Create or modify a file** to make measurable progress
 2. **Execute code** to verify it works
 3. **Change strategy** - try a different approach to the problem
 4. **Set stop_reason="done"** if the task is actually complete"""
-        
+
         else:
             return """1. **Do something DIFFERENT** from your recent actions
 2. **Make measurable progress** - create files, modify files, or execute code
 3. **Set stop_reason="done"** if the task is actually complete"""
-    
+
     def _force_strategy(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
         """Generate forced strategy intervention."""
         forced_actions = self._get_recovery_actions(analysis)
-        
+
         prompt = f"""
 ## 🛑🛑🛑 SYSTEM OVERRIDE: FORCED RECOVERY 🛑🛑🛑
 
@@ -350,7 +348,7 @@ Please consider changing your approach if you're not making progress.
             forced_actions=forced_actions,
             blocked_patterns=self._get_blocked_patterns(analysis),
         )
-    
+
     def _abort_intervention(self, analysis: LoopAnalysis, evidence: str) -> Intervention:
         """Generate abort intervention."""
         prompt = f"""
@@ -380,51 +378,59 @@ Please consider changing your approach if you're not making progress.
             prompt_injection=prompt,
             require_different_action=True,
         )
-    
+
     def _get_recovery_actions(self, analysis: LoopAnalysis) -> List[Dict[str, Any]]:
         """Get recovery actions to force."""
         actions = []
-        
+
         # If viewing files repeatedly, force execution
         if analysis.loop_type == LoopType.VIEW_WITHOUT_MODIFY:
             # Find the most viewed file
             if analysis.metrics:
                 # Default recovery: run the main script
-                actions.append({
-                    "tool": "run",
-                    "args": {"cmd": "ls -la /workspace/*.js /workspace/*.py 2>/dev/null | head -5"},
-                    "reason": "List available scripts to execute",
-                })
-        
+                actions.append(
+                    {
+                        "tool": "run",
+                        "args": {
+                            "cmd": "ls -la /workspace/*.js /workspace/*.py 2>/dev/null | head -5"
+                        },
+                        "reason": "List available scripts to execute",
+                    }
+                )
+
         # Generic recovery: check what's actually there
         if not actions:
-            actions.append({
-                "tool": "run",
-                "args": {"cmd": "find /workspace -maxdepth 2 -name '*.js' -o -name '*.py' | head -10"},
-                "reason": "Find executable files",
-            })
-        
+            actions.append(
+                {
+                    "tool": "run",
+                    "args": {
+                        "cmd": "find /workspace -maxdepth 2 -name '*.js' -o -name '*.py' | head -10"
+                    },
+                    "reason": "Find executable files",
+                }
+            )
+
         return actions
-    
+
     def _get_blocked_patterns(self, analysis: LoopAnalysis) -> List[str]:
         """Get patterns that should be blocked."""
         blocked = []
-        
+
         if analysis.loop_type == LoopType.VIEW_WITHOUT_MODIFY:
             blocked.extend(["cat ", "head ", "tail ", "wc "])
-        
+
         if analysis.loop_type == LoopType.SAME_ACTION_REPEAT:
             # Block the repeated action pattern
             # This would need the actual pattern from tracker
             pass
-        
+
         return blocked
-    
+
     def _format_forced_actions(self, actions: List[Dict[str, Any]]) -> str:
         """Format forced actions for display."""
         if not actions:
             return "  (System will determine recovery actions)"
-        
+
         lines = []
         for i, action in enumerate(actions, 1):
             tool = action.get("tool", "unknown")
@@ -433,15 +439,15 @@ Please consider changing your approach if you're not making progress.
             lines.append(f"  {i}. {tool}: {args}")
             if reason:
                 lines.append(f"     Reason: {reason}")
-        
+
         return "\n".join(lines)
-    
+
     def should_force_execution(self) -> bool:
         """Check if the system should force execute recovery actions."""
         if not self._last_analysis:
             return False
         return self._last_analysis.intervention_level >= InterventionLevel.FORCE_STRATEGY
-    
+
     def get_last_analysis(self) -> Optional[LoopAnalysis]:
         """Get the last analysis result."""
         return self._last_analysis

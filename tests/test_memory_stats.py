@@ -1,10 +1,9 @@
 """Tests for memory statistics display formatting."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from atloop.memory.state import AgentState, Memory, BudgetUsed, LastError
-from atloop.orchestrator.memory_stats import format_memory_stats, _format_memory_stats_simple
+from atloop.memory.state import AgentState, BudgetUsed, LastError, Memory
+from atloop.orchestrator.memory_stats import format_memory_stats
 
 
 class TestMemoryStatsFormatting:
@@ -18,20 +17,20 @@ class TestMemoryStatsFormatting:
             memory=Memory(),
             budget_used=BudgetUsed(llm_calls=0, tool_calls=0, wall_time_sec=0),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check header
         assert "📊 Memory Stats" in result
         assert "Step 1" in result
         assert "Phase: PLAN" in result
-        
+
         # Check table structure
         assert "📁 Files" in result
         assert "🔧 Execution" in result
         assert "🧠 Memory" in result
         assert "💰 Budget" in result
-        
+
         # Check values are zero
         assert "Created: 0" in result
         assert "Modified: 0" in result
@@ -52,16 +51,16 @@ class TestMemoryStatsFormatting:
         memory.plan = ["Step 1", "Step 2", "Step 3"]
         memory.important_decisions = [{"decision": "dec1"}, {"decision": "dec2"}]
         memory.milestones = [{"milestone": "mil1"}]
-        
+
         state = AgentState(
             step=5,
             phase="ACT",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=10, tool_calls=25, wall_time_sec=120),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check counts
         assert "Created: 3" in result
         assert "Modified: 2" in result
@@ -78,16 +77,16 @@ class TestMemoryStatsFormatting:
         """Test memory stats with string plan instead of list."""
         memory = Memory()
         memory.plan = "Step 1\nStep 2\nStep 3\nStep 4"
-        
+
         state = AgentState(
             step=2,
             phase="PLAN",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=5, tool_calls=10, wall_time_sec=60),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check plan size is calculated correctly (4 lines)
         assert "Plan: 4 items" in result
 
@@ -95,16 +94,16 @@ class TestMemoryStatsFormatting:
         """Test memory stats with empty plan."""
         memory = Memory()
         memory.plan = ""
-        
+
         state = AgentState(
             step=1,
             phase="PLAN",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=5),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check plan shows 0 items
         assert "Plan: 0 items" in result
 
@@ -117,9 +116,9 @@ class TestMemoryStatsFormatting:
             budget_used=BudgetUsed(llm_calls=5, tool_calls=10, wall_time_sec=30),
             last_error=LastError(summary="Test error message here"),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check error is displayed
         assert "⚠️  Last Error" in result
         assert "Test error message here" in result
@@ -134,9 +133,9 @@ class TestMemoryStatsFormatting:
             budget_used=BudgetUsed(llm_calls=8, tool_calls=15, wall_time_sec=45),
             last_error=LastError(summary=long_error),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check error is truncated to 150 chars
         error_line = [line for line in result.split("\n") if "⚠️  Last Error" in line][0]
         # Error preview should be max 150 chars + "⚠️  Last Error: " prefix
@@ -150,16 +149,18 @@ class TestMemoryStatsFormatting:
             memory=Memory(),
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
         )
-        
+
         result = format_memory_stats(state)
         lines = result.split("\n")
-        
+
         # Check separator lines
         assert "=" * 70 in result
-        
+
         # Check table is present (should have multiple rows)
         # The table should have at least 7 data rows + borders
-        table_lines = [line for line in lines if "│" in line or "─" in line or "┌" in line or "└" in line]
+        table_lines = [
+            line for line in lines if "│" in line or "─" in line or "┌" in line or "└" in line
+        ]
         assert len(table_lines) > 0  # Table borders/separators should be present
 
     def test_format_memory_stats_compact_height(self):
@@ -170,10 +171,10 @@ class TestMemoryStatsFormatting:
             memory=Memory(),
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
         )
-        
+
         result = format_memory_stats(state)
         lines = result.split("\n")
-        
+
         # Should be compact - total lines should be reasonable (around 15-20)
         # Header (3 lines) + Table (7-10 lines) + Footer (3 lines) = ~13-16 lines
         assert len([l for l in lines if l.strip()]) <= 20
@@ -188,16 +189,16 @@ class TestMemoryStatsFormatting:
         memory.plan = ["Step 1"]
         memory.important_decisions = [{"decision": "test"}]
         memory.milestones = [{"milestone": "test"}]
-        
+
         state = AgentState(
             step=1,
             phase="PLAN",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check all main sections are present
         assert "📁 Files" in result
         assert "🔧 Execution" in result
@@ -219,21 +220,21 @@ class TestMemoryStatsSimpleFormat:
         memory.plan = ["Step 1", "Step 2"]
         memory.important_decisions = [{"decision": "dec1"}]
         memory.milestones = [{"milestone": "mil1"}]
-        
+
         state = AgentState(
             step=3,
             phase="ACT",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=5, tool_calls=10, wall_time_sec=60),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check header
         assert "📊 Memory Stats" in result
         assert "Step 3" in result
         assert "Phase: ACT" in result
-        
+
         # Check all data is present in simple format
         assert "Created=2" in result
         assert "Modified=1" in result
@@ -256,9 +257,9 @@ class TestMemoryStatsSimpleFormat:
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
             last_error=LastError(summary="Simple error test"),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         assert "⚠️  Last Error" in result
         assert "Simple error test" in result
 
@@ -271,10 +272,10 @@ class TestMemoryStatsSimpleFormat:
             memory=Memory(),
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
         )
-        
+
         result = format_memory_stats(state)
         lines = result.split("\n")
-        
+
         # Simple format should be very compact (around 6-8 lines)
         non_empty_lines = [l for l in lines if l.strip()]
         assert len(non_empty_lines) <= 8
@@ -291,9 +292,9 @@ class TestMemoryStatsEdgeCases:
             memory=Memory(),
             budget_used=BudgetUsed(),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Should still produce valid output
         assert "📊 Memory Stats" in result
         assert "Step 0" in result
@@ -305,16 +306,16 @@ class TestMemoryStatsEdgeCases:
         memory.created_files = ["file"] * 1000
         memory.attempts = [{"step": i} for i in range(500)]
         memory.plan = [f"Step {i}" for i in range(200)]
-        
+
         state = AgentState(
             step=100,
             phase="ACT",
             memory=memory,
             budget_used=BudgetUsed(llm_calls=999, tool_calls=5000, wall_time_sec=3600),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Check large numbers are displayed correctly
         assert "Created: 1000" in result
         assert "Attempts: 500" in result
@@ -333,9 +334,9 @@ class TestMemoryStatsEdgeCases:
             budget_used=BudgetUsed(llm_calls=1, tool_calls=2, wall_time_sec=3),
             last_error=LastError(summary=error_with_special),
         )
-        
+
         result = format_memory_stats(state)
-        
+
         # Should handle special characters without crashing
         assert "⚠️  Last Error" in result
         # Error should be truncated but present

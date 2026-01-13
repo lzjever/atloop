@@ -1,7 +1,5 @@
 """Tests for MemoryFormatter."""
 
-import pytest
-
 from atloop.memory.formatter import MemoryFormatter
 from tests.memory.fixtures.sample_state import (
     create_sample_state,
@@ -135,7 +133,7 @@ class TestMemoryFormatter:
         )
 
         # Verify options are applied
-        sections = extract_sections(formatted)
+        extract_sections(formatted)
         assert formatted is not None
 
     def test_format_length_limit(self):
@@ -171,10 +169,14 @@ class TestMemoryFormatter:
 
     def test_format_early_stage(self):
         """Test formatting early stage (matches example 1)."""
-        state = create_sample_state(step=3, stage="early", task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我.")
+        state = create_sample_state(
+            step=3, stage="early", task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我."
+        )
         formatter = MemoryFormatter()
 
-        formatted = formatter.format(state, task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我.")
+        formatted = formatter.format(
+            state, task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我."
+        )
 
         # Verify key elements from example 1
         assert "Task Overview" in formatted
@@ -184,10 +186,14 @@ class TestMemoryFormatter:
 
     def test_format_mid_stage(self):
         """Test formatting mid stage (matches example 2)."""
-        state = create_sample_state(step=7, stage="mid", task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我.")
+        state = create_sample_state(
+            step=7, stage="mid", task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我."
+        )
         formatter = MemoryFormatter()
 
-        formatted = formatter.format(state, task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我.")
+        formatted = formatter.format(
+            state, task_goal="模拟生成一只股票一个月的高开低收数据, 画成k线图给我."
+        )
 
         # Verify key elements from example 2
         assert "Critical Warnings" in formatted

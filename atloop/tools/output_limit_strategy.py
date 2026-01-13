@@ -20,11 +20,11 @@ def _is_file_view_command(cmd: str) -> bool:
 
 class OutputLimitStrategy:
     """Unified output limit strategy system.
-    
+
     This class maps semantic types to appropriate output limits for different
     contexts (formatting vs memory summary). It provides a single source of
     truth for output size limits.
-    
+
     Limits are loaded from configuration at runtime to allow customization.
     """
 
@@ -78,19 +78,17 @@ class OutputLimitStrategy:
         args: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Get output limit for formatting (last_error.summary).
-        
+
         Args:
             tool: Tool instance
             is_stderr: Whether this is stderr (True) or stdout (False)
             args: Tool arguments (for special cases like run command file viewing)
-        
+
         Returns:
             Output limit in characters
         """
         # Get semantic type
-        semantic_type = (
-            tool.stderr_semantic_type if is_stderr else tool.stdout_semantic_type
-        )
+        semantic_type = tool.stderr_semantic_type if is_stderr else tool.stdout_semantic_type
 
         # Special handling: run command file viewing
         limits = cls._get_limits()
@@ -102,28 +100,26 @@ class OutputLimitStrategy:
         # Return corresponding limit
         semantic_limits = cls._get_semantic_type_limits()
         return semantic_limits.get(
-            semantic_type, limits["output"]["other"]  # Default fallback
+            semantic_type,
+            limits["output"]["other"],  # Default fallback
         )
 
     @classmethod
-    def get_limit_for_memory_summary(
-        cls, tool: BaseTool, is_stderr: bool = False
-    ) -> int:
+    def get_limit_for_memory_summary(cls, tool: BaseTool, is_stderr: bool = False) -> int:
         """Get output limit for memory summary.
-        
+
         Args:
             tool: Tool instance
             is_stderr: Whether this is stderr (True) or stdout (False)
-        
+
         Returns:
             Output limit in characters
         """
-        semantic_type = (
-            tool.stderr_semantic_type if is_stderr else tool.stdout_semantic_type
-        )
+        semantic_type = tool.stderr_semantic_type if is_stderr else tool.stdout_semantic_type
 
         limits = cls._get_limits()
         memory_limits = cls._get_memory_summary_limits()
         return memory_limits.get(
-            semantic_type, limits["memory"]["other"]  # Default fallback
+            semantic_type,
+            limits["memory"]["other"],  # Default fallback
         )

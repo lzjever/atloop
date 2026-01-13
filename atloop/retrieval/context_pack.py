@@ -47,7 +47,6 @@ class ContextPack:
         parts.append(self.goal)
         parts.append("")
 
-
         # Project Profile
         parts.append("## Project Information")
         parts.append(self.project_profile)

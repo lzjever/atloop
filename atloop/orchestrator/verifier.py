@@ -125,9 +125,7 @@ class Verifier:
                 error_summary_limit = config.limits.verifier.error_summary
                 lines = error_text.split("\n")
                 # Take first few lines as summary (LLM will see full output anyway)
-                error_summary = "\n".join(lines[:error_lines_max])[
-                    :error_summary_limit
-                ]
+                error_summary = "\n".join(lines[:error_lines_max])[:error_summary_limit]
 
         return VerificationResult(
             success=not verification_failed,  # Use our enhanced check

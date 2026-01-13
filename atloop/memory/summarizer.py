@@ -95,7 +95,7 @@ class MemorySummarizer:
         config = ConfigLoader.get()
         if max_length is None:
             max_length = config.memory.summary_default_limit
-        
+
         parts = []
 
         # If memory is completely empty, return a minimal summary
@@ -113,7 +113,6 @@ class MemorySummarizer:
         ):
             return "Initial state: Task just started, no operations executed yet."
 
-
         # Long-term memory: Task summary (shown first, persists across steps)
         if state.memory.task_summary:
             parts.append("## ≡ Task Overview (Long-term Memory)")
@@ -122,24 +121,25 @@ class MemorySummarizer:
 
         # Show loaded skills from skill cache
         skill_contents = []
-        
+
         if state.memory.skill_cache:
             for skill_name, skill_data in list(state.memory.skill_cache.items())[-3:]:
                 metadata = skill_data.get("metadata", {})
                 resources = skill_data.get("resources", {})
-                
+
                 skill_body = metadata.get("body", "")
                 loaded_step = metadata.get("loaded_at_step", "?")
-                
+
                 if skill_body:
-                    skill_contents.append({
-                        "name": skill_name,
-                        "content": skill_body,
-                        "step": loaded_step,
-                        "resources": resources,  # Include resource info
-                    })
-        
-        
+                    skill_contents.append(
+                        {
+                            "name": skill_name,
+                            "content": skill_body,
+                            "step": loaded_step,
+                            "resources": resources,  # Include resource info
+                        }
+                    )
+
         if skill_contents:
             parts.append("## 📚 Loaded Skills (Complete Content - Use These Guidelines)")
             # Show most recent skills (last 3 to avoid too much content)
@@ -147,7 +147,7 @@ class MemorySummarizer:
                 parts.append(f"### Skill: {skill['name']} (Loaded at Step {skill['step']})")
                 parts.append(f"```\n{skill['content']}\n```")
                 parts.append("")
-                
+
                 # Show cached resources if available
                 resources = skill.get("resources", {})
                 if resources:
@@ -166,7 +166,7 @@ class MemorySummarizer:
                                 cached_resources.append(
                                     f"**{resource_type.capitalize()}**: {', '.join(resource_list)}"
                                 )
-                    
+
                     if cached_resources:
                         parts.append("**Cached Resources:**")
                         parts.extend(f"- {r}" for r in cached_resources)
@@ -175,7 +175,7 @@ class MemorySummarizer:
                             "**Note**: Use `load_skill_resource` to load additional resources when needed."
                         )
                         parts.append("")
-            
+
             if len(skill_contents) > 3:
                 parts.append(
                     f"*Note: {len(skill_contents) - 3} more skills were loaded earlier. "
@@ -281,15 +281,17 @@ class MemorySummarizer:
                 actions = decision.get("actions", [])
                 actions_count = len(actions)
                 stop_reason = decision.get("stop_reason", "?")
-                
+
                 # Show only factual information: what tools were called
                 tools_used = [a.get("tool", "?") for a in actions[:3]]
                 tools_str = ", ".join(tools_used)
                 if len(actions) > 3:
                     tools_str += f" ... (+{len(actions) - 3} more)"
-                
-                parts.append(f"- Step {step}: {actions_count} actions [{tools_str}] ({stop_reason})")
-        
+
+                parts.append(
+                    f"- Step {step}: {actions_count} actions [{tools_str}] ({stop_reason})"
+                )
+
         # NOTE: llm_responses are NOT shown to LLM to prevent feedback loops
         # They are preserved in memory for debugging only
 
@@ -306,7 +308,7 @@ class MemorySummarizer:
                     if step not in step_files:
                         step_files[step] = []
                     step_files[step].extend(modified_files)
-            
+
             # Display recent file modifications (last 3 steps)
             if step_files:
                 parts.append("\n## Recent File Modifications")
@@ -318,7 +320,7 @@ class MemorySummarizer:
                         parts.append(f"  Files: {', '.join(files[:5])}")
                         if len(files) > 5:
                             parts.append(f"  ... (+{len(files) - 5} more)")
-        
+
         # Backward compatibility: Also show attempts if tool_results_history is empty
         # This handles cases where old data doesn't have tool_results_history
         elif state.memory.attempts:

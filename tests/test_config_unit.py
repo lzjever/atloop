@@ -119,7 +119,7 @@ runtime:
 
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
         atloop_dir = ConfigLoader.get_atloop_dir()
-        
+
         assert atloop_dir == temp_atloop_dir.resolve()
         assert atloop_dir.exists()
         assert atloop_dir.is_dir()
@@ -128,7 +128,7 @@ runtime:
         """Test ConfigLoader.get_atloop_dir() raises if setup() not called."""
         # Reset the class variable
         ConfigLoader._atloop_dir = None
-        
+
         with pytest.raises(RuntimeError, match="ConfigLoader.setup\\(\\) must be called first"):
             ConfigLoader.get_atloop_dir()
 
@@ -273,7 +273,7 @@ class TestTaskSpec:
                 goal="",
                 workspace_root=str(temp_workspace),
             )
-        
+
         # Empty workspace_root should raise ValueError
         with pytest.raises(ValueError):
             TaskSpec(
@@ -295,7 +295,9 @@ class TestTaskSpec:
         assert task_spec.budget.max_tool_calls > 0
         assert task_spec.budget.max_wall_time_sec > 0
 
-    def test_task_spec_creation_with_real_config(self, real_config_file: Path, temp_workspace: Path):
+    def test_task_spec_creation_with_real_config(
+        self, real_config_file: Path, temp_workspace: Path
+    ):
         """Test TaskSpec creation with real config."""
         if not real_config_file.exists():
             pytest.skip(f"Real config file not found: {real_config_file}")

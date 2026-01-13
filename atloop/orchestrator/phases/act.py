@@ -48,7 +48,7 @@ class ActPhase(BasePhase):
             # Design principle: Validate at the boundary
             # ActionJSON.from_dict() will validate the data structure
             actions_dict = self.coordinator.job_state.shared_data.get("actions")
-            
+
             if not actions_dict:
                 logger.warning("[ActPhase] No actions found, transitioning back to DISCOVER")
                 self.coordinator.state_manager.update(phase="DISCOVER")
@@ -63,7 +63,9 @@ class ActPhase(BasePhase):
             # ActionJSON.from_dict() will raise ActionJSONValidationError if invalid
             try:
                 action_json = ActionJSON.from_dict(actions_dict, validate=True)
-                logger.debug(f"[ActPhase] Parsed and validated ActionJSON: {len(action_json.actions)} actions")
+                logger.debug(
+                    f"[ActPhase] Parsed and validated ActionJSON: {len(action_json.actions)} actions"
+                )
             except ActionJSONValidationError as e:
                 # Clear validation error with detailed message
                 logger.error(f"[ActPhase] Action JSON validation failed: {e.message}")
@@ -193,18 +195,18 @@ class ActPhase(BasePhase):
                 f"Original order: {[a.get('tool') for a in actions]}, "
                 f"Sorted order: {[a.get('tool') for a in sorted_actions]}"
             )
-        
+
         results = []
         modified_files = []
 
         import time
-        
+
         # Get placeholder info from job_state (saved by PlanPhase)
         placeholder_info_dict = self.coordinator.job_state.shared_data.get("placeholder_info", {})
-        
+
         # Store placeholder info for memory recording (matched by action index)
         placeholder_info = []
-        
+
         for i, action in enumerate(sorted_actions):
             logger.debug(
                 f"[ActPhase] Executing action {i + 1}/{len(actions)}: {action.get('tool')}"
@@ -214,17 +216,19 @@ class ActPhase(BasePhase):
             # Use original action index before sorting
             original_index = actions.index(action) if action in actions else i
             placeholder_data = placeholder_info_dict.get(original_index, {})
-            
+
             tool = action.get("tool", "unknown")
             args = action.get("args", {})
             placeholder_name = placeholder_data.get("placeholder")
-            
+
             # If no placeholder was used, record the actual args
-            placeholder_info.append({
-                "tool": tool,
-                "placeholder": placeholder_name,
-                "args": placeholder_data.get("args") if not placeholder_name else None,
-            })
+            placeholder_info.append(
+                {
+                    "tool": tool,
+                    "placeholder": placeholder_name,
+                    "args": placeholder_data.get("args") if not placeholder_name else None,
+                }
+            )
 
             # Validate and execute action
             self._validate_action(action, i + 1)
@@ -233,7 +237,7 @@ class ActPhase(BasePhase):
 
             # Process result: format, update error state, track files
             self._process_action_result(action, result, state, modified_files)
-            
+
             # Record action to progress tracker
             self.coordinator.progress_tracker.record_action(
                 step=state.step,
@@ -246,17 +250,15 @@ class ActPhase(BasePhase):
             # Update budget
             state.budget_used.tool_calls += 1
             self.coordinator.budget_manager.budget_used.tool_calls += 1
-            logger.debug(
-                f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}"
-            )
-        
+            logger.debug(f"[ActPhase] Budget updated: tool_calls={state.budget_used.tool_calls}")
+
         # Store placeholder info for memory recording (will be used in _update_memory_after_execution)
         state._act_phase_placeholder_info = placeholder_info
-        
+
         # Clean up placeholder info from job_state after use
         if "placeholder_info" in self.coordinator.job_state.shared_data:
             del self.coordinator.job_state.shared_data["placeholder_info"]
-        
+
         # Save action history to memory for persistence
         state.memory.action_history = [
             a.to_dict() for a in self.coordinator.progress_tracker.action_history
@@ -267,16 +269,16 @@ class ActPhase(BasePhase):
     def _sort_actions(self, actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Sort actions to ensure correct execution order.
-        
+
         Required order:
         1. write_file (create new files)
         2. append_file (append to existing files)
         3. edit_file (modify existing files)
         4. All other operations (read_file, run, load_skill, etc.)
-        
+
         Args:
             actions: List of actions to sort
-            
+
         Returns:
             Sorted list of actions
         """
@@ -287,15 +289,15 @@ class ActPhase(BasePhase):
             "edit_file": 3,
             # All other tools have priority 4 (executed last)
         }
-        
+
         def get_priority(action: Dict[str, Any]) -> int:
             tool = action.get("tool", "")
             return tool_priority.get(tool, 4)
-        
+
         # Sort by priority, maintaining relative order within same priority
         # Use stable sort to preserve order of actions with same tool type
         sorted_actions = sorted(actions, key=get_priority)
-        
+
         return sorted_actions
 
     def _cache_skill_metadata(
@@ -303,7 +305,7 @@ class ActPhase(BasePhase):
     ) -> None:
         """
         Cache skill metadata in memory.skill_cache.
-        
+
         Args:
             state: Agent state
             args: Tool arguments
@@ -312,14 +314,14 @@ class ActPhase(BasePhase):
         """
         if not result.get("ok"):
             return
-        
+
         skill_name = args.get("name")
         if not skill_name:
             return
-        
+
         meta = result.get("meta", {})
         resources = meta.get("resources", {})
-        
+
         # Initialize skill cache entry if not exists
         if skill_name not in state.memory.skill_cache:
             state.memory.skill_cache[skill_name] = {
@@ -330,16 +332,16 @@ class ActPhase(BasePhase):
                     "assets": {},
                 },
             }
-        
+
         # Extract metadata from stdout (which contains the formatted skill content)
         # The stdout contains: # Skill: name, Description, Main Content (body), Available Resources
         stdout = result.get("stdout", "")
-        
+
         # Parse description and body from stdout
         # Format: # Skill: name\n**Source**: ...\n\n## Description\n...\n\n## Main Content\n...\n\n
         description = ""
         body = ""
-        
+
         if "## Description" in stdout:
             desc_start = stdout.find("## Description") + len("## Description")
             if "## Main Content" in stdout:
@@ -347,7 +349,7 @@ class ActPhase(BasePhase):
                 description = stdout[desc_start:desc_end].strip()
             else:
                 description = stdout[desc_start:].strip()
-        
+
         if "## Main Content" in stdout:
             body_start = stdout.find("## Main Content") + len("## Main Content")
             if "## Available Resources" in stdout:
@@ -355,7 +357,7 @@ class ActPhase(BasePhase):
                 body = stdout[body_start:body_end].strip()
             else:
                 body = stdout[body_start:].strip()
-        
+
         # Update metadata
         state.memory.skill_cache[skill_name]["metadata"] = {
             "name": skill_name,
@@ -363,20 +365,18 @@ class ActPhase(BasePhase):
             "body": body or stdout,  # Fallback to full stdout if parsing fails
             "loaded_at_step": state.step,
         }
-        
+
         # Store resource list for reference
         state.memory.skill_cache[skill_name]["_resource_list"] = resources
-        
-        logger.debug(
-            f"[ActPhase] Cached skill metadata: {skill_name} (Step {state.step})"
-        )
+
+        logger.debug(f"[ActPhase] Cached skill metadata: {skill_name} (Step {state.step})")
 
     def _cache_skill_resource(
         self, state: Any, args: Dict[str, Any], result: Dict[str, Any], tool_name: str
     ) -> None:
         """
         Cache skill resource content in memory.skill_cache.
-        
+
         Args:
             state: Agent state
             args: Tool arguments
@@ -385,24 +385,24 @@ class ActPhase(BasePhase):
         """
         if not result.get("ok"):
             return
-        
+
         skill_name = args.get("skill_name")
         resource_type = args.get("resource_type")
         resource_name = args.get("resource_name")
-        
+
         if not all([skill_name, resource_type, resource_name]):
             return
-        
+
         # Get content from meta (stored by tool)
         meta = result.get("meta", {})
         content = meta.get("_content")
-        
+
         if not content:
             logger.warning(
                 f"[ActPhase] No content found in result meta for {skill_name}/{resource_type}/{resource_name}"
             )
             return
-        
+
         # Initialize skill cache entry if not exists
         if skill_name not in state.memory.skill_cache:
             state.memory.skill_cache[skill_name] = {
@@ -413,16 +413,16 @@ class ActPhase(BasePhase):
                     "assets": {},
                 },
             }
-        
+
         # Cache resource content
         if resource_type not in state.memory.skill_cache[skill_name]["resources"]:
             state.memory.skill_cache[skill_name]["resources"][resource_type] = {}
-        
+
         state.memory.skill_cache[skill_name]["resources"][resource_type][resource_name] = {
             "content": content,
             "loaded_at_step": state.step,
         }
-        
+
         logger.debug(
             f"[ActPhase] Cached skill resource: {skill_name}/{resource_type}/{resource_name} "
             f"({len(content)} chars, Step {state.step})"
@@ -442,10 +442,10 @@ class ActPhase(BasePhase):
         # Check for unreplaced placeholders in all tools that use placeholders
         field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
         if field_name and PlaceholderReplacer._is_valid_placeholder(value):
-                logger.error(
-                    f"[ActPhase] ❌ CRITICAL: {tool} action {action_index} has unreplaced placeholder "
-                    f"{value} in field '{field_name}'! This indicates placeholder replacement failed in PlanPhase."
-                )
+            logger.error(
+                f"[ActPhase] ❌ CRITICAL: {tool} action {action_index} has unreplaced placeholder "
+                f"{value} in field '{field_name}'! This indicates placeholder replacement failed in PlanPhase."
+            )
 
     def _execute_single_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -462,9 +462,7 @@ class ActPhase(BasePhase):
 
         try:
             result = self.executor._execute_action(action)
-            logger.debug(
-                f"[ActPhase] Action completed: success={result.get('success', False)}"
-            )
+            logger.debug(f"[ActPhase] Action completed: success={result.get('success', False)}")
             return result
         except Exception as e:
             # Convert exception to error result format
@@ -592,17 +590,15 @@ class ActPhase(BasePhase):
                 # NOTE: results field removed - tool execution results are stored in tool_results_history
             }
         )
-        logger.debug(
-            f"[ActPhase] Recorded attempt: success={success}, files={len(modified_files)}"
-        )
-        
+        logger.debug(f"[ActPhase] Recorded attempt: success={success}, files={len(modified_files)}")
+
         # Record tool results to tool_results_history with placeholder info
         placeholder_info = getattr(state, "_act_phase_placeholder_info", [])
         for i, (result, placeholder_data) in enumerate(zip(results, placeholder_info)):
             tool = placeholder_data["tool"]
             placeholder = placeholder_data["placeholder"]
             args = placeholder_data["args"]
-            
+
             # Record to tool_results_history (with modified_files field)
             tool_result_record = {
                 "step": state.step,
@@ -610,17 +606,17 @@ class ActPhase(BasePhase):
                 "args": args if args is not None else {},  # Use actual args if no placeholder
                 "placeholder": placeholder,  # Placeholder name if exists, None otherwise
                 "result": result,
-                "modified_files": modified_files if tool in ["write_file", "edit_file", "append_file"] else [],
+                "modified_files": modified_files
+                if tool in ["write_file", "edit_file", "append_file"]
+                else [],
             }
             state.memory.tool_results_history.append(tool_result_record)
-        
+
         # Clean up temporary placeholder info
         if hasattr(state, "_act_phase_placeholder_info"):
             delattr(state, "_act_phase_placeholder_info")
-        
-        logger.debug(
-            f"[ActPhase] Recorded {len(results)} tool results to tool_results_history"
-        )
+
+        logger.debug(f"[ActPhase] Recorded {len(results)} tool results to tool_results_history")
 
         # Auto-detect milestones
         if success and modified_files and len(modified_files) >= 3:

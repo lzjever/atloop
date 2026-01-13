@@ -86,6 +86,8 @@ class ConfigLoader:
             config_sources.append(sources.DotEnv(str(env_file)))
             logger.debug(f"[ConfigLoader] Added .env file: {env_file}")
 
+        config_sources.append(sources.CLI())
+
         # Create configuration
         logger.debug(f"[ConfigLoader] Creating Config with {len(config_sources)} sources")
         cfg = Config(

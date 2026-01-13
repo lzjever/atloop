@@ -34,7 +34,7 @@ class RunPythonScriptStringTool(BaseTool):
     ---(PYTHON_SCRIPT_#1)---
     import sys
     from jira_client import JiraClient
-    
+
     client = JiraClient()
     projects = client.get_projects()
     for p in projects:
@@ -170,4 +170,6 @@ class RunPythonScriptStringTool(BaseTool):
                 import logging
 
                 logger = logging.getLogger(__name__)
-                logger.warning(f"[RunPythonScriptStringTool] Failed to cleanup temp file {temp_file}: {e}")
+                logger.warning(
+                    f"[RunPythonScriptStringTool] Failed to cleanup temp file {temp_file}: {e}"
+                )

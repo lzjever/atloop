@@ -202,7 +202,7 @@ class MemoryCompressor:
     def _summarize_decisions(decisions: List[Dict[str, Any]]) -> str:
         """
         Summarize a list of decisions, extracting key factual information.
-        
+
         NOTE: Only extracts factual information, NOT LLM's thinking process.
         """
         if not decisions:
@@ -210,16 +210,16 @@ class MemoryCompressor:
 
         total = len(decisions)
         total_actions = sum(len(d.get("actions", [])) for d in decisions)
-        
+
         # ✓ 改进：提取关键事实信息
         key_facts = []
-        
+
         # 统计 stop_reason 分布
         stop_reasons = {}
         for d in decisions:
             reason = d.get("stop_reason", "unknown")
             stop_reasons[reason] = stop_reasons.get(reason, 0) + 1
-        
+
         # 统计验证结果
         verification_results = {
             "success": 0,
@@ -234,7 +234,7 @@ class MemoryCompressor:
                 verification_results["failure"] += 1
             else:
                 verification_results["unknown"] += 1
-        
+
         # 统计常用工具
         tools_used = {}
         for d in decisions:
@@ -243,25 +243,25 @@ class MemoryCompressor:
                 if isinstance(action, dict):
                     tool = action.get("tool", "unknown")
                     tools_used[tool] = tools_used.get(tool, 0) + 1
-        
+
         # 构建摘要
         summary_parts = [f"历史 {total} 个决策，共执行了 {total_actions} 个动作"]
-        
+
         if stop_reasons:
             reasons_str = ", ".join([f"{k}:{v}" for k, v in stop_reasons.items()])
             summary_parts.append(f"停止原因分布: {reasons_str}")
-        
+
         if verification_results["success"] > 0 or verification_results["failure"] > 0:
             summary_parts.append(
                 f"验证结果: 成功 {verification_results['success']} 次, "
                 f"失败 {verification_results['failure']} 次"
             )
-        
+
         if tools_used:
             top_tools = sorted(tools_used.items(), key=lambda x: x[1], reverse=True)[:3]
             tools_str = ", ".join([f"{tool}({count})" for tool, count in top_tools])
             summary_parts.append(f"常用工具: {tools_str}")
-        
+
         return "。".join(summary_parts)
 
     # Phase 4: LLM Compression
@@ -474,8 +474,8 @@ class MemoryCompressor:
         # ✓ 更新：使用 current_step_thoughts 而不是 thought_summary
         # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
         thought = (
-            decision.get("current_step_thoughts", "") or 
-            decision.get("thought_summary", "")  # 向后兼容
+            decision.get("current_step_thoughts", "")
+            or decision.get("thought_summary", "")  # 向后兼容
         )[:50]  # First 50 chars
         actions_count = len(decision.get("actions", []))
         stop_reason = decision.get("stop_reason", "")
@@ -499,12 +499,12 @@ class MemoryCompressor:
         # ✓ 更新：使用 current_step_thoughts 而不是 thought_summary
         # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
         thought1 = str(
-            decision1.get("current_step_thoughts", "") or 
-            decision1.get("thought_summary", "")  # 向后兼容
+            decision1.get("current_step_thoughts", "")
+            or decision1.get("thought_summary", "")  # 向后兼容
         )
         thought2 = str(
-            decision2.get("current_step_thoughts", "") or 
-            decision2.get("thought_summary", "")  # 向后兼容
+            decision2.get("current_step_thoughts", "")
+            or decision2.get("thought_summary", "")  # 向后兼容
         )
 
         actions1 = decision1.get("actions", [])

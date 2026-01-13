@@ -83,13 +83,13 @@ class ToolRegistry:
 
     def get_tool(self, name: str) -> Optional[BaseTool]:
         """Get a tool by name (alias for get method).
-        
+
         This method provides a consistent interface name used in the
         output limit strategy system.
-        
+
         Args:
             name: Tool name
-        
+
         Returns:
             Tool instance or None if not found
         """

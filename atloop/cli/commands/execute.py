@@ -38,12 +38,11 @@ def cmd_execute(args: Any) -> int:
         else:
             workspace = Path.cwd()
             logger.debug(f"[CLI] No workspace specified, using current directory: {workspace}")
-        
+
         # Create workspace if it doesn't exist
         if not workspace.exists():
             workspace.mkdir(parents=True, exist_ok=True)
             logger.debug(f"[CLI] Created workspace: {workspace}")
-        
 
         # Build config
         task_config = {

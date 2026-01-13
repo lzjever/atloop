@@ -4,13 +4,13 @@ These tests are designed to challenge the implementation and find edge cases
 that might not be obvious. They test boundary conditions and error scenarios.
 """
 
-import pytest
-
-from atloop.llm.schema import _extract_file_contents, _remove_file_content_sections, parse_action_json
+from atloop.llm.schema import (
+    _extract_file_contents,
+    _remove_file_content_sections,
+)
 from atloop.orchestrator.phases.placeholder_info import PlaceholderInfoTracker
 from atloop.orchestrator.phases.placeholder_replacer import (
     PlaceholderReplacer,
-    PlaceholderReplacementError,
 )
 
 
@@ -40,7 +40,7 @@ def hello():
         """Test placeholder name with every possible special character."""
         special_chars = "!@#$%^&*()_+-=[]{}|;':\",./<>?`~"
         placeholder_name = f"WRITE_FILE_CONTENT_name:{special_chars}"
-        
+
         actions = [
             {"tool": "write_file", "args": {"path": "test.py", "content": placeholder_name}},
         ]
@@ -56,7 +56,7 @@ def hello():
         """Test placeholder name containing newline (edge case)."""
         # Per spec, name can be any string, so newlines should be allowed
         name_with_newline = "WRITE_FILE_CONTENT_file:\ntest.py"
-        
+
         # However, this might cause issues in JSON - test the validation
         assert PlaceholderReplacer._is_valid_placeholder(name_with_newline) is True
 
@@ -127,7 +127,7 @@ content for b
         """Test placeholder name with control characters."""
         # Control characters like \t, \r, etc.
         name_with_control = "WRITE_FILE_CONTENT_file:\ttest.py"
-        
+
         # Should be valid per spec (any string)
         assert PlaceholderReplacer._is_valid_placeholder(name_with_control) is True
 
@@ -158,7 +158,10 @@ content
     def test_placeholder_name_case_sensitivity(self):
         """Test that placeholder names are case-sensitive."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:Test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:Test.py"},
+            },
         ]
         file_contents = {
             "WRITE_FILE_CONTENT_file:Test.py": "content1",
@@ -175,14 +178,20 @@ content
     def test_duplicate_detection_case_sensitive(self):
         """Test that duplicate detection is case-sensitive."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:Test.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},  # Different case
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:Test.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },  # Different case
         ]
 
         # These should be considered unique (case-sensitive)
         placeholder_info = PlaceholderInfoTracker.extract_placeholder_info(actions)
         placeholder_names = [info.placeholder for info in placeholder_info if info.placeholder]
-        
+
         assert len(placeholder_names) == 2
         assert placeholder_names[0] != placeholder_names[1]  # Different due to case
 
@@ -223,6 +232,7 @@ def hello():
 
         # Should preserve outer JSON structure
         import json
+
         parsed = json.loads(result)
         assert "actions" in parsed
         assert "stop_reason" in parsed
@@ -235,7 +245,9 @@ def hello():
             {"tool": "run", "args": {"cmd": ""}},  # Empty - should be valid (not a direct command)
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         # Empty string is not a placeholder, but also not a direct command
         # Per current implementation, this should be valid
@@ -247,7 +259,9 @@ def hello():
             {"tool": "run", "args": {"cmd": "   "}},  # Whitespace only
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         # Whitespace is not a placeholder, should fail validation
         assert is_valid is False
@@ -255,7 +269,10 @@ def hello():
     def test_placeholder_name_matching_tool_name_pattern(self):
         """Test placeholder name that looks like it could be a tool name."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_write_file"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_write_file"},
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_write_file": "content"}
 
@@ -279,7 +296,10 @@ content
     def test_placeholder_replacement_preserves_exact_whitespace(self):
         """Test that replacement preserves exact whitespace in content."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
         ]
         # Content with specific whitespace pattern
         content_with_whitespace = "line1\n\n  line2\n\tline3"
@@ -295,13 +315,19 @@ content
     def test_validate_uniqueness_with_very_similar_names(self):
         """Test uniqueness validation with very similar but different names."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py "}},  # Trailing space - different!
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:test.py "},
+            },  # Trailing space - different!
         ]
 
         placeholder_info = PlaceholderInfoTracker.extract_placeholder_info(actions)
         placeholder_names = [info.placeholder for info in placeholder_info if info.placeholder]
-        
+
         # These should be considered different (trailing space makes them unique)
         assert len(placeholder_names) == 2
         assert placeholder_names[0] != placeholder_names[1]
@@ -311,17 +337,19 @@ content
         # Create large text with many placeholders
         text_parts = ['{"actions": [']
         for i in range(100):
-            text_parts.append(f'{{"tool": "write_file", "args": {{"path": "file{i}.py", "content": "WRITE_FILE_CONTENT_file:file{i}.py"}}}},')
+            text_parts.append(
+                f'{{"tool": "write_file", "args": {{"path": "file{i}.py", "content": "WRITE_FILE_CONTENT_file:file{i}.py"}}}},'
+            )
         text_parts.append('], "stop_reason": "continue"}\n\n')
-        
+
         for i in range(100):
-            text_parts.append(f'---((WRITE_FILE_CONTENT_file:file{i}.py))---\n')
-            text_parts.append(f'content for file {i}\n')
-        
-        text = ''.join(text_parts)
-        
+            text_parts.append(f"---((WRITE_FILE_CONTENT_file:file{i}.py))---\n")
+            text_parts.append(f"content for file {i}\n")
+
+        text = "".join(text_parts)
+
         contents = _extract_file_contents(text)
-        
+
         # Should extract all 100 placeholders
         assert len(contents) == 100
         for i in range(100):

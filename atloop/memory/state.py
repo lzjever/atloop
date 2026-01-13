@@ -26,26 +26,26 @@ class LastError:
 @dataclass
 class Memory:
     """Memory for tracking decisions and attempts.
-    
+
     Memory is organized into three categories:
-    
+
     1. FACTS (used for LLM context):
        - created_files, modified_files_content, tool_results_history
        - These are objective, verifiable facts from tool execution
-       
+
     2. LONG-TERM (used for LLM context):
        - plan, task_summary, milestones, learnings
        - These are validated/verified information
-       
+
     3. DEBUG-ONLY (NOT fed back to LLM):
        - decisions, llm_responses
        - These contain LLM's interpretations which could cause feedback loops
-    
+
     Memory 模块负责：
     - ✓ 原始数据的存储和管理
     - ✓ 各个条目的格式转换和控制输出（考虑约束：单条长度、字符串映射等）
     - ✓ 提供统一的格式化接口，返回可直接注入 prompt 的字符串
-    
+
     Memory 模块不负责：
     - ❌ 数据压缩（由独立的 CompressionPolicy 负责）
     - ❌ 数据重要性评分（由独立的 Scorer 负责，如果使用）
@@ -58,15 +58,15 @@ class Memory:
     attempts: List[Dict[str, Any]] = field(default_factory=list)  # Tool execution attempts
     key_files: List[Dict[str, Any]] = field(default_factory=list)  # Key files identified
     notes: List[str] = field(default_factory=list)  # Factual notes
-    
+
     # Store tool execution results history
     tool_results_history: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {"step": int, "tool": str, "args": Dict, "result": Dict}
-    
+
     # Auto-read file content after modification
     modified_files_content: List[Dict[str, Any]] = field(default_factory=list)
     # Format: {"path": str, "content": str, "content_hash": str, ...}
-    
+
     # =========================================================================
     # PROGRESS TRACKING - For loop detection (fed to LLM as metrics only)
     # =========================================================================
@@ -82,7 +82,7 @@ class Memory:
     important_decisions: List[Dict[str, Any]] = field(default_factory=list)
     milestones: List[Dict[str, Any]] = field(default_factory=list)
     learnings: List[str] = field(default_factory=list)
-    
+
     # Skill cache for lazy loading of skill resources
     # Format:
     # {
@@ -131,9 +131,9 @@ class Memory:
     ) -> str:
         """
         获取格式化后的记忆上下文，可直接注入到 prompt 中。
-        
+
         这是 Memory 模块的主要输出接口，返回格式化的字符串。
-        
+
         Args:
             state: AgentState 实例（需要访问 memory, last_error, artifacts）
             task_goal: 任务目标（可选，用于任务概览）
@@ -145,7 +145,7 @@ class Memory:
                 - max_file_content_length: int (默认 20000)
                 - string_mappings: Dict[str, str] (字符串映射规则)
             tool_registry: 工具注册表（用于输出限制策略）
-        
+
         Returns:
             格式化后的字符串，可直接用于 prompt 注入
             格式：符合 MEMORY_PROMPT_FORMAT_DEMO.md 中定义的格式

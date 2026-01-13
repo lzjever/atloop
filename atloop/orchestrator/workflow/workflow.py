@@ -110,12 +110,13 @@ class Workflow:
             # Print memory statistics if debug mode is enabled
             # Print before breakpoint so user can see stats before pausing
             from atloop.config.loader import ConfigLoader
+
             config = ConfigLoader.get()
             if config.debug.show_memory_diagnostics:
                 self._print_memory_stats(state)
                 # Save memory to JSON file after memory updates (similar to LLM I/O saving)
                 self._save_memory(state)
-            
+
             # Breakpoint: wait for user input if breakpoint mode is enabled
             # This happens after verbose output, so user can review stats before continuing
             if config.runtime.breakpoint and current_phase == Phase.PLAN:
@@ -178,9 +179,7 @@ class Workflow:
                     )
                 else:
                     # Classify the error
-                    error_category = ErrorClassifier.classify(
-                        Exception(result.error), result.error
-                    )
+                    error_category = ErrorClassifier.classify(Exception(result.error), result.error)
                     if error_category == ErrorCategory.RECOVERABLE:
                         logger.warning(
                             f"[Workflow] Classified error as recoverable: {result.error}"
@@ -214,7 +213,7 @@ class Workflow:
             # However, we should check if Phase had already set detailed error info
             # (e.g., ActPhase might have set tool execution errors before raising exception)
             state = self.coordinator.state_manager.agent_state
-            
+
             # Check if Phase had already set detailed error info
             # (indicated by presence of structured markers)
             has_phase_error = bool(
@@ -224,11 +223,13 @@ class Workflow:
                     for marker in ["Tool:", "Command:", "Stderr (", "Stdout (", "⚠️ Important:"]
                 )
             )
-            
+
             if has_phase_error:
                 # Phase had set detailed error info, append exception as additional context
                 # Don't overwrite Phase's detailed information
-                exception_info = f"\n\n--- Unexpected Phase Exception (after tool execution) ---\n{error_msg}"
+                exception_info = (
+                    f"\n\n--- Unexpected Phase Exception (after tool execution) ---\n{error_msg}"
+                )
                 state.last_error.summary = (state.last_error.summary + exception_info)[:5000]
                 logger.debug(
                     f"[Workflow] Appended exception info to Phase's detailed error summary "
@@ -297,7 +298,7 @@ class Workflow:
 
         # Update state only if Phase hasn't already set detailed error information
         state = self.coordinator.state_manager.agent_state
-        
+
         if error_already_set_in_state:
             # Phase has already set detailed error info in state.last_error.summary
             # Trust Phase's state management - don't overwrite with simplified error_msg
@@ -385,24 +386,25 @@ class Workflow:
     def _save_memory(self, state: Any) -> None:
         """
         Save memory to JSON file for debugging.
-        
+
         Args:
             state: Agent state containing memory
         """
         from atloop.config.loader import ConfigLoader
+
         config = ConfigLoader.get()
-        
+
         if not config.debug.save_memory_dump:
             return  # Skip if not enabled
-        
+
         try:
             # Get run directory from event logger
             log_dir = self.coordinator.event_logger.log_dir
-            
+
             # Create debug subdirectory
             debug_dir = log_dir / "debug"
             debug_dir.mkdir(exist_ok=True)
-            
+
             # Save memory as JSON
             filename = debug_dir / f"step_{state.step:03d}_memory.json"
             memory_dict = state.to_dict()
@@ -415,7 +417,7 @@ class Workflow:
     def _wait_for_breakpoint(self, step: int) -> None:
         """
         Wait for user input at breakpoint.
-        
+
         Args:
             step: Current step number
         """
@@ -423,13 +425,13 @@ class Workflow:
             # Get job ID (task_id) from coordinator
             task_id = self.coordinator.task_spec.task_id
             job_id = task_id  # task_id is the directory name in runs/
-            
-            print(f"\n{'='*70}")
+
+            print(f"\n{'=' * 70}")
             print(f"⏸️  BREAKPOINT: Step {step} - LLM response received")
-            print(f"{'='*70}")
+            print(f"{'=' * 70}")
             print(f"📁 Job ID: {job_id}")
             print(f"📂 Debug files: runs/{job_id}/debug/")
-            print(f"{'='*70}")
+            print(f"{'=' * 70}")
             print("Press Enter to continue...")
             input()
             print("Continuing...\n")

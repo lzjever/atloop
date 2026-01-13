@@ -35,7 +35,7 @@ class RunShellScriptStringTool(BaseTool):
     ---(SHELL_SCRIPT_#1)---
     #!/bin/bash
     set -e
-    
+
     echo "Processing files..."
     for file in *.txt; do
         if [ -f "$file" ]; then
@@ -111,7 +111,7 @@ class RunShellScriptStringTool(BaseTool):
             ---(SHELL_SCRIPT_#1)---
             #!/bin/bash
             set -e
-            
+
             for file in *.py; do
                 if [ -f "$file" ]; then
                     echo "Processing $file"
@@ -183,4 +183,6 @@ class RunShellScriptStringTool(BaseTool):
                 import logging
 
                 logger = logging.getLogger(__name__)
-                logger.warning(f"[RunShellScriptStringTool] Failed to cleanup temp file {temp_file}: {e}")
+                logger.warning(
+                    f"[RunShellScriptStringTool] Failed to cleanup temp file {temp_file}: {e}"
+                )

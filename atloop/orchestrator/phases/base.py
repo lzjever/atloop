@@ -22,7 +22,7 @@ class PhaseContext:
 @dataclass
 class PhaseResult:
     """Result of phase execution.
-    
+
     Design principles:
     - Phase is responsible for setting state.last_error.summary (the authoritative source)
     - PhaseResult.error is only for logging, debugging, and error classification
@@ -34,7 +34,9 @@ class PhaseResult:
     next_phase: Optional[Phase] = None
     error: Optional[str] = None  # Error message for logging/classification, NOT for updating state
     recoverable: bool = False  # Whether the error is recoverable (for error handling)
-    error_already_set_in_state: bool = False  # If True, Phase has already set detailed error in state.last_error.summary
+    error_already_set_in_state: bool = (
+        False  # If True, Phase has already set detailed error in state.last_error.summary
+    )
 
 
 class BasePhase(ABC):
@@ -44,24 +46,24 @@ class BasePhase(ABC):
     and implement the execute() method.
 
     **Error Handling Guidelines:**
-    
+
     When a Phase encounters an error that should be reported to the LLM:
-    
+
     1. **Set detailed error info in state.last_error.summary**:
        - Include tool name, command (if applicable), stdout, stderr
        - This is the authoritative source of error information for LLM
        - Format should be comprehensive and structured
-    
+
     2. **Return PhaseResult with error_already_set_in_state=True**:
        - Only if you've set detailed error info in state.last_error.summary
        - This tells Workflow to trust your state and not overwrite it
        - PhaseResult.error should be a brief summary for logging/classification only
-    
+
     3. **For non-fatal errors (recoverable=True)**:
        - Set error info in state
        - Return PhaseResult with recoverable=True and error_already_set_in_state=True
        - Workflow will transition to PLAN phase for LLM to adjust strategy
-    
+
     4. **For fatal errors (recoverable=False)**:
        - Set error info in state
        - Return PhaseResult with recoverable=False
@@ -87,7 +89,7 @@ class BasePhase(ABC):
 
         Returns:
             Phase execution result
-            
+
         Note:
             If you set detailed error info in state.last_error.summary,
             make sure to set error_already_set_in_state=True in the returned PhaseResult.

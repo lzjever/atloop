@@ -20,7 +20,7 @@ class EventLogger:
             task_id: Task identifier
         """
         from atloop.config.loader import ConfigLoader
-        
+
         atloop_dir = ConfigLoader.get_atloop_dir()
         self.runs_dir = str(atloop_dir / "runs")
         self.task_id = task_id

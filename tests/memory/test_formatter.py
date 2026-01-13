@@ -1,9 +1,6 @@
 """Tests for MemoryFormatter and ToolResultFormatter."""
 
-import pytest
-
 from atloop.memory.formatter import ToolResultFormatter
-from tests.memory.fixtures.sample_state import create_sample_state
 
 
 class TestToolResultFormatter:
@@ -25,7 +22,7 @@ class TestToolResultFormatter:
         }
 
         formatted = ToolResultFormatter.format_single_result(tool_result)
-        
+
         assert "Step 3" in formatted
         assert "✓" in formatted
         assert "[run]" in formatted
@@ -50,7 +47,7 @@ class TestToolResultFormatter:
         }
 
         formatted = ToolResultFormatter.format_single_result(tool_result)
-        
+
         assert "Step 12" in formatted
         assert "✗" in formatted
         assert "[run]" in formatted
@@ -74,7 +71,7 @@ class TestToolResultFormatter:
         }
 
         formatted = ToolResultFormatter.format_single_result(tool_result)
-        
+
         assert "Step 7" in formatted
         assert "[write_file]" in formatted
         assert "WRITE_FILE_CONTENT_file:generate_data.py" in formatted
@@ -96,7 +93,7 @@ class TestToolResultFormatter:
         }
 
         formatted = ToolResultFormatter.format_single_result(tool_result)
-        
+
         # Should be truncated
         assert len(formatted) < len(long_output)
         assert "... [Omitted" in formatted or len(formatted) < 15000
@@ -131,7 +128,7 @@ class TestToolResultFormatter:
         ]
 
         formatted = ToolResultFormatter.format_results_list(tool_results)
-        
+
         assert "Step 3" in formatted
         assert formatted.count("Step 3") == 2  # Both results from step 3
 
@@ -154,7 +151,7 @@ class TestToolResultFormatter:
         ]
 
         formatted = ToolResultFormatter.format_results_list(tool_results, max_count=5)
-        
+
         # Should only show last 5 results
         assert "Step 9" in formatted
         assert "Step 8" in formatted
@@ -184,7 +181,7 @@ class TestToolResultFormatter:
         }
 
         formatted = ToolResultFormatter.format_single_result(tool_result)
-        
+
         assert "[write_file]" in formatted
         assert "path: generate_data.py" in formatted
         assert "File created successfully" in formatted

@@ -49,7 +49,7 @@ class RunCommandTool(BaseTool):
     @property
     def output_semantic_type(self) -> OutputSemanticType:
         """Return semantic type: EXECUTION_RESULT.
-        
+
         Note: File view commands are handled specially in OutputLimitStrategy
         based on command content, not semantic type.
         """
@@ -108,8 +108,8 @@ class RunCommandTool(BaseTool):
         - **Failure = non-empty stderr** (contains error messages)
         - Many commands return exit_code=0 even with errors (e.g., pytest collection errors)
         - Always read stdout and stderr content to judge success
-        
-        
+
+
         **⚠️ Hard requirement: avoid “triple-layer quoting hell”**
         If use python3 -c "....", you must use single quotes inside the string following "-c".
         Example:
@@ -136,14 +136,14 @@ class RunCommandTool(BaseTool):
         - Always check stderr content, not just ok field
 
         **⚠️ IMPORTANT: For Complex Python/Shell Scripts, Use Specialized Tools**
-        
+
         DO NOT use `run` with `python3 -c "..."` or `bash -c "..."` for complex scripts!
         This causes shell escaping issues (quotes, f-strings, etc.).
-        
+
         Instead, use:
         - `run_python_script_string` for Python code execution (use PYTHON_SCRIPT_#N placeholder)
         - `run_shell_script_string` for complex shell scripts (use SHELL_SCRIPT_#N placeholder)
-        
+
         Use `run` only for simple commands: ls, cat, grep, find, pwd, python3 script.py, etc.
         """
         cmd = args["cmd"]

@@ -7,11 +7,6 @@ Tests cover:
 4. Error handling and validation
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-
-from atloop.llm import ActionJSON
-from atloop.memory.state import Memory
 from atloop.orchestrator.phases.placeholder_info import PlaceholderInfoTracker
 from atloop.orchestrator.phases.placeholder_replacer import PlaceholderReplacer
 
@@ -40,7 +35,10 @@ class TestPlaceholderInfoTracking:
     def test_extract_info_sets_args_none_when_placeholder_exists(self):
         """Test that args are set to None when placeholder is used."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
         ]
 
         info_list = PlaceholderInfoTracker.extract_placeholder_info(actions)
@@ -53,11 +51,23 @@ class TestPlaceholderInfoTracking:
     def test_extract_info_handles_all_tool_types(self):
         """Test extraction for all tool types that use placeholders."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "edit_file", "args": {"path": "b.py", "content": "EDIT_FILE_CONTENT_file:b.py"}},
-            {"tool": "append_file", "args": {"path": "c.py", "content": "APPEND_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "edit_file",
+                "args": {"path": "b.py", "content": "EDIT_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "append_file",
+                "args": {"path": "c.py", "content": "APPEND_FILE_CONTENT_file:c.py"},
+            },
             {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:ls-la"}},
-            {"tool": "run_python_script_string", "args": {"script": "PYTHON_SCRIPT_script:process"}},
+            {
+                "tool": "run_python_script_string",
+                "args": {"script": "PYTHON_SCRIPT_script:process"},
+            },
             {"tool": "run_shell_script_string", "args": {"script": "SHELL_SCRIPT_script:cleanup"}},
         ]
 
@@ -72,11 +82,16 @@ class TestPlaceholderInfoTracking:
         actions = [
             {"tool": "read_file", "args": {"path": "test.py"}},
             {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:ls-la"}},  # Valid
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"},
+            },
             {"tool": "run", "args": {"cmd": "ls -la"}},  # Invalid - direct command
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         assert is_valid is False
         assert error_msg is not None
@@ -90,7 +105,9 @@ class TestPlaceholderInfoTracking:
             {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:cat-file"}},
         ]
 
-        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(actions)
+        is_valid, error_msg, action_index = PlaceholderInfoTracker.validate_run_tool_placeholders(
+            actions
+        )
 
         assert is_valid is True
         assert error_msg is None
@@ -105,7 +122,10 @@ class TestPlaceholderReplacementIntegration:
         actions = [
             {
                 "tool": "write_file",
-                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file: test.py (backup #1)"},
+                "args": {
+                    "path": "test.py",
+                    "content": "WRITE_FILE_CONTENT_file: test.py (backup #1)",
+                },
             },
             {
                 "tool": "run",
@@ -150,7 +170,10 @@ class TestPlaceholderReplacementIntegration:
     def test_replace_with_unicode_in_placeholder_name(self):
         """Test replacement with unicode characters in placeholder name."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_文件:测试.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_文件:测试.py"},
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_文件:测试.py": "def hello():\n    pass"}
 
@@ -244,7 +267,13 @@ class TestPlaceholderEdgeCasesIntegration:
     def test_placeholder_name_with_escaped_characters(self):
         """Test placeholder name with characters that might need escaping."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py\nwith\nnewlines"}},
+            {
+                "tool": "write_file",
+                "args": {
+                    "path": "test.py",
+                    "content": "WRITE_FILE_CONTENT_file:test.py\nwith\nnewlines",
+                },
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_file:test.py\nwith\nnewlines": "content"}
 
@@ -258,7 +287,13 @@ class TestPlaceholderEdgeCasesIntegration:
     def test_placeholder_name_matching_content_pattern(self):
         """Test placeholder name that looks like it could be content."""
         actions = [
-            {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_actual python code here"}},
+            {
+                "tool": "write_file",
+                "args": {
+                    "path": "test.py",
+                    "content": "WRITE_FILE_CONTENT_actual python code here",
+                },
+            },
         ]
         file_contents = {"WRITE_FILE_CONTENT_actual python code here": "def hello():\n    pass"}
 
@@ -281,9 +316,18 @@ class TestPlaceholderEdgeCasesIntegration:
     def test_multiple_placeholders_same_type_different_names(self):
         """Test multiple placeholders of same type with different descriptive names."""
         actions = [
-            {"tool": "write_file", "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"}},
-            {"tool": "write_file", "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"}},
-            {"tool": "write_file", "args": {"path": "c.py", "content": "WRITE_FILE_CONTENT_file:c.py"}},
+            {
+                "tool": "write_file",
+                "args": {"path": "a.py", "content": "WRITE_FILE_CONTENT_file:a.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "b.py", "content": "WRITE_FILE_CONTENT_file:b.py"},
+            },
+            {
+                "tool": "write_file",
+                "args": {"path": "c.py", "content": "WRITE_FILE_CONTENT_file:c.py"},
+            },
         ]
         file_contents = {
             "WRITE_FILE_CONTENT_file:a.py": "content_a",
@@ -350,6 +394,7 @@ class TestPlaceholderEdgeCasesIntegration:
 
         # Should be valid JSON
         import json
+
         parsed = json.loads(result)
         assert "actions" in parsed
         assert "stop_reason" in parsed

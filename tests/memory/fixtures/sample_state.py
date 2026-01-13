@@ -16,7 +16,7 @@ def create_sample_state(
 ) -> AgentState:
     """
     Create a sample AgentState for testing.
-    
+
     Args:
         step: Current step number
         phase: Current phase
@@ -25,16 +25,16 @@ def create_sample_state(
         tool_results: List of tool execution results (optional)
         has_error: Whether to include error information
         stage: Stage of task execution ("early", "mid", "late")
-    
+
     Returns:
         AgentState instance configured for testing
     """
     memory = Memory()
-    
+
     # Set task summary if task_goal provided
     if task_goal:
         memory.task_summary = f"Task: {task_goal}"
-    
+
     # Set created files
     if created_files:
         memory.created_files = created_files
@@ -42,7 +42,7 @@ def create_sample_state(
         memory.created_files = ["generate_data.py"]
         if stage == "late":
             memory.created_files.append("plot_kline.py")
-    
+
     # Set execution plan
     if stage == "early":
         memory.plan = [
@@ -69,7 +69,7 @@ def create_sample_state(
             "运行脚本生成图表",
             "验证图表生成",
         ]
-    
+
     # Set important decisions
     if step >= 2:
         memory.important_decisions = [
@@ -79,7 +79,7 @@ def create_sample_state(
                 "importance": 0.9,
             }
         ]
-    
+
     # Set milestones
     if stage in ["mid", "late"]:
         memory.milestones = [
@@ -90,19 +90,21 @@ def create_sample_state(
             }
         ]
         if stage == "late":
-            memory.milestones.append({
-                "step": 10,
-                "content": "Created plotting script",
-                "importance": 0.9,
-            })
-    
+            memory.milestones.append(
+                {
+                    "step": 10,
+                    "content": "Created plotting script",
+                    "importance": 0.9,
+                }
+            )
+
     # Set tool results history
     if tool_results:
         memory.tool_results_history = tool_results
     else:
         # Create default tool results based on stage
         memory.tool_results_history = _create_default_tool_results(step, stage)
-    
+
     # Set attempts (without results field, as per new design)
     if step >= 3:
         memory.attempts = [
@@ -112,7 +114,7 @@ def create_sample_state(
                 "success": True,
             }
         ]
-    
+
     # Set decisions
     if step >= 2:
         memory.decisions = [
@@ -126,23 +128,23 @@ def create_sample_state(
                 ],
             }
         ]
-    
+
     # Set last error if needed
     last_error = LastError()
     if has_error:
         last_error.summary = "FileNotFoundError: Data file 'stock_data.csv' not found"
         last_error.raw_stderr_tail = (
             "Traceback (most recent call last):\n"
-            "  File \"plot_kline.py\", line 1049, in <module>\n"
+            '  File "plot_kline.py", line 1049, in <module>\n'
             "    df = load_stock_data('stock_data.csv')\n"
             "FileNotFoundError: Data file 'stock_data.csv' not found."
         )
-    
+
     # Set artifacts
     artifacts = Artifacts()
     if stage in ["mid", "late"]:
         artifacts.current_diff = "+++ generate_data.py\n@@ -0,0 +1,85 @@\n+import numpy as np\n..."
-    
+
     return AgentState(
         step=step,
         phase=phase,
@@ -156,80 +158,92 @@ def create_sample_state(
 def _create_default_tool_results(step: int, stage: str) -> List[Dict[str, Any]]:
     """Create default tool results based on stage."""
     results = []
-    
+
     if step >= 3:
-        results.append({
-            "step": 3,
-            "tool": "run",
-            "args": {"cmd": "python3 --version && pip list | grep -E 'matplotlib|pandas|numpy'"},
-            "placeholder": None,
-            "result": {
-                "ok": True,
-                "exit_code": 0,
-                "stdout": "Python 3.10.12\nmatplotlib 3.10.8\nnumpy 2.2.6\npandas 2.3.3",
-                "stderr": "",
-            },
-            "modified_files": [],
-        })
-        
-        results.append({
-            "step": 3,
-            "tool": "run",
-            "args": {"cmd": "ls -la"},
-            "placeholder": None,
-            "result": {
-                "ok": True,
-                "exit_code": 0,
-                "stdout": "total 0\ndrwxrwxrwx 2 root root 10 Jan 13 04:54 .",
-                "stderr": "",
-            },
-            "modified_files": [],
-        })
-    
+        results.append(
+            {
+                "step": 3,
+                "tool": "run",
+                "args": {
+                    "cmd": "python3 --version && pip list | grep -E 'matplotlib|pandas|numpy'"
+                },
+                "placeholder": None,
+                "result": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "stdout": "Python 3.10.12\nmatplotlib 3.10.8\nnumpy 2.2.6\npandas 2.3.3",
+                    "stderr": "",
+                },
+                "modified_files": [],
+            }
+        )
+
+        results.append(
+            {
+                "step": 3,
+                "tool": "run",
+                "args": {"cmd": "ls -la"},
+                "placeholder": None,
+                "result": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "stdout": "total 0\ndrwxrwxrwx 2 root root 10 Jan 13 04:54 .",
+                    "stderr": "",
+                },
+                "modified_files": [],
+            }
+        )
+
     if stage in ["mid", "late"]:
-        results.append({
-            "step": 7,
-            "tool": "write_file",
-            "args": {"path": "generate_data.py"},
-            "placeholder": "WRITE_FILE_CONTENT_file:generate_data.py",
-            "result": {
-                "ok": True,
-                "exit_code": 0,
-                "stdout": "File created successfully",
-                "stderr": "",
-            },
-            "modified_files": ["generate_data.py"],
-        })
-    
+        results.append(
+            {
+                "step": 7,
+                "tool": "write_file",
+                "args": {"path": "generate_data.py"},
+                "placeholder": "WRITE_FILE_CONTENT_file:generate_data.py",
+                "result": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "stdout": "File created successfully",
+                    "stderr": "",
+                },
+                "modified_files": ["generate_data.py"],
+            }
+        )
+
     if stage == "late":
-        results.append({
-            "step": 10,
-            "tool": "write_file",
-            "args": {"path": "plot_kline.py"},
-            "placeholder": "WRITE_FILE_CONTENT_file:plot_kline.py",
-            "result": {
-                "ok": True,
-                "exit_code": 0,
-                "stdout": "File created successfully",
-                "stderr": "",
-            },
-            "modified_files": ["plot_kline.py"],
-        })
-        
-        results.append({
-            "step": 11,
-            "tool": "run",
-            "args": {"cmd": "python3 generate_data.py"},
-            "placeholder": None,
-            "result": {
-                "ok": True,
-                "exit_code": 0,
-                "stdout": "Data saved to stock_data.csv\nGenerated 30 days of OHLC data",
-                "stderr": "",
-            },
-            "modified_files": [],
-        })
-    
+        results.append(
+            {
+                "step": 10,
+                "tool": "write_file",
+                "args": {"path": "plot_kline.py"},
+                "placeholder": "WRITE_FILE_CONTENT_file:plot_kline.py",
+                "result": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "stdout": "File created successfully",
+                    "stderr": "",
+                },
+                "modified_files": ["plot_kline.py"],
+            }
+        )
+
+        results.append(
+            {
+                "step": 11,
+                "tool": "run",
+                "args": {"cmd": "python3 generate_data.py"},
+                "placeholder": None,
+                "result": {
+                    "ok": True,
+                    "exit_code": 0,
+                    "stdout": "Data saved to stock_data.csv\nGenerated 30 days of OHLC data",
+                    "stderr": "",
+                },
+                "modified_files": [],
+            }
+        )
+
     return results
 
 
