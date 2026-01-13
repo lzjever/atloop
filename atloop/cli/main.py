@@ -35,19 +35,23 @@ def create_parser() -> argparse.ArgumentParser:
     # execute (only execution method)
     execute_parser = subparsers.add_parser("execute", help="Execute a task")
     add_atloop_dir_arg(execute_parser)
-    execute_parser.add_argument("--workspace", required=True, help="Workspace directory")
+    execute_parser.add_argument("--workspace", help="Workspace directory (default: current directory)")
     execute_parser.add_argument("--prompt", help="Task prompt (text)")
     execute_parser.add_argument("--prompt-file", help="Task prompt (file)")
     execute_parser.add_argument(
         "--sandbox-url", default="http://127.0.0.1:8080", help="Sandbox base URL"
     )
     execute_parser.add_argument("--local-test", action="store_true", help="Use local test mode")
-    execute_parser.add_argument("--session", help="Session ID")
     execute_parser.add_argument(
-        "--verbose", action="store_true", help="Show detailed memory statistics and save LLM I/O to files"
+        "--sandbox-session", 
+        help="Sandbox session ID (overrides config default)"
     )
     execute_parser.add_argument(
-        "--breakpoint", action="store_true", help="Pause after each LLM response, wait for user input to continue"
+        "--agent-session", 
+        help="Agent session ID for resuming/continuing runs"
+    )
+    execute_parser.add_argument(
+        "--upload", action="store_true", help="Upload workspace files to sandbox before execution (default: false)"
     )
 
     # config

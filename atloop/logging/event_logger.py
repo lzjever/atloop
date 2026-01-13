@@ -12,17 +12,19 @@ from atloop.config.loader import ConfigLoader
 class EventLogger:
     """Logger for agent execution events in JSONL format."""
 
-    def __init__(self, task_id: str, runs_dir: str = "runs"):
+    def __init__(self, task_id: str):
         """
         Initialize event logger.
 
         Args:
             task_id: Task identifier
-            runs_dir: Base directory for runs
         """
+        from atloop.config.loader import ConfigLoader
+        
+        atloop_dir = ConfigLoader.get_atloop_dir()
+        self.runs_dir = str(atloop_dir / "runs")
         self.task_id = task_id
-        self.runs_dir = runs_dir
-        self.log_dir = Path(runs_dir) / task_id
+        self.log_dir = Path(self.runs_dir) / task_id
         self.log_file = self.log_dir / "events.jsonl"
 
         # Create log directory

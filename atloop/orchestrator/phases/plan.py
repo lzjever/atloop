@@ -195,8 +195,10 @@ class PlanPhase(BasePhase):
 
             logger.debug("[PlanPhase] Calling LLM")
             
-            # Save LLM input if verbose mode
-            if self.coordinator.verbose:
+            # Save LLM input if debug mode enabled
+            from atloop.config.loader import ConfigLoader
+            config = ConfigLoader.get()
+            if config.debug.save_llm_io:
                 self._save_llm_io(state.step, user_message, None, "input")
             
             action_json, error, usage, full_output, file_contents = (
@@ -209,8 +211,8 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] LLM call completed: action_json={action_json is not None}, error={error}"
             )
             
-            # Save LLM output if verbose mode
-            if self.coordinator.verbose:
+            # Save LLM output if debug mode enabled
+            if config.debug.save_llm_io:
                 self._save_llm_io(state.step, None, full_output, "output")
             
             # Note: Breakpoint is handled in Workflow after verbose output

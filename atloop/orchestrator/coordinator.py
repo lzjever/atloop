@@ -32,28 +32,28 @@ class WorkflowCoordinator:
         self,
         task_spec: TaskSpec,
         config: AtloopConfig,
-        session_id: Optional[str] = None,
-        verbose: bool = False,
-        breakpoint: bool = False,
+        agent_session_id: Optional[str] = None,
     ):
         """Initialize coordinator."""
         logger.debug(f"[Coordinator] Initializing for task: {task_spec.task_id}")
 
         self.task_spec = task_spec
         self.config = config
-        self.verbose = verbose
-        self.breakpoint = breakpoint
 
-        # Use provided session_id or fallback to task_id
-        effective_session_id = session_id if session_id else task_spec.task_id
-        if session_id:
-            logger.debug(f"[Coordinator] Using provided session_id: {session_id}")
-        else:
-            logger.debug(f"[Coordinator] No session_id provided, using task_id: {task_spec.task_id}")
+        # Sandbox session: use config default or task_id
+        sandbox_session_id = config.sandbox.default_session_id
+        if not sandbox_session_id:
+            sandbox_session_id = task_spec.task_id
+        logger.debug(f"[Coordinator] Using sandbox session: {sandbox_session_id}")
+        
+        # Agent session: for resuming/continuing runs (optional)
+        self.agent_session_id = agent_session_id
+        if agent_session_id:
+            logger.debug(f"[Coordinator] Using agent session: {agent_session_id}")
 
         # Infrastructure
         logger.debug("[Coordinator] Creating sandbox adapter")
-        self.sandbox = SandboxAdapter(config.sandbox, effective_session_id)
+        self.sandbox = SandboxAdapter(config.sandbox, sandbox_session_id)
 
         logger.debug("[Coordinator] Creating LLM client")
         self.llm_client = LLMClient(config, workspace_root=task_spec.workspace_root)
@@ -70,8 +70,12 @@ class WorkflowCoordinator:
 
         # State
         logger.debug("[Coordinator] Creating state manager")
+        from atloop.config.loader import ConfigLoader
+        
+        atloop_dir = ConfigLoader.get_atloop_dir()
+        runs_dir = atloop_dir / "runs"
         job_state = JobState(flow_id=f"atloop-{task_spec.task_id}")
-        state_file = Path(config.runs_dir) / task_spec.task_id / "agent_state.json"
+        state_file = runs_dir / task_spec.task_id / "agent_state.json"
         self.state_manager = StateManager(state_file, job_state)
         self.state_manager.load()
 
@@ -91,7 +95,6 @@ class WorkflowCoordinator:
         logger.debug("[Coordinator] Creating event logger")
         self.event_logger = EventLogger(
             task_id=task_spec.task_id,
-            runs_dir=config.runs_dir,
         )
 
         # Loop detection and progress tracking

@@ -30,7 +30,8 @@ class TestConfigValidation:
         assert config.ai.completion is not None
         assert config.ai.performance is not None
         assert config.sandbox is not None
-        assert config.default_budget is not None
+        assert config.runtime is not None
+        assert config.runtime.default_budget is not None
         assert config.memory is not None
 
         logger.info("Real config validation successful ✓")
@@ -50,7 +51,8 @@ class TestConfigValidation:
         assert hasattr(config.ai, "completion")
         assert hasattr(config.ai, "performance")
         assert hasattr(config, "sandbox")
-        assert hasattr(config, "default_budget")
+        assert hasattr(config, "runtime")
+        assert hasattr(config.runtime, "default_budget")
         assert hasattr(config, "memory")
 
         # Validate required fields
@@ -76,8 +78,8 @@ class TestConfigValidation:
         assert isinstance(config.ai.completion.api_base, str)
         assert isinstance(config.ai.performance.max_tokens_input, int)
         assert isinstance(config.ai.performance.max_tokens_output, int)
-        assert isinstance(config.default_budget.max_llm_calls, int)
-        assert isinstance(config.default_budget.max_tool_calls, int)
+        assert isinstance(config.runtime.default_budget.max_llm_calls, int)
+        assert isinstance(config.runtime.default_budget.max_tool_calls, int)
 
         logger.info("Config type validation successful ✓")
 
@@ -111,9 +113,9 @@ class TestConfigValidation:
         # Validate ranges
         assert config.ai.performance.max_tokens_input > 0
         assert config.ai.performance.max_tokens_output > 0
-        assert config.default_budget.max_llm_calls > 0
-        assert config.default_budget.max_tool_calls > 0
-        assert config.default_budget.max_wall_time_sec > 0
+        assert config.runtime.default_budget.max_llm_calls > 0
+        assert config.runtime.default_budget.max_tool_calls > 0
+        assert config.runtime.default_budget.max_wall_time_sec > 0
 
         logger.info("Config value ranges validation successful ✓")
 
@@ -138,10 +140,11 @@ ai:
 sandbox:
   base_url: http://file:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
 
         # Set environment variable

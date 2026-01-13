@@ -73,10 +73,11 @@ ai:
 sandbox:
   base_url: http://test:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
     

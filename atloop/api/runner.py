@@ -33,7 +33,7 @@ def load_task_spec(
 
     # Get default budget from config
     config = ConfigLoader.get()
-    default_budget = config.default_budget
+    default_budget = config.runtime.default_budget
 
     # Override with provided budget
     if budget:
@@ -64,13 +64,14 @@ class TaskRunner:
         ConfigLoader.setup(atloop_dir=atloop_dir)
         logger.debug("[TaskRunner] Config setup complete")
 
-    def execute(self, task_config: Dict[str, Any], console: bool = False) -> Dict[str, Any]:
+    def execute(self, task_config: Dict[str, Any], console: bool = False, upload_workspace: bool = False) -> Dict[str, Any]:
         """
         Execute task - single method.
 
         Args:
             task_config: Task configuration
             console: Whether to show console output
+            upload_workspace: Whether to upload workspace files to sandbox before execution
 
         Returns:
             Execution result
@@ -103,36 +104,40 @@ class TaskRunner:
                 config = replace(config, sandbox=sandbox_config)
                 logger.debug(f"[TaskRunner] Sandbox config overridden: {sandbox_config}")
 
-            # Extract session_id from task_config if provided
-            session_id = task_config.get("session_id")
-            if session_id:
-                logger.debug(f"[TaskRunner] Using provided session_id: {session_id}")
-            else:
-                logger.debug(f"[TaskRunner] No session_id provided, will use task_id: {task_spec.task_id}")
+            # Sandbox session: from config or task_config override
+            sandbox_session_id = task_config.get("sandbox_session_id")
+            if not sandbox_session_id:
+                # Use config default (will fallback to task_id in Coordinator)
+                sandbox_session_id = config.sandbox.default_session_id
+            
+            # Agent session: from task_config or config default
+            agent_session_id = task_config.get("agent_session_id")
+            if not agent_session_id:
+                agent_session_id = config.runtime.default_agent_session_id
 
             # Create agent loop (creates coordinator and sandbox adapter)
             logger.info("[TaskRunner] Creating agent loop")
-            verbose = task_config.get("verbose", False)
-            breakpoint_mode = task_config.get("breakpoint", False)
             loop = AgentLoop(
-                task_spec, config, session_id=session_id, verbose=verbose, breakpoint=breakpoint_mode
+                task_spec, config, agent_session_id=agent_session_id
             )
 
-            # Upload workspace files to sandbox before execution
-            # This ensures files are available for indexing and execution
-            try:
-                logger.info("[TaskRunner] Uploading workspace files to sandbox")
-                sandbox_adapter = loop.coordinator.sandbox
-                if not sandbox_adapter.upload_workspace(task_spec.workspace_root):
-                    logger.error("[TaskRunner] Failed to upload workspace to sandbox")
-                    return {"success": False, "error": "Failed to upload workspace to sandbox"}
-                logger.info("[TaskRunner] Workspace files uploaded to sandbox successfully")
-            except Exception as e:
-                logger.error(f"[TaskRunner] Error uploading workspace: {e}")
-                logger.debug(
-                    f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True
-                )
-                return {"success": False, "error": f"Failed to upload workspace: {e}"}
+            # Upload workspace files to sandbox before execution (only if requested)
+            if upload_workspace:
+                try:
+                    logger.info("[TaskRunner] Uploading workspace files to sandbox")
+                    sandbox_adapter = loop.coordinator.sandbox
+                    if not sandbox_adapter.upload_workspace(task_spec.workspace_root):
+                        logger.error("[TaskRunner] Failed to upload workspace to sandbox")
+                        return {"success": False, "error": "Failed to upload workspace to sandbox"}
+                    logger.info("[TaskRunner] Workspace files uploaded to sandbox successfully")
+                except Exception as e:
+                    logger.error(f"[TaskRunner] Error uploading workspace: {e}")
+                    logger.debug(
+                        f"[TaskRunner] Exception details: {type(e).__name__}: {e}", exc_info=True
+                    )
+                    return {"success": False, "error": f"Failed to upload workspace: {e}"}
+            else:
+                logger.info("[TaskRunner] Skipping workspace upload (use --upload to enable)")
 
             # Execute
             logger.info("[TaskRunner] Starting agent loop")

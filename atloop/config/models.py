@@ -1,7 +1,7 @@
 """Configuration data models."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 
 @dataclass(frozen=True)
@@ -140,11 +140,67 @@ class SandboxConfig:
     ephemeral_storage_limit: Optional[str] = field(
         default=None, metadata={"description": "Ephemeral storage limit"}
     )
+    default_session_id: Optional[str] = field(
+        default=None, 
+        metadata={"description": "Default sandbox session ID (falls back to task_id if not provided)"}
+    )
 
     def __post_init__(self):
         """Validate configuration."""
         if not self.local_test and not self.base_url:
             raise ValueError("base_url is required when local_test is False")
+
+
+@dataclass(frozen=True)
+class RuntimeConfig:
+    """Runtime behavior configuration."""
+    
+    default_budget: Budget = field(
+        default_factory=Budget, 
+        metadata={"description": "Default budget for task execution"}
+    )
+    stuck_signature_repeats: int = field(
+        default=3, 
+        metadata={"description": "Number of repeated error signatures before considering agent stuck"}
+    )
+    breakpoint: bool = field(
+        default=False, 
+        metadata={"description": "Pause after each LLM response for debugging"}
+    )
+    default_agent_session_id: Optional[str] = field(
+        default=None, 
+        metadata={"description": "Default agent session ID for resuming/continuing runs"}
+    )
+
+
+@dataclass(frozen=True)
+class DebugConfig:
+    """Debugging and diagnostics configuration."""
+    
+    show_memory_diagnostics: bool = field(
+        default=False, 
+        metadata={"description": "Print memory statistics panel after each step"}
+    )
+    save_llm_io: bool = field(
+        default=False, 
+        metadata={"description": "Save LLM input/output to files in debug/ directory"}
+    )
+    save_memory_dump: bool = field(
+        default=False, 
+        metadata={"description": "Save memory state to JSON files after each step"}
+    )
+
+
+@dataclass(frozen=True)
+class OutputConfig:
+    """Output style configuration for console output."""
+    
+    style: Literal["minimal", "verbose"] = field(
+        default="minimal",
+        metadata={
+            "description": "Console output style: minimal (key info only) or verbose (detailed step-by-step)"
+        }
+    )
 
 
 @dataclass(frozen=True)
@@ -546,11 +602,6 @@ class AtloopConfig:
         default_factory=SandboxConfig, metadata={"description": "Sandbox configuration"}
     )
 
-    # Default budget
-    default_budget: Budget = field(
-        default_factory=Budget, metadata={"description": "Default budget"}
-    )
-
     # Memory configuration
     memory: MemoryConfig = field(
         default_factory=MemoryConfig, metadata={"description": "Memory configuration"}
@@ -561,20 +612,22 @@ class AtloopConfig:
         default_factory=LimitsConfig, metadata={"description": "Runtime limits configuration"}
     )
 
-    # Workspace settings
-    runs_dir: str = field(default="runs", metadata={"description": "Runs directory"})
-
-    # Skills and MCP configuration
-    skills_dirs: List[str] = field(
-        default_factory=list, metadata={"description": "Additional skills directories"}
+    # Runtime configuration
+    runtime: RuntimeConfig = field(
+        default_factory=RuntimeConfig,
+        metadata={"description": "Runtime behavior configuration"}
     )
-    mcp_config_path: Optional[str] = field(
-        default=None, metadata={"description": "Path to MCP configuration file"}
+    
+    # Debug configuration
+    debug: DebugConfig = field(
+        default_factory=DebugConfig,
+        metadata={"description": "Debugging and diagnostics configuration"}
     )
-
-    # Stuck detection
-    stuck_signature_repeats: int = field(
-        default=3, metadata={"description": "Stuck signature repeats threshold"}
+    
+    # Output configuration
+    output: OutputConfig = field(
+        default_factory=OutputConfig,
+        metadata={"description": "Output style configuration"}
     )
 
     def __post_init__(self):

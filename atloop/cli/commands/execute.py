@@ -32,8 +32,14 @@ def cmd_execute(args: Any) -> int:
             print("Error: --prompt or --prompt-file required", file=sys.stderr)
             return 1
 
+        # Use current directory if workspace not specified
+        if args.workspace:
+            workspace = Path(args.workspace)
+        else:
+            workspace = Path.cwd()
+            logger.debug(f"[CLI] No workspace specified, using current directory: {workspace}")
+        
         # Create workspace if it doesn't exist
-        workspace = Path(args.workspace)
         if not workspace.exists():
             workspace.mkdir(parents=True, exist_ok=True)
             logger.debug(f"[CLI] Created workspace: {workspace}")
@@ -42,25 +48,26 @@ def cmd_execute(args: Any) -> int:
         # Build config
         task_config = {
             "goal": prompt,
-            "workspace_root": args.workspace,
+            "workspace_root": str(workspace),
             "sandbox": {
                 "base_url": None if args.local_test else args.sandbox_url,
                 "local_test": args.local_test,
             },
         }
-        if args.session:
-            task_config["session_id"] = args.session
-        if args.verbose:
-            task_config["verbose"] = True
-        if args.breakpoint:
-            task_config["breakpoint"] = True
+        if args.sandbox_session:
+            task_config["sandbox_session_id"] = args.sandbox_session
+        if args.agent_session:
+            task_config["agent_session_id"] = args.agent_session
 
         logger.debug(f"[CLI] Task config: {task_config}")
+
+        # Extract upload_workspace flag
+        upload_workspace = getattr(args, "upload", False)
 
         # Execute
         runner = TaskRunner(atloop_dir=getattr(args, "atloop_dir", None))
         logger.debug("[CLI] Starting task execution")
-        result = runner.execute(task_config, console=True)
+        result = runner.execute(task_config, console=True, upload_workspace=upload_workspace)
         logger.debug(f"[CLI] Task execution completed: success={result['success']}")
 
         return 0 if result["success"] else 1

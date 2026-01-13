@@ -17,14 +17,12 @@ class AgentLoop:
         self,
         task_spec: TaskSpec,
         config: AtloopConfig,
-        session_id: Optional[str] = None,
-        verbose: bool = False,
-        breakpoint: bool = False,
+        agent_session_id: Optional[str] = None,
     ):
         """Initialize agent loop."""
         logger.debug(f"[AgentLoop] Initializing for task: {task_spec.task_id}")
         self.coordinator = WorkflowCoordinator(
-            task_spec, config, session_id=session_id, verbose=verbose, breakpoint=breakpoint
+            task_spec, config, agent_session_id=agent_session_id
         )
         self.workflow = Workflow(self.coordinator)
         logger.debug("[AgentLoop] Initialization complete")

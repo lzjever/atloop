@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class ConfigLoader:
     """Configuration loader - uses varlord for lib/api."""
 
+    _atloop_dir: Optional[Path] = None
+
     @staticmethod
     def setup(atloop_dir: Optional[str] = None) -> Config:
         """
@@ -28,19 +30,28 @@ class ConfigLoader:
         """
         logger.debug(f"[ConfigLoader] Setting up config with atloop_dir: {atloop_dir}")
 
-        # Find atloop directory
+        # Step 1: Find .atloop directory (independent of varlord)
         if atloop_dir:
             atloop_path = Path(atloop_dir).resolve()
-            logger.debug(f"[ConfigLoader] Using custom atloop_dir: {atloop_path}")
+            if not atloop_path.exists():
+                raise ValueError(f"Specified atloop directory does not exist: {atloop_path}")
+            logger.debug(f"[ConfigLoader] Using specified atloop_dir: {atloop_path}")
         else:
-            # Check project .atloop first
+            # Check current directory first
             project_atloop = Path.cwd() / ".atloop"
             if project_atloop.exists() and project_atloop.is_dir():
                 atloop_path = project_atloop
                 logger.debug(f"[ConfigLoader] Using project .atloop: {atloop_path}")
             else:
+                # Fallback to user home directory
                 atloop_path = Path.home() / ".atloop"
                 logger.debug(f"[ConfigLoader] Using user .atloop: {atloop_path}")
+
+        # Ensure .atloop directory exists (create if needed)
+        atloop_path.mkdir(parents=True, exist_ok=True)
+
+        # Store for later access
+        ConfigLoader._atloop_dir = atloop_path
 
         # Build sources list (lowest to highest priority)
         config_sources = []
@@ -106,3 +117,10 @@ class ConfigLoader:
         loaded_config = config.load()  # Validated against AtloopConfig model
         logger.debug(f"[ConfigLoader] Config loaded: ai={loaded_config.ai.completion.model}")
         return loaded_config  # Type: AtloopConfig (guaranteed by varlord)
+
+    @staticmethod
+    def get_atloop_dir() -> Path:
+        """Get the found .atloop directory path."""
+        if ConfigLoader._atloop_dir is None:
+            raise RuntimeError("ConfigLoader.setup() must be called first")
+        return ConfigLoader._atloop_dir

@@ -11,16 +11,16 @@ from atloop.config.models import SandboxConfig
 class SandboxAdapter:
     """Adapter for noxrunner sandbox execution."""
 
-    def __init__(self, config: SandboxConfig, session_id: str):
+    def __init__(self, config: SandboxConfig, sandbox_session_id: str):
         """
         Initialize sandbox adapter.
 
         Args:
             config: Sandbox configuration
-            session_id: Unique session identifier
+            sandbox_session_id: Unique sandbox session identifier
         """
         self.config = config
-        self.session_id = session_id
+        self.sandbox_session_id = sandbox_session_id
         self.client = NoxRunnerClient(
             base_url=config.base_url,
             timeout=config.timeout,
@@ -41,7 +41,7 @@ class SandboxAdapter:
         try:
             # Create sandbox
             self.client.create_sandbox(
-                session_id=self.session_id,
+                session_id=self.sandbox_session_id,
                 ttl_seconds=self.config.session_ttl_seconds,
                 image=self.config.image,
                 cpu_limit=self.config.cpu_limit,
@@ -88,7 +88,7 @@ class SandboxAdapter:
 
             if files:
                 return self.client.upload_files(
-                    session_id=self.session_id,
+                    session_id=self.sandbox_session_id,
                     files=files,
                     dest="/workspace",
                 )
@@ -111,7 +111,7 @@ class SandboxAdapter:
         try:
             # Check if git exists
             result = self.client.exec_shell(
-                self.session_id,
+                self.sandbox_session_id,
                 "git rev-parse --git-dir 2>/dev/null || echo 'not-git'",
                 workdir="/workspace",
             )
@@ -122,7 +122,7 @@ class SandboxAdapter:
 
             # Initialize git
             result = self.client.exec_shell(
-                self.session_id,
+                self.sandbox_session_id,
                 "git init",
                 workdir="/workspace",
             )
@@ -131,7 +131,7 @@ class SandboxAdapter:
 
             # Add all files
             result = self.client.exec_shell(
-                self.session_id,
+                self.sandbox_session_id,
                 "git add .",
                 workdir="/workspace",
             )
@@ -140,7 +140,7 @@ class SandboxAdapter:
 
             # Create initial commit
             result = self.client.exec_shell(
-                self.session_id,
+                self.sandbox_session_id,
                 "git commit -m 'Initial commit' || git config user.email 'agent@atloop' && git config user.name 'atloop Agent' && git commit -m 'Initial commit'",
                 workdir="/workspace",
             )
@@ -179,7 +179,7 @@ class SandboxAdapter:
                 }
 
         return self.client.exec_shell(
-            session_id=self.session_id,
+            session_id=self.sandbox_session_id,
             command=command,
             workdir=workdir,
             env=env,
@@ -216,7 +216,7 @@ class SandboxAdapter:
                 }
 
         return self.client.exec(
-            session_id=self.session_id,
+            session_id=self.sandbox_session_id,
             cmd=cmd,
             workdir=workdir,
             env=env,
@@ -249,12 +249,12 @@ class SandboxAdapter:
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.debug(f"Downloading workspace from sandbox session {self.session_id}")
+            logger.debug(f"Downloading workspace from sandbox session {self.sandbox_session_id}")
 
             # Use noxrunner's download_workspace method
             # This handles both local and remote backends transparently
             success = self.client.download_workspace(
-                session_id=self.session_id,
+                session_id=self.sandbox_session_id,
                 local_dir=workspace_path,
                 src="/workspace",
             )

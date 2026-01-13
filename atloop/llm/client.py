@@ -53,9 +53,17 @@ class LLMClient:
         logger.debug(f"[LLMClient] Initialized PromptLoader with language: {language}")
 
         # Initialize enhanced skill loader with multiple directories
+        from atloop.config.loader import ConfigLoader
+        
         builtin_skills_dir = Path(__file__).parent.parent / "skills" / "builtin"
         project_dir = Path(workspace_root) if workspace_root else None
-        additional_dirs = [Path(d) for d in config.skills_dirs]
+        atloop_dir = ConfigLoader.get_atloop_dir()
+        additional_dirs = [
+            atloop_dir / "skills",
+            Path.home() / ".atloop" / "skills"
+        ]
+        # Filter out non-existent directories
+        additional_dirs = [d for d in additional_dirs if d.exists()]
         self.skill_loader = EnhancedSkillLoader(
             builtin_skills_dir=builtin_skills_dir,
             project_dir=project_dir,

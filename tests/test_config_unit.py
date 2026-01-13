@@ -38,10 +38,11 @@ ai:
 sandbox:
   base_url: http://test:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
 
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
@@ -93,6 +94,44 @@ default_budget:
         assert config.ai.completion.api_base == "https://custom.api.com"
         assert config.sandbox.local_test is False
 
+    def test_config_loader_get_atloop_dir(self, temp_atloop_dir: Path):
+        """Test ConfigLoader.get_atloop_dir() returns correct path."""
+        config_file = temp_atloop_dir / "config" / "atloop.yaml"
+        config_file.parent.mkdir(parents=True, exist_ok=True)
+        config_file.write_text("""
+ai:
+  completion:
+    model: test-model
+    api_base: https://test.api.com
+    api_key: test-key
+  performance:
+    max_tokens_input: 1000
+    max_tokens_output: 500
+sandbox:
+  base_url: http://test:8080
+  local_test: true
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
+""")
+
+        ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
+        atloop_dir = ConfigLoader.get_atloop_dir()
+        
+        assert atloop_dir == temp_atloop_dir.resolve()
+        assert atloop_dir.exists()
+        assert atloop_dir.is_dir()
+
+    def test_config_loader_get_atloop_dir_raises_if_not_setup(self):
+        """Test ConfigLoader.get_atloop_dir() raises if setup() not called."""
+        # Reset the class variable
+        ConfigLoader._atloop_dir = None
+        
+        with pytest.raises(RuntimeError, match="ConfigLoader.setup\\(\\) must be called first"):
+            ConfigLoader.get_atloop_dir()
+
     def test_config_loader_env_override(self, temp_atloop_dir: Path):
         """Test ConfigLoader with environment variable overrides."""
         config_file = temp_atloop_dir / "config" / "atloop.yaml"
@@ -109,10 +148,11 @@ ai:
 sandbox:
   base_url: http://file:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
 
         # Set environment variable
@@ -148,10 +188,11 @@ ai:
 sandbox:
   base_url: http://test:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
 
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
@@ -162,7 +203,8 @@ default_budget:
         assert config.ai.completion is not None
         assert config.ai.performance is not None
         assert config.sandbox is not None
-        assert config.default_budget is not None
+        assert config.runtime is not None
+        assert config.runtime.default_budget is not None
         assert config.memory is not None
 
     def test_atloop_config_type_safety(self, temp_atloop_dir: Path):
@@ -181,10 +223,11 @@ ai:
 sandbox:
   base_url: http://test:8080
   local_test: true
-default_budget:
-  max_llm_calls: 10
-  max_tool_calls: 50
-  max_wall_time_sec: 3600
+runtime:
+  default_budget:
+    max_llm_calls: 10
+    max_tool_calls: 50
+    max_wall_time_sec: 3600
 """)
 
         ConfigLoader.setup(atloop_dir=str(temp_atloop_dir))
@@ -193,7 +236,7 @@ default_budget:
         # Type safety: config should be AtloopConfig instance
         assert isinstance(config, AtloopConfig)
         assert isinstance(config.ai.completion.model, str)
-        assert isinstance(config.default_budget.max_llm_calls, int)
+        assert isinstance(config.runtime.default_budget.max_llm_calls, int)
 
 
 class TestTaskSpec:
@@ -326,7 +369,8 @@ class TestBudget:
         assert budget.max_llm_calls == 10
         assert budget.max_tool_calls == 50
         assert budget.max_wall_time_sec == 3600
-        assert config.default_budget is not None
+        assert config.runtime is not None
+        assert config.runtime.default_budget is not None
         logger.info("Budget created successfully")
 
 

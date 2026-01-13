@@ -107,16 +107,18 @@ class Workflow:
                     logger.error(f"[Workflow] Workflow failed with fatal error: {result.error}")
                     return self._failure(result.error or "Workflow failed")
 
-            # Print memory statistics if verbose mode is enabled
+            # Print memory statistics if debug mode is enabled
             # Print before breakpoint so user can see stats before pausing
-            if self.coordinator.verbose:
+            from atloop.config.loader import ConfigLoader
+            config = ConfigLoader.get()
+            if config.debug.show_memory_diagnostics:
                 self._print_memory_stats(state)
                 # Save memory to JSON file after memory updates (similar to LLM I/O saving)
                 self._save_memory(state)
             
             # Breakpoint: wait for user input if breakpoint mode is enabled
             # This happens after verbose output, so user can review stats before continuing
-            if self.coordinator.breakpoint and current_phase == Phase.PLAN:
+            if config.runtime.breakpoint and current_phase == Phase.PLAN:
                 self._wait_for_breakpoint(state.step)
 
             # Transition
@@ -382,11 +384,17 @@ class Workflow:
 
     def _save_memory(self, state: Any) -> None:
         """
-        Save memory to JSON file for debugging (verbose mode only).
+        Save memory to JSON file for debugging.
         
         Args:
             state: Agent state containing memory
         """
+        from atloop.config.loader import ConfigLoader
+        config = ConfigLoader.get()
+        
+        if not config.debug.save_memory_dump:
+            return  # Skip if not enabled
+        
         try:
             # Get run directory from event logger
             log_dir = self.coordinator.event_logger.log_dir
