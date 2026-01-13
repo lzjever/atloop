@@ -344,13 +344,29 @@ class PlanPhase(BasePhase):
                 f"[PlanPhase] Preparing to replace placeholders, file_contents keys: "
                 f"{list(file_contents.keys())}"
             )
+            
+            # Check if any actions require placeholders
+            expected_placeholders = []
+            for action in actions:
+                tool = action.get("tool", "")
+                args = action.get("args", {})
+                field_name, value = PlaceholderReplacer.get_placeholder_field_value(tool, args)
+                if field_name and PlaceholderReplacer._is_valid_placeholder(value):
+                    expected_placeholders.append(value)
+            
             if file_contents:
                 logger.info(
                     f"[PlanPhase] Received {len(file_contents)} file content placeholders: "
                     f"{list(file_contents.keys())}"
                 )
-            else:
-                logger.warning("[PlanPhase] No file_contents received from LLM!")
+            elif expected_placeholders:
+                # Actions use placeholders but we received nothing - this is a problem
+                logger.warning(
+                    f"[PlanPhase] No file_contents received from LLM, but actions reference "
+                    f"placeholders {expected_placeholders}!"
+                )
+            # else: No actions require placeholders (e.g., empty actions list or only read_file) -
+            # empty file_contents is expected, no need to log
 
             try:
                 # Extract placeholder info before replacement (for memory recording)
