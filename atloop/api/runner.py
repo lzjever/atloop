@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 def load_task_spec(
     goal: str,
     workspace_root: str,
-    task_type: str = "bugfix",
-    constraints: Optional[list] = None,
     budget: Optional[Dict[str, int]] = None,
 ) -> TaskSpec:
     """
@@ -23,8 +21,6 @@ def load_task_spec(
     Args:
         goal: Task goal
         workspace_root: Workspace root directory
-        task_type: Task type (bugfix, feature, refactor)
-        constraints: Task constraints
         budget: Budget dictionary
 
     Returns:
@@ -34,7 +30,6 @@ def load_task_spec(
     from pathlib import Path
 
     task_id = str(uuid.uuid4())
-    constraints = constraints or []
 
     # Get default budget from config
     config = ConfigLoader.get()
@@ -54,9 +49,7 @@ def load_task_spec(
         task_id=task_id,
         goal=goal,
         workspace_root=str(Path(workspace_root).resolve()),
-        constraints=constraints,
-        budget=budget_obj,
-        task_type=task_type,
+        budget=budget_obj
     )
 
 
@@ -94,8 +87,6 @@ class TaskRunner:
             task_spec = load_task_spec(
                 goal=task_config["goal"],
                 workspace_root=task_config["workspace_root"],
-                task_type=task_config.get("task_type", "bugfix"),
-                constraints=task_config.get("constraints", []),
                 budget=task_config.get("budget"),
             )
             logger.debug(f"[TaskRunner] Task spec created: task_id={task_spec.task_id}")

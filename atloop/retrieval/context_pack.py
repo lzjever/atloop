@@ -20,7 +20,6 @@ class ContextPack:
     """Context pack for LLM input."""
 
     goal: str
-    constraints: List[str]
     project_profile: str
     relevant_files: str
     recent_error: str
@@ -41,16 +40,11 @@ class ContextPack:
         """
         parts = []
 
-        # Goal & Constraints
+        # Goal
         parts.append("## Task Goal")
         parts.append(self.goal)
         parts.append("")
 
-        if self.constraints:
-            parts.append("## Constraints")
-            for constraint in self.constraints:
-                parts.append(f"- {constraint}")
-            parts.append("")
 
         # Project Profile
         parts.append("## Project Information")
@@ -128,7 +122,6 @@ class ContextPackBuilder:
     def build(
         self,
         goal: str,
-        constraints: List[str],
         recent_error: Optional[str] = None,
         current_diff: Optional[str] = None,
         test_results: Optional[str] = None,
@@ -141,7 +134,6 @@ class ContextPackBuilder:
 
         Args:
             goal: Task goal
-            constraints: Task constraints
             recent_error: Recent error message
             current_diff: Current diff (from file snapshots)
             memory_summary: Memory summary
@@ -223,7 +215,6 @@ class ContextPackBuilder:
 
         return ContextPack(
             goal=goal,
-            constraints=constraints,
             project_profile=profile_str,
             relevant_files=relevant_files_str,
             recent_error=recent_error_str,

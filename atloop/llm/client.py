@@ -146,7 +146,6 @@ class LLMClient:
     def build_user_message(
         self,
         goal: str,
-        constraints: List[str],
         budget: Dict[str, int],
         state_summary: Optional[str] = None,
         memory_context: Optional[str] = None,  # New parameter
@@ -165,7 +164,6 @@ class LLMClient:
 
         Args:
             goal: Task goal
-            constraints: Task constraints
             budget: Budget dictionary
             state_summary: State summary
             project_profile: Project profile
@@ -217,7 +215,6 @@ class LLMClient:
 
         replacements = {
             "{GOAL}": goal,
-            "{CONSTRAINTS}": "\n".join(f"- {c}" for c in constraints) if constraints else "None",
             "{MAX_LLM_CALLS}": str(budget.get("max_llm_calls", 30)),
             "{MAX_TOOL_CALLS}": str(budget.get("max_tool_calls", 200)),
             "{MAX_WALL_TIME_SEC}": str(budget.get("max_wall_time_sec", 1800)),
@@ -246,7 +243,6 @@ class LLMClient:
     def build_prompt(
         self,
         goal: str,
-        constraints: List[str],
         budget: Dict[str, int],
         state_summary: Optional[str] = None,
         project_profile: Optional[str] = None,
@@ -264,7 +260,6 @@ class LLMClient:
 
         Args:
             goal: Task goal
-            constraints: Task constraints
             budget: Budget dictionary
             state_summary: State summary
             project_profile: Project profile
@@ -279,7 +274,6 @@ class LLMClient:
         """
         user_message = self.build_user_message(
             goal=goal,
-            constraints=constraints,
             budget=budget,
             state_summary=state_summary,
             project_profile=project_profile,

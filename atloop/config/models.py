@@ -154,13 +154,8 @@ class TaskSpec:
     task_id: str = field(metadata={"description": "Task ID"})
     goal: str = field(metadata={"description": "Task goal"})
     workspace_root: str = field(metadata={"description": "Workspace root directory"})
-    constraints: List[str] = field(
-        default_factory=list, metadata={"description": "Task constraints"}
-    )
     budget: Budget = field(default_factory=Budget, metadata={"description": "Task budget"})
-    task_type: str = field(
-        default="bugfix", metadata={"description": "Task type: bugfix, feature, or refactor"}
-    )
+
 
     def __post_init__(self):
         """Validate task specification."""
@@ -168,8 +163,6 @@ class TaskSpec:
             raise ValueError("goal is required")
         if not self.workspace_root:
             raise ValueError("workspace_root is required")
-        if self.task_type not in ["bugfix", "feature", "refactor"]:
-            raise ValueError("task_type must be one of: bugfix, feature, refactor")
 
 
 @dataclass(frozen=True)

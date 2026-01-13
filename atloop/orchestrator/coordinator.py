@@ -127,10 +127,8 @@ class WorkflowCoordinator:
         
         # Only initialize if not already set (to support resume)
         if not state.memory.task_summary:
-            # Create task summary from goal and constraints
+            # Create task summary from goal
             summary_parts = [f"**Goal**: {self.task_spec.goal}"]
-            if self.task_spec.constraints:
-                summary_parts.append(f"**Constraints**: {self.task_spec.constraints}")
             task_summary = "\n".join(summary_parts)
             
             MemoryManager.update_task_summary(state, task_summary)

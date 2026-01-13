@@ -76,7 +76,6 @@ class DiscoverPhase(BasePhase):
             logger.debug("[DiscoverPhase] Building context pack")
             context_pack = self.coordinator.context_builder.build(
                 goal=self.coordinator.task_spec.goal,
-                constraints=self.coordinator.task_spec.constraints,
                 recent_error=state.last_error.summary,
                 current_diff=state.artifacts.current_diff,
                 test_results=state.artifacts.test_results,

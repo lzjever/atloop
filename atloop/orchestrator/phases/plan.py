@@ -153,7 +153,6 @@ class PlanPhase(BasePhase):
             logger.debug("[PlanPhase] Building context pack")
             context_pack = self.coordinator.context_builder.build(
                 goal=self.coordinator.task_spec.goal,
-                constraints=self.coordinator.task_spec.constraints,
                 recent_error=state.last_error.summary,
                 current_diff=state.artifacts.current_diff,
                 test_results=state.artifacts.test_results,
@@ -169,7 +168,6 @@ class PlanPhase(BasePhase):
             logger.debug("[PlanPhase] Building user message")
             user_message = self.coordinator.llm_client.build_user_message(
                 goal=self.coordinator.task_spec.goal,
-                constraints=self.coordinator.task_spec.constraints,
                 budget=self.coordinator.task_spec.budget.to_dict(),
                 memory_context=memory_context,  # Use new memory_context parameter
                 project_profile=context_pack.project_profile,

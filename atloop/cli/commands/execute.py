@@ -32,6 +32,13 @@ def cmd_execute(args: Any) -> int:
             print("Error: --prompt or --prompt-file required", file=sys.stderr)
             return 1
 
+        # Create workspace if it doesn't exist
+        workspace = Path(args.workspace)
+        if not workspace.exists():
+            workspace.mkdir(parents=True, exist_ok=True)
+            logger.debug(f"[CLI] Created workspace: {workspace}")
+        
+
         # Build config
         task_config = {
             "goal": prompt,
