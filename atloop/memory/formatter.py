@@ -258,7 +258,7 @@ class MemoryFormatter:
             task_goal: 任务目标（可选，用于任务概览）
             format_options: 格式选项
                 - tool_results_count: int (默认 5)
-                - steps_summary_count: int (默认 3)
+                - steps_summary_count: int (默认 20)
                 - include_file_content: bool (默认 True)
                 - max_file_content_length: int (默认 20000)
 
@@ -285,7 +285,7 @@ class MemoryFormatter:
         # 5. Recent Activity
         parts.append(
             self._format_recent_activity(
-                state, steps_count=options.get("steps_summary_count", 3)
+                state, steps_count=options.get("steps_summary_count", 20)
             )
         )
 
@@ -439,9 +439,74 @@ class MemoryFormatter:
 
         return "\n".join(parts)
 
+    def _get_current_plan_item(self, state: "AgentState") -> Optional[str]:
+        """
+        Get the current plan item being executed (marked with 🔄).
+        
+        Args:
+            state: AgentState instance
+            
+        Returns:
+            The plan item description without emoji, or None if not found
+        """
+        plan = state.memory.plan
+        if not plan:
+            return None
+        
+        # Handle list format
+        if isinstance(plan, list) and plan:
+            # Check first item to determine format
+            first_item = plan[0]
+            
+            # Handle list of strings (with emoji markers)
+            if isinstance(first_item, str):
+                for item in plan:
+                    if "🔄" in str(item):
+                        # Remove emoji markers and return clean description
+                        clean_item = str(item).replace("🔄", "").replace("✅", "").replace("📋", "").strip()
+                        return clean_item if clean_item else None
+            
+            # Handle PlanStep objects or dicts
+            else:
+                from atloop.memory.plan import PlanStep
+                
+                for item in plan:
+                    # Check if it's a PlanStep object
+                    if isinstance(item, PlanStep):
+                        if item.status == "in_progress":
+                            return item.description or item.id
+                    # Check if it's a dict
+                    elif isinstance(item, dict):
+                        status = item.get("status", "")
+                        if status == "in_progress":
+                            description = item.get("description", "")
+                            if description:
+                                return description
+                            return item.get("id", "")
+                    # Fallback: check for status attribute
+                    elif hasattr(item, "status"):
+                        if getattr(item, "status", "") == "in_progress":
+                            description = getattr(item, "description", "")
+                            if description:
+                                return description
+                            return getattr(item, "id", "")
+        
+        # Handle string format (old format)
+        elif isinstance(plan, str):
+            lines = plan.split("\n")
+            for line in lines:
+                if "🔄" in line:
+                    clean_line = line.replace("🔄", "").replace("✅", "").replace("📋", "").strip()
+                    return clean_line if clean_line else None
+        
+        return None
+
     def _format_recent_activity(self, state: "AgentState", steps_count: int = 3) -> str:
         """格式化最近活动"""
         parts = [f"### 📊 Recent Activity (Last {steps_count} Steps)"]
+
+        # Get current plan item being executed (if any)
+        current_plan_item = self._get_current_plan_item(state)
 
         # Steps Summary
         if state.memory.decisions:
@@ -451,10 +516,15 @@ class MemoryFormatter:
                 actions = decision.get("actions", [])
                 tools_used = [a.get("tool", "?") for a in actions[:3]]
                 tools_str = ", ".join(tools_used)
-                if len(actions) > 3:
-                    tools_str += f" ... (+{len(actions) - 3} more)"
+                if len(actions) > 5:
+                    tools_str += f" ... (+{len(actions) - 5} more)"
                 stop_reason = decision.get("stop_reason", "?")
-                parts.append(f"- Step {step}: [{tools_str}] → {stop_reason}")
+                
+                # Add current plan item if available
+                step_entry = f"- Step {step}: [{tools_str}] → {stop_reason}"
+                if current_plan_item:
+                    step_entry += f" (🔄 {current_plan_item})"
+                parts.append(step_entry)
         else:
             parts.append("**Steps**: (无)")
 
@@ -567,8 +637,8 @@ class MemoryFormatter:
             parts.append("**Current Diff**:")
             parts.append("```")
             # Truncate if too long
-            diff_preview = state.artifacts.current_diff[:1000]
-            if len(state.artifacts.current_diff) > 1000:
+            diff_preview = state.artifacts.current_diff[:2000]
+            if len(state.artifacts.current_diff) > 2000:
                 diff_preview += "\n... [Diff truncated]"
             parts.append(diff_preview)
             parts.append("```")

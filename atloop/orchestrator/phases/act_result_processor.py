@@ -188,10 +188,17 @@ class ErrorStateManager:
         has_error = bool(error_msg or stderr.strip())
 
         if not has_error:
-            logger.debug(
-                f"[ErrorStateManager] Tool {tool} succeeded, preserving existing error state "
-                f"(if any): {bool(state.last_error.summary)}"
-            )
+            # Tool succeeded - clear previous error state
+            # Success typically means previous errors have been resolved or are no longer relevant
+            # Historical errors are still available in tool_results_history for reference
+            if state.last_error.summary:
+                logger.debug(
+                    f"[ErrorStateManager] Tool {tool} succeeded, clearing previous error state. "
+                    f"Historical errors are still available in tool_results_history."
+                )
+                state.last_error.summary = ""
+                state.last_error.repro_cmd = ""
+                state.last_error.raw_stderr_tail = ""
             return False
 
         # Determine max summary size

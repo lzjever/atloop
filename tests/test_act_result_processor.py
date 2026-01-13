@@ -277,6 +277,32 @@ class TestErrorStateManager:
         assert mock_state.last_error.summary == ""
         assert mock_state.last_error.repro_cmd == ""
 
+    def test_update_error_state_clear_on_success(self, mock_state):
+        """Test that previous error state is cleared when tool succeeds."""
+        tool = "run"
+        args = {"cmd": "echo success"}
+        result = {
+            "stdout": "success",
+            "stderr": "",
+            "error": "",
+        }
+        result_summary = "Tool: run\nCommand: echo success\nStdout: success"
+
+        # Set up previous error state
+        mock_state.last_error.summary = "Previous error message"
+        mock_state.last_error.repro_cmd = "previous_command"
+        mock_state.last_error.raw_stderr_tail = "previous stderr"
+
+        updated = ErrorStateManager.update_error_state(
+            mock_state, tool, args, result, result_summary
+        )
+
+        assert updated is False
+        # Previous error should be cleared on success
+        assert mock_state.last_error.summary == ""
+        assert mock_state.last_error.repro_cmd == ""
+        assert mock_state.last_error.raw_stderr_tail == ""
+
     def test_update_error_state_with_stderr(self, mock_state):
         """Test error state update when stderr is present."""
         tool = "run"
