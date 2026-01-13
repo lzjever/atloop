@@ -5,10 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 if TYPE_CHECKING:
     from atloop.memory.state import AgentState
 
-from atloop.config.limits import (
-    MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
-    MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.tools.base import BaseTool
 from atloop.tools.output_limit_strategy import OutputLimitStrategy
 from atloop.tools.output_semantic_type import OutputSemanticType
@@ -191,11 +188,12 @@ class ToolResultFormatter:
             )
         else:
             # Fallback: use tool name-based logic
+            config = ConfigLoader.get()
             is_shell = tool_name == "run"
             max_length = (
-                MEMORY_SUMMARY_STDOUT_STDERR_SHELL
+                config.memory.summary_stdout_stderr_shell
                 if is_shell
-                else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
+                else config.memory.summary_stdout_stderr_other
             )
 
         # 特殊处理：对于知识/文件内容类型，显示更多预览

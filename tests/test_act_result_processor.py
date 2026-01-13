@@ -6,14 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atloop.config.limits import (
-    ERROR_SUMMARY_LIMIT_FILE_VIEW,
-    ERROR_SUMMARY_LIMIT_NORMAL,
-    STDERR_TAIL_LIMIT,
-    STDOUT_STDERR_LIMIT_FILE_VIEW,
-    STDOUT_STDERR_LIMIT_NORMAL,
-    STDOUT_STDERR_LIMIT_OTHER,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.memory.state import AgentState, Artifacts, LastError, Memory
 from atloop.orchestrator.phases.act_result_processor import (
     ErrorStateManager,
@@ -131,7 +124,9 @@ class TestToolResultFormatter:
         # Use a command that is NOT a file view command to test normal limit
         args = {"cmd": "python script.py"}
         # Create output larger than normal limit (but smaller than file view limit)
-        large_output = "x" * (STDOUT_STDERR_LIMIT_NORMAL + 1000)
+        config = ConfigLoader.get()
+        stdout_limit_normal = config.limits.output.normal
+        large_output = "x" * (stdout_limit_normal + 1000)
         result = {
             "stdout": large_output,
             "stderr": "",
@@ -153,7 +148,9 @@ class TestToolResultFormatter:
         """Test formatting result for file view command (different limits)."""
         tool = self._create_tool("run")
         args = {"cmd": "cat file.txt"}
-        large_output = "x" * (STDOUT_STDERR_LIMIT_FILE_VIEW + 1000)
+        config = ConfigLoader.get()
+        stdout_limit_file_view = config.limits.output.file_view
+        large_output = "x" * (stdout_limit_file_view + 1000)
         result = {
             "stdout": large_output,
             "stderr": "",
@@ -215,13 +212,14 @@ class TestToolResultFormatter:
         summary = ToolResultFormatter.format_result_summary(tool, args, result)
 
         assert "Tool: load_skill" in summary
-        # ✅ Skill tool should use STDOUT_STDERR_LIMIT_FILE_VIEW (60KB), not STDOUT_STDERR_LIMIT_OTHER (2KB)
+        config = ConfigLoader.get()
+        # ✅ Skill tool should use file_view limit (60KB), not other limit (2KB)
         # Content should be much more than 2KB limit
         assert len(summary) > 40000  # Should have significant content (at least 40KB)
         assert "Skill content:" in summary
         # Should not be severely truncated (should have more than 2KB)
         stdout_section = summary.split("Stdout")[1] if "Stdout" in summary else ""
-        assert len(stdout_section) > 2000  # Much more than STDOUT_STDERR_LIMIT_OTHER (2KB)
+        assert len(stdout_section) > 2000  # Much more than other limit (2KB)
 
     def test_format_result_summary_skill_tool_not_truncated_severely(self):
         """Test that load_skill tool content is not severely truncated like other tools."""
@@ -238,9 +236,9 @@ class TestToolResultFormatter:
 
         summary = ToolResultFormatter.format_result_summary(tool, args, result)
 
-        # ✅ load_skill tool should use STDOUT_STDERR_LIMIT_FILE_VIEW (60KB), so 5KB content should be fully shown
+        # ✅ load_skill tool should use file_view limit (60KB), so 5KB content should be fully shown
         assert "This is a skill content." in summary
-        # Should not be truncated to 2KB (STDOUT_STDERR_LIMIT_OTHER)
+        # Should not be truncated to 2KB (other limit)
         # Should show most of the 5KB content
         assert len(summary) > 4000  # Much more than 2KB limit
 

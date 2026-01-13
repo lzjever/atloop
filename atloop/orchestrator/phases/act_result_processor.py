@@ -3,14 +3,15 @@
 import logging
 from typing import Any, Dict, Optional
 
-from atloop.config.limits import (
-    ERROR_SUMMARY_LIMIT_FILE_VIEW,
-    ERROR_SUMMARY_LIMIT_NORMAL,
-    STDERR_TAIL_LIMIT,
-    is_file_view_command,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.tools.base import BaseTool
 from atloop.tools.output_limit_strategy import OutputLimitStrategy
+
+
+def _is_file_view_command(cmd: str) -> bool:
+    """Check if command is a file view command."""
+    cmd_lower = cmd.lower()
+    return any(cmd in cmd_lower for cmd in ["cat ", "head ", "tail ", "sed -n"])
 
 logger = logging.getLogger(__name__)
 
@@ -202,15 +203,16 @@ class ErrorStateManager:
             return False
 
         # Determine max summary size
+        config = ConfigLoader.get()
         if tool == "run":
             cmd = args.get("cmd", "")
             max_summary = (
-                ERROR_SUMMARY_LIMIT_FILE_VIEW
-                if is_file_view_command(cmd)
-                else ERROR_SUMMARY_LIMIT_NORMAL
+                config.limits.output.error_summary_file_view
+                if _is_file_view_command(cmd)
+                else config.limits.output.error_summary_normal
             )
         else:
-            max_summary = ERROR_SUMMARY_LIMIT_NORMAL
+            max_summary = config.limits.output.error_summary_normal
 
         # Analyze error for better context
         enhanced_error = ErrorAnalyzer.analyze_error(tool, args, result)
@@ -241,7 +243,9 @@ class ErrorStateManager:
             if cmd:
                 state.last_error.repro_cmd = cmd
 
-        state.last_error.raw_stderr_tail = stderr[-STDERR_TAIL_LIMIT:] if stderr else ""
+        config = ConfigLoader.get()
+        stderr_tail_limit = config.limits.output.stderr_tail
+        state.last_error.raw_stderr_tail = stderr[-stderr_tail_limit:] if stderr else ""
 
         return True
 

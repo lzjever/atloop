@@ -7,17 +7,15 @@ flexible, maintainable, and less prone to missing edge cases.
 
 from typing import Any, Dict, Optional
 
-from atloop.config.limits import (
-    MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
-    MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
-    STDOUT_STDERR_LIMIT_FILE_VIEW,
-    STDOUT_STDERR_LIMIT_NORMAL,
-    STDOUT_STDERR_LIMIT_OTHER,
-    is_file_view_command,
-)
-
+from atloop.config.loader import ConfigLoader
 from atloop.tools.base import BaseTool
 from atloop.tools.output_semantic_type import OutputSemanticType
+
+
+def _is_file_view_command(cmd: str) -> bool:
+    """Check if command is a file view command."""
+    cmd_lower = cmd.lower()
+    return any(cmd in cmd_lower for cmd in ["cat ", "head ", "tail ", "sed -n"])
 
 
 class OutputLimitStrategy:
@@ -26,27 +24,51 @@ class OutputLimitStrategy:
     This class maps semantic types to appropriate output limits for different
     contexts (formatting vs memory summary). It provides a single source of
     truth for output size limits.
+    
+    Limits are loaded from configuration at runtime to allow customization.
     """
 
-    # Semantic type to limit mapping for formatting (last_error.summary)
-    SEMANTIC_TYPE_LIMITS = {
-        OutputSemanticType.KNOWLEDGE_CONTENT: STDOUT_STDERR_LIMIT_FILE_VIEW,  # 60KB
-        OutputSemanticType.FILE_CONTENT: STDOUT_STDERR_LIMIT_FILE_VIEW,  # 60KB
-        OutputSemanticType.FILE_VIEW_RESULT: STDOUT_STDERR_LIMIT_FILE_VIEW,  # 60KB
-        OutputSemanticType.EXECUTION_RESULT: STDOUT_STDERR_LIMIT_NORMAL,  # 8KB
-        OutputSemanticType.STATUS_MESSAGE: STDOUT_STDERR_LIMIT_OTHER,  # 2KB
-        OutputSemanticType.ERROR_MESSAGE: STDOUT_STDERR_LIMIT_NORMAL,  # 8KB
-    }
+    @classmethod
+    def _get_limits(cls):
+        """Get limits from configuration."""
+        config = ConfigLoader.get()
+        return {
+            "output": {
+                "file_view": config.limits.output.file_view,
+                "normal": config.limits.output.normal,
+                "other": config.limits.output.other,
+            },
+            "memory": {
+                "shell": config.memory.summary_stdout_stderr_shell,
+                "other": config.memory.summary_stdout_stderr_other,
+            },
+        }
 
-    # Semantic type to limit mapping for memory summary
-    MEMORY_SUMMARY_LIMITS = {
-        OutputSemanticType.KNOWLEDGE_CONTENT: MEMORY_SUMMARY_STDOUT_STDERR_SHELL,  # 12KB
-        OutputSemanticType.FILE_CONTENT: MEMORY_SUMMARY_STDOUT_STDERR_SHELL,  # 12KB
-        OutputSemanticType.FILE_VIEW_RESULT: MEMORY_SUMMARY_STDOUT_STDERR_SHELL,  # 12KB
-        OutputSemanticType.EXECUTION_RESULT: MEMORY_SUMMARY_STDOUT_STDERR_SHELL,  # 12KB
-        OutputSemanticType.STATUS_MESSAGE: MEMORY_SUMMARY_STDOUT_STDERR_OTHER,  # 4KB
-        OutputSemanticType.ERROR_MESSAGE: MEMORY_SUMMARY_STDOUT_STDERR_SHELL,  # 12KB
-    }
+    @classmethod
+    def _get_semantic_type_limits(cls):
+        """Get semantic type to limit mapping for formatting (last_error.summary)."""
+        limits = cls._get_limits()
+        return {
+            OutputSemanticType.KNOWLEDGE_CONTENT: limits["output"]["file_view"],
+            OutputSemanticType.FILE_CONTENT: limits["output"]["file_view"],
+            OutputSemanticType.FILE_VIEW_RESULT: limits["output"]["file_view"],
+            OutputSemanticType.EXECUTION_RESULT: limits["output"]["normal"],
+            OutputSemanticType.STATUS_MESSAGE: limits["output"]["other"],
+            OutputSemanticType.ERROR_MESSAGE: limits["output"]["normal"],
+        }
+
+    @classmethod
+    def _get_memory_summary_limits(cls):
+        """Get semantic type to limit mapping for memory summary."""
+        limits = cls._get_limits()
+        return {
+            OutputSemanticType.KNOWLEDGE_CONTENT: limits["memory"]["shell"],
+            OutputSemanticType.FILE_CONTENT: limits["memory"]["shell"],
+            OutputSemanticType.FILE_VIEW_RESULT: limits["memory"]["shell"],
+            OutputSemanticType.EXECUTION_RESULT: limits["memory"]["shell"],
+            OutputSemanticType.STATUS_MESSAGE: limits["memory"]["other"],
+            OutputSemanticType.ERROR_MESSAGE: limits["memory"]["shell"],
+        }
 
     @classmethod
     def get_limit_for_formatting(
@@ -71,14 +93,16 @@ class OutputLimitStrategy:
         )
 
         # Special handling: run command file viewing
+        limits = cls._get_limits()
         if tool.name == "run" and args:
             cmd = args.get("cmd", "")
-            if is_file_view_command(cmd):
-                return STDOUT_STDERR_LIMIT_FILE_VIEW
+            if _is_file_view_command(cmd):
+                return limits["output"]["file_view"]
 
         # Return corresponding limit
-        return cls.SEMANTIC_TYPE_LIMITS.get(
-            semantic_type, STDOUT_STDERR_LIMIT_OTHER  # Default fallback
+        semantic_limits = cls._get_semantic_type_limits()
+        return semantic_limits.get(
+            semantic_type, limits["output"]["other"]  # Default fallback
         )
 
     @classmethod
@@ -98,6 +122,8 @@ class OutputLimitStrategy:
             tool.stderr_semantic_type if is_stderr else tool.stdout_semantic_type
         )
 
-        return cls.MEMORY_SUMMARY_LIMITS.get(
-            semantic_type, MEMORY_SUMMARY_STDOUT_STDERR_OTHER  # Default fallback
+        limits = cls._get_limits()
+        memory_limits = cls._get_memory_summary_limits()
+        return memory_limits.get(
+            semantic_type, limits["memory"]["other"]  # Default fallback
         )

@@ -3,16 +3,15 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from atloop.config.limits import (
-    CONTEXT_PACK_MAX_SIZE,
-    DIFF_LIMIT,
-    RECENT_ERROR_LIMIT_FILE_CONTENT,
-    RECENT_ERROR_LIMIT_NORMAL,
-    TEST_RESULTS_LIMIT_CONTEXT,
-    is_file_content,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.retrieval.indexer import WorkspaceIndexer
 from atloop.retrieval.project_profile import ProjectProfile
+
+
+def _is_file_content(text: str) -> bool:
+    """Check if text contains file content."""
+    text_lower = text.lower()
+    return any(cmd in text_lower for cmd in ["cat ", "head ", "tail ", "sed -n"])
 
 
 @dataclass
@@ -28,16 +27,19 @@ class ContextPack:
     verification_success: Optional[bool] = None  # Whether latest verification passed
     memory_summary: Optional[str] = None
 
-    def to_string(self, max_size: int = CONTEXT_PACK_MAX_SIZE) -> str:
+    def to_string(self, max_size: Optional[int] = None) -> str:
         """
         Convert to string representation.
 
         Args:
-            max_size: Maximum size in bytes
+            max_size: Maximum size in bytes (defaults to config value)
 
         Returns:
             String representation
         """
+        if max_size is None:
+            config = ConfigLoader.get()
+            max_size = config.limits.context_pack.max_size
         parts = []
 
         # Goal
@@ -185,12 +187,13 @@ class ContextPackBuilder:
         # CRITICAL: Increase limit to preserve more tool execution information
         # Tool outputs (especially stderr) are critical for LLM decision-making
         # For file viewing commands, preserve even more to show complete file content
+        config = ConfigLoader.get()
         recent_error_str = recent_error or "None"
         # Check if this contains file viewing command output
         max_recent_error = (
-            RECENT_ERROR_LIMIT_FILE_CONTENT
-            if is_file_content(recent_error_str)
-            else RECENT_ERROR_LIMIT_NORMAL
+            config.limits.context_pack.recent_error_file_content
+            if _is_file_content(recent_error_str)
+            else config.limits.context_pack.recent_error_normal
         )
         if len(recent_error_str) > max_recent_error:
             # Show both beginning and end for better context
@@ -203,14 +206,16 @@ class ContextPackBuilder:
 
         # Format current diff
         current_diff_str = current_diff or "No changes"
-        if len(current_diff_str) > DIFF_LIMIT:
-            current_diff_str = current_diff_str[:DIFF_LIMIT] + "\n[Diff truncated...]"
+        diff_limit = config.limits.context_pack.diff
+        if len(current_diff_str) > diff_limit:
+            current_diff_str = current_diff_str[:diff_limit] + "\n[Diff truncated...]"
 
         # Format test results
         test_results_str = test_results or None
-        if test_results_str and len(test_results_str) > TEST_RESULTS_LIMIT_CONTEXT:
+        test_results_limit = config.limits.context_pack.test_results_context
+        if test_results_str and len(test_results_str) > test_results_limit:
             test_results_str = (
-                test_results_str[:TEST_RESULTS_LIMIT_CONTEXT] + "\n[Test results truncated...]"
+                test_results_str[:test_results_limit] + "\n[Test results truncated...]"
             )
 
         return ContextPack(

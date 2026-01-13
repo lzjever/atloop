@@ -2,7 +2,7 @@
 
 import logging
 
-from atloop.config.limits import ERROR_SUMMARY_LIMIT_NORMAL, TEST_RESULTS_LIMIT
+from atloop.config.loader import ConfigLoader
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.state_machine import Phase
 
@@ -52,9 +52,11 @@ class VerifyPhase(BasePhase):
                 test_output += verification_result.stderr
 
             if test_output:
-                state.artifacts.test_results = test_output[:TEST_RESULTS_LIMIT]
+                config = ConfigLoader.get()
+                test_results_limit = config.limits.context_pack.test_results
+                state.artifacts.test_results = test_output[:test_results_limit]
                 logger.debug(
-                    f"[VerifyPhase] Test results stored: {len(test_output)} chars (limited to {TEST_RESULTS_LIMIT})"
+                    f"[VerifyPhase] Test results stored: {len(test_output)} chars (limited to {test_results_limit})"
                 )
 
             # Update last error if verification failed
@@ -79,14 +81,18 @@ class VerifyPhase(BasePhase):
                     test_output += verification_result.stderr
 
                 if test_output:
+                    config = ConfigLoader.get()
+                    test_results_limit = config.limits.context_pack.test_results
                     error_msg_parts.append(
-                        f"\nFull test output:\n{test_output[:TEST_RESULTS_LIMIT]}"
+                        f"\nFull test output:\n{test_output[:test_results_limit]}"
                     )
 
                 error_summary_text = (
                     "\n".join(error_msg_parts) if error_msg_parts else "Verification failed"
                 )
-                state.last_error.summary = error_summary_text[:ERROR_SUMMARY_LIMIT_NORMAL]
+                config = ConfigLoader.get()
+                error_summary_limit = config.limits.output.error_summary_normal
+                state.last_error.summary = error_summary_text[:error_summary_limit]
                 state.last_error.repro_cmd = verification_result.command
                 logger.debug(
                     f"[VerifyPhase] Error state updated: summary length={len(state.last_error.summary)}"

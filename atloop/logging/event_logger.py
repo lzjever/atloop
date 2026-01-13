@@ -6,11 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from atloop.config.limits import (
-    EVENT_LOGGER_OUTPUT_LIMIT_NORMAL,
-    EVENT_LOGGER_PROMPT_PREVIEW_LIMIT,
-    LOG_FILE_MAX_SIZE_MB,
-)
+from atloop.config.loader import ConfigLoader
 
 
 class EventLogger:
@@ -106,7 +102,8 @@ class EventLogger:
         }
 
         # Truncate long outputs
-        max_output_length = EVENT_LOGGER_OUTPUT_LIMIT_NORMAL
+        config = ConfigLoader.get()
+        max_output_length = config.limits.event_logger.output_normal
         if stdout:
             data["stdout"] = stdout[:max_output_length] + (
                 "..." if len(stdout) > max_output_length else ""
@@ -145,10 +142,12 @@ class EventLogger:
             "prompt_hash": prompt_hash,
         }
 
-        # Store prompt preview for debugging (first 2000 chars)
+        # Store prompt preview for debugging
         if store_prompt:
-            prompt_preview = prompt[:EVENT_LOGGER_PROMPT_PREVIEW_LIMIT] + (
-                "..." if len(prompt) > EVENT_LOGGER_PROMPT_PREVIEW_LIMIT else ""
+            config = ConfigLoader.get()
+            prompt_preview_limit = config.limits.event_logger.prompt_preview
+            prompt_preview = prompt[:prompt_preview_limit] + (
+                "..." if len(prompt) > prompt_preview_limit else ""
             )
             data["prompt_preview"] = prompt_preview
             data["prompt_length"] = len(prompt)
@@ -318,15 +317,19 @@ class EventLogger:
         """Context manager exit."""
         self.close()
 
-    def rotate_log(self, max_size_mb: int = LOG_FILE_MAX_SIZE_MB):
+    def rotate_log(self, max_size_mb: Optional[int] = None):
         """
         Rotate log file if it exceeds max size.
 
         Args:
-            max_size_mb: Maximum file size in MB
+            max_size_mb: Maximum file size in MB (defaults to config value)
         """
         if not self.log_file.exists():
             return
+
+        if max_size_mb is None:
+            config = ConfigLoader.get()
+            max_size_mb = config.limits.logging.file_max_size_mb
 
         max_size_bytes = max_size_mb * 1024 * 1024
         if self.log_file.stat().st_size > max_size_bytes:

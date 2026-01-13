@@ -3,11 +3,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
-from atloop.config.limits import (
-    VERIFIER_ERROR_LINES_MAX,
-    VERIFIER_ERROR_SIGNATURE_LINE_LIMIT,
-    VERIFIER_ERROR_SUMMARY_LIMIT,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.runtime import ToolRuntime
 
 
@@ -40,6 +36,9 @@ class ErrorSignatureExtractor:
         if not stderr:
             return None
 
+        config = ConfigLoader.get()
+        signature_line_limit = config.limits.verifier.error_signature_line
+
         # Extract first meaningful error line
         lines = stderr.strip().split("\n")
         for line in lines:
@@ -47,7 +46,7 @@ class ErrorSignatureExtractor:
             if line and not line.startswith("#"):
                 # Remove file paths and line numbers for better matching
                 # Keep error type and message
-                return line[:VERIFIER_ERROR_SIGNATURE_LINE_LIMIT]
+                return line[:signature_line_limit]
 
         return None
 
@@ -121,10 +120,13 @@ class Verifier:
             # Simplified: just provide a preview of the output (first N lines)
             # LLM should read the full output to understand errors
             if error_text:
+                config = ConfigLoader.get()
+                error_lines_max = config.limits.verifier.error_lines_max
+                error_summary_limit = config.limits.verifier.error_summary
                 lines = error_text.split("\n")
                 # Take first few lines as summary (LLM will see full output anyway)
-                error_summary = "\n".join(lines[:VERIFIER_ERROR_LINES_MAX])[
-                    :VERIFIER_ERROR_SUMMARY_LIMIT
+                error_summary = "\n".join(lines[:error_lines_max])[
+                    :error_summary_limit
                 ]
 
         return VerificationResult(

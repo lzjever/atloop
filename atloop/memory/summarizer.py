@@ -2,15 +2,7 @@
 
 from typing import Any, Optional
 
-from atloop.config.limits import (
-    MEMORY_SUMMARY_DEFAULT_LIMIT,
-    MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_OTHER,
-    MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_SHELL,
-    MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT,
-    MEMORY_SUMMARY_STDERR_TAIL,
-    MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
-    MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
-)
+from atloop.config.loader import ConfigLoader
 from atloop.memory.formatter import ToolResultFormatter
 from atloop.memory.state import AgentState
 from atloop.tools.base import BaseTool
@@ -85,7 +77,7 @@ class MemorySummarizer:
     @staticmethod
     def summarize(
         state: AgentState,
-        max_length: int = MEMORY_SUMMARY_DEFAULT_LIMIT,
+        max_length: Optional[int] = None,
         task_goal: Optional[str] = None,
         tool_registry: Optional[Any] = None,
     ) -> str:
@@ -94,12 +86,16 @@ class MemorySummarizer:
 
         Args:
             state: Agent state
-            max_length: Maximum summary length
+            max_length: Maximum summary length (defaults to config value)
             task_goal: Optional task goal for completion detection
 
         Returns:
             Summary string
         """
+        config = ConfigLoader.get()
+        if max_length is None:
+            max_length = config.memory.summary_default_limit
+        
         parts = []
 
         # If memory is completely empty, return a minimal summary
@@ -492,9 +488,11 @@ class MemorySummarizer:
                 parts.append(f"\nRepro Command: {state.last_error.repro_cmd}")
             if state.last_error.raw_stderr_tail:
                 # Show more of stderr tail for detailed analysis
+                config = ConfigLoader.get()
+                stderr_tail_limit = config.memory.summary_stderr_tail
                 stderr_tail = (
-                    state.last_error.raw_stderr_tail[-MEMORY_SUMMARY_STDERR_TAIL:]
-                    if len(state.last_error.raw_stderr_tail) > MEMORY_SUMMARY_STDERR_TAIL
+                    state.last_error.raw_stderr_tail[-stderr_tail_limit:]
+                    if len(state.last_error.raw_stderr_tail) > stderr_tail_limit
                     else state.last_error.raw_stderr_tail
                 )
                 parts.append(
@@ -522,7 +520,9 @@ class MemorySummarizer:
 
         # Smart truncation with importance-based prioritization
         # Priority order: long-term memory > last_error > high-importance items > others
-        effective_max_length = max(max_length, MEMORY_SUMMARY_MIN_EFFECTIVE_LIMIT)
+        config = ConfigLoader.get()
+        min_effective_limit = config.memory.summary_min_effective_length
+        effective_max_length = max(max_length, min_effective_limit)
         if len(summary) > effective_max_length:
             # Strategy: Keep long-term memory + last_error + high-importance items
             # Find section boundaries
