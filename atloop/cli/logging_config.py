@@ -13,7 +13,7 @@ def setup_logging(log_level: Optional[str] = None) -> None:
     Log level is determined by (in priority order):
     1. log_level parameter (if provided)
     2. ATLOOP_LOG_LEVEL environment variable
-    3. Default: INFO
+    3. Default: WARNING
 
     Args:
         log_level: Log level string (DEBUG, INFO, WARNING, ERROR, CRITICAL).
@@ -21,7 +21,7 @@ def setup_logging(log_level: Optional[str] = None) -> None:
     """
     # Determine log level
     if log_level is None:
-        log_level = os.getenv("ATLOOP_LOG_LEVEL", "INFO").upper()
+        log_level = os.getenv("ATLOOP_LOG_LEVEL", "WARNING").upper()
 
     # Convert string to logging level
     numeric_level = getattr(logging, log_level, None)
