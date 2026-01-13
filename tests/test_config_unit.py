@@ -205,16 +205,13 @@ class TestTaskSpec:
             task_id="test-task-123",
             goal="Test task goal",
             workspace_root=str(temp_workspace),
-            constraints=["constraint1", "constraint2"],
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
-            task_type="bugfix",
         )
 
         assert task_spec.task_id == "test-task-123"
         assert task_spec.goal == "Test task goal"
         assert task_spec.workspace_root == str(temp_workspace)
-        assert len(task_spec.constraints) == 2
-        assert task_spec.task_type == "bugfix"
+        assert task_spec.budget is not None
 
     def test_task_spec_validation(self, temp_workspace: Path):
         """Test TaskSpec validation."""
@@ -226,13 +223,20 @@ class TestTaskSpec:
         )
         assert task_spec is not None
 
-        # Invalid task type should raise ValueError
+        # Empty goal should raise ValueError
+        with pytest.raises(ValueError):
+            TaskSpec(
+                task_id="test-task",
+                goal="",
+                workspace_root=str(temp_workspace),
+            )
+        
+        # Empty workspace_root should raise ValueError
         with pytest.raises(ValueError):
             TaskSpec(
                 task_id="test-task",
                 goal="Test goal",
-                workspace_root=str(temp_workspace),
-                task_type="invalid",
+                workspace_root="",
             )
 
     def test_task_spec_defaults(self, temp_workspace: Path):
@@ -243,9 +247,10 @@ class TestTaskSpec:
             workspace_root=str(temp_workspace),
         )
 
-        assert task_spec.constraints == []
-        assert task_spec.task_type == "bugfix"
         assert task_spec.budget is not None
+        assert task_spec.budget.max_llm_calls > 0
+        assert task_spec.budget.max_tool_calls > 0
+        assert task_spec.budget.max_wall_time_sec > 0
 
     def test_task_spec_creation_with_real_config(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskSpec creation with real config."""

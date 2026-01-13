@@ -34,8 +34,6 @@ class TestE2ESimpleWrite:
             task_id="e2e-simple-write",
             goal="Write some arbitrary Python code to a file",
             workspace_root=str(temp_workspace),
-            task_type="feature",
-            constraints=[],
             budget=Budget(max_llm_calls=10, max_tool_calls=20, max_wall_time_sec=600),
         )
 
@@ -65,8 +63,6 @@ class TestE2ESimpleWrite:
             task_id="e2e-simple-write-exec",
             goal="Write some arbitrary Python code",
             workspace_root=str(temp_workspace),
-            task_type="feature",
-            constraints=[],
             budget=Budget(max_llm_calls=10, max_tool_calls=20, max_wall_time_sec=600),
         )
 
@@ -123,8 +119,6 @@ class TestE2ESimpleWrite:
             task_id="e2e-simple-write-full",
             goal="Write some arbitrary Python code",
             workspace_root=str(temp_workspace),
-            task_type="feature",
-            constraints=[],
             budget=Budget(max_llm_calls=5, max_tool_calls=10, max_wall_time_sec=300),
         )
 

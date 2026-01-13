@@ -57,8 +57,6 @@ def test_subtract():
             task_id="e2e-calc-bugfix",
             goal="Fix the bugs in calculator.py so all tests pass",
             workspace_root=str(temp_workspace),
-            task_type="bugfix",
-            constraints=["All tests must pass"],
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
         )
 
@@ -107,7 +105,6 @@ class TestE2EPythonProjectSetup:
             task_id="e2e-python-setup",
             goal="Set up Python project structure",
             workspace_root=str(temp_workspace),
-            task_type="feature",
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
         )
 
@@ -149,7 +146,6 @@ class TestE2ENodeJSProjectSetup:
             task_id="e2e-nodejs-setup",
             goal="Set up Node.js project structure",
             workspace_root=str(temp_workspace),
-            task_type="feature",
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
         )
 
@@ -189,7 +185,6 @@ class TestE2EGoProjectSetup:
             task_id="e2e-go-setup",
             goal="Set up Go project structure",
             workspace_root=str(temp_workspace),
-            task_type="feature",
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
         )
 
@@ -317,15 +312,13 @@ result = old_function()
             task_id="e2e-refactor",
             goal="Refactor old_module.py to new_module.py",
             workspace_root=str(temp_workspace),
-            task_type="refactor",
-            constraints=["Maintain backward compatibility"],
             budget=Budget(max_llm_calls=10, max_tool_calls=50, max_wall_time_sec=3600),
         )
 
         # Initialize coordinator
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
-        assert coordinator.task_spec.task_type == "refactor"
+        assert coordinator.task_spec.goal == "Refactor old_module.py to new_module.py"
 
         # Verify files exist
         assert (temp_workspace / "old_module.py").exists()

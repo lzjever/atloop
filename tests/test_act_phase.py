@@ -453,8 +453,8 @@ class TestActPhase:
         # Should have separator between errors
         assert "=" * 80 in state.last_error.summary
 
-    def test_execute_actions_success_preserves_previous_error(self, act_phase, mock_coordinator):
-        """Test that successful actions don't overwrite previous errors."""
+    def test_execute_actions_success_clears_previous_error(self, act_phase, mock_coordinator):
+        """Test that successful actions clear previous errors (errors are resolved)."""
         # Mock executor to return success
         act_phase.executor._execute_action = MagicMock(return_value={
             "success": True,
@@ -470,6 +470,7 @@ class TestActPhase:
         state = mock_coordinator.state_manager.agent_state
         # Set a previous error
         state.last_error.summary = "Previous error message"
+        state.last_error.repro_cmd = "previous command"
 
         actions = [
             {"tool": "run", "args": {"cmd": "echo test"}},  # Success
@@ -477,8 +478,10 @@ class TestActPhase:
 
         results, modified_files = act_phase._execute_actions(actions, state)
 
-        # Previous error should be preserved
-        assert state.last_error.summary == "Previous error message"
+        # Previous error should be cleared when tool succeeds
+        # (Success means previous errors are resolved)
+        assert state.last_error.summary == ""
+        assert state.last_error.repro_cmd == ""
 
     def test_execute_actions_budget_tracking(self, act_phase, mock_coordinator):
         """Test that budget is properly tracked for each action."""

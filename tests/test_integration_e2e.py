@@ -34,7 +34,6 @@ class TestE2EIntegration:
             task_id="e2e-bugfix-001",
             goal="Fix a simple bug in test code",
             workspace_root=str(temp_workspace),
-            task_type="bugfix",
             budget=Budget(max_llm_calls=5, max_tool_calls=20, max_wall_time_sec=1800),
         )
 
@@ -72,14 +71,13 @@ def test_add():
             task_id="e2e-feature-001",
             goal="Implement a simple feature",
             workspace_root=str(temp_workspace),
-            task_type="feature",
             budget=Budget(max_llm_calls=5, max_tool_calls=20, max_wall_time_sec=1800),
         )
 
         # Initialize coordinator
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
-        assert coordinator.task_spec.task_type == "feature"
+        assert coordinator.task_spec.goal == "Implement a simple feature"
         logger.info("E2E feature setup successful ✅")
 
     def test_e2e_simple_refactor_setup(self, real_config_file: Path, temp_workspace: Path):
@@ -98,14 +96,13 @@ def test_add():
             task_id="e2e-refactor-001",
             goal="Refactor code to improve structure",
             workspace_root=str(temp_workspace),
-            task_type="refactor",
             budget=Budget(max_llm_calls=5, max_tool_calls=20, max_wall_time_sec=1800),
         )
 
         # Initialize coordinator
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
-        assert coordinator.task_spec.task_type == "refactor"
+        assert coordinator.task_spec.goal == "Refactor code to improve structure"
         logger.info("E2E refactor setup successful ✅")
 
     def test_e2e_multi_file_edit_setup(self, real_config_file: Path, temp_workspace: Path):
@@ -166,7 +163,6 @@ def test_add():
             task_id="e2e-tests-001",
             goal="Fix failing tests",
             workspace_root=str(temp_workspace),
-            task_type="bugfix",
             budget=Budget(max_llm_calls=5, max_tool_calls=20, max_wall_time_sec=1800),
         )
 

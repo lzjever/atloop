@@ -400,8 +400,10 @@ class TestErrorStateManager:
         """Test that stderr tail is properly extracted."""
         tool = "run"
         args = {"cmd": "test"}
+        config = ConfigLoader.get()
+        stderr_tail_limit = config.limits.output.stderr_tail
         # Create stderr longer than tail limit
-        long_stderr = "x" * (STDERR_TAIL_LIMIT + 100) + "END"
+        long_stderr = "x" * (stderr_tail_limit + 100) + "END"
         result = {
             "stdout": "",
             "stderr": long_stderr,
@@ -412,15 +414,17 @@ class TestErrorStateManager:
         ErrorStateManager.update_error_state(mock_state, tool, args, result, result_summary)
 
         # Should only keep tail
-        assert len(mock_state.last_error.raw_stderr_tail) <= STDERR_TAIL_LIMIT
+        assert len(mock_state.last_error.raw_stderr_tail) <= stderr_tail_limit
         assert mock_state.last_error.raw_stderr_tail.endswith("END")
 
     def test_update_error_state_summary_size_limit(self, mock_state):
         """Test that error summary respects size limits."""
         tool = "run"
         args = {"cmd": "test"}
+        config = ConfigLoader.get()
+        error_summary_limit = config.limits.output.error_summary_normal
         # Create very long error
-        long_error = "x" * (ERROR_SUMMARY_LIMIT_NORMAL + 1000)
+        long_error = "x" * (error_summary_limit + 1000)
         result = {
             "stdout": "",
             "stderr": long_error,
@@ -431,13 +435,16 @@ class TestErrorStateManager:
         ErrorStateManager.update_error_state(mock_state, tool, args, result, result_summary)
 
         # Summary should be truncated
-        assert len(mock_state.last_error.summary) <= ERROR_SUMMARY_LIMIT_NORMAL
+        assert len(mock_state.last_error.summary) <= error_summary_limit
 
     def test_update_error_state_file_view_command_limit(self, mock_state):
         """Test that file view commands use different limit."""
         tool = "run"
         args = {"cmd": "cat file.txt"}  # File view command
-        long_error = "x" * (ERROR_SUMMARY_LIMIT_FILE_VIEW + 1000)
+        config = ConfigLoader.get()
+        error_summary_file_view = config.limits.output.error_summary_file_view
+        error_summary_normal = config.limits.output.error_summary_normal
+        long_error = "x" * (error_summary_file_view + 1000)
         result = {
             "stdout": "",
             "stderr": long_error,
@@ -448,8 +455,8 @@ class TestErrorStateManager:
         ErrorStateManager.update_error_state(mock_state, tool, args, result, result_summary)
 
         # Should use file view limit (larger)
-        assert len(mock_state.last_error.summary) <= ERROR_SUMMARY_LIMIT_FILE_VIEW
-        assert len(mock_state.last_error.summary) > ERROR_SUMMARY_LIMIT_NORMAL
+        assert len(mock_state.last_error.summary) <= error_summary_file_view
+        assert len(mock_state.last_error.summary) > error_summary_normal
 
 
 class TestFileChangeTracker:
