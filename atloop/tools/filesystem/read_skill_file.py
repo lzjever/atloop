@@ -31,8 +31,8 @@ class ReadSkillFileTool(BaseTool):
     - Supports ~ expansion for home directory
 
     **Important distinction:**
-    - ✅ **Skill files** → Use `read_skill_file` (stored locally)
-    - ✅ **Workspace files** → Use `read_file` (stored in remote sandbox /workspace)
+    - ✓ **Skill files** → Use `read_skill_file` (stored locally)
+    - ✓ **Workspace files** → Use `read_file` (stored in remote sandbox /workspace)
     - ❌ **Never use `read_file` or `run` to find skill files** - they are not in the sandbox!
     """
 
@@ -122,9 +122,9 @@ class ReadSkillFileTool(BaseTool):
             read_skill_file(path="skill-doc.md", skill_name="docx", offset=1, limit=50)
 
         **When to use this vs read_file:**
-        - ✅ Reading skill files → use `read_skill_file` (stored locally, NOT in sandbox)
-        - ✅ Reading files referenced in skills → use `read_skill_file` (skill mentions are LOCAL files)
-        - ✅ Reading skill templates/examples → use `read_skill_file` (stored locally)
+        - ✓ Reading skill files → use `read_skill_file` (stored locally, NOT in sandbox)
+        - ✓ Reading files referenced in skills → use `read_skill_file` (skill mentions are LOCAL files)
+        - ✓ Reading skill templates/examples → use `read_skill_file` (stored locally)
         - ❌ Reading workspace files → use `read_file` (sandbox files in /workspace)
         - ❌ **DO NOT use `read_file` or `run` to find skill files** - they are NOT in the sandbox!
 

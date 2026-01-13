@@ -93,7 +93,7 @@ uv run atloopc execute \
 
 ## Testing
 
-✅ **Verified:**
+✓ **Verified:**
 - Memory statistics panel displays correctly
 - LLM input files are saved to `runs/<task_id>/debug/step_XXX_input.txt`
 - LLM output files are saved to `runs/<task_id>/debug/step_XXX_output.txt`

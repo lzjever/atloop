@@ -53,24 +53,24 @@ class TestMemoryCompressorFiltering:
         call_args = mock_llm_client.chat.complete.call_args
         compression_prompt = call_args[0][0]  # First positional argument
 
-        # ✅ Verify that current_step_thoughts is NOT in the prompt
+        # ✓ Verify that current_step_thoughts is NOT in the prompt
         assert "current_step_thoughts" not in compression_prompt
         assert "I think the error is caused by" not in compression_prompt
         assert "Let me try a different approach" not in compression_prompt
 
-        # ✅ Verify that plan is NOT in the prompt
+        # ✓ Verify that plan is NOT in the prompt
         assert '"plan"' not in compression_prompt or "Step 1" not in compression_prompt
 
-        # ✅ Verify that llm_output is NOT in the prompt
+        # ✓ Verify that llm_output is NOT in the prompt
         assert "full output" not in compression_prompt
 
-        # ✅ Verify that factual information IS in the prompt
+        # ✓ Verify that factual information IS in the prompt
         assert "step" in compression_prompt
         assert "stop_reason" in compression_prompt
         assert "actions" in compression_prompt
         assert "run" in compression_prompt or "read_file" in compression_prompt
 
-        # ✅ Verify system prompt emphasizes facts only
+        # ✓ Verify system prompt emphasizes facts only
         system_prompt = call_args[1]["system"]  # system keyword argument
         assert "事实信息" in system_prompt or "factual" in system_prompt.lower()
         assert "思考过程" in system_prompt or "thinking" in system_prompt.lower()
@@ -139,7 +139,7 @@ class TestSummarizeDecisions:
 
         summary = MemoryCompressor._summarize_decisions(decisions)
 
-        # ✅ Verify summary contains key facts
+        # ✓ Verify summary contains key facts
         assert "历史 3 个决策" in summary
         assert "共执行了" in summary
         assert "停止原因分布" in summary
@@ -168,7 +168,7 @@ class TestSummarizeDecisions:
 
         summary = MemoryCompressor._summarize_decisions(decisions)
 
-        # ✅ Verify thinking process is NOT in summary
+        # ✓ Verify thinking process is NOT in summary
         assert "current_step_thoughts" not in summary
         assert "I think the error is" not in summary
 
@@ -187,7 +187,7 @@ class TestDeduplicationLogic:
 
         signature = MemoryCompressor._get_decision_signature(decision)
 
-        # ✅ Verify signature uses current_step_thoughts
+        # ✓ Verify signature uses current_step_thoughts
         assert "Test thinking" in signature
         assert "5" in signature
         assert "continue" in signature
@@ -203,7 +203,7 @@ class TestDeduplicationLogic:
 
         signature = MemoryCompressor._get_decision_signature(decision)
 
-        # ✅ Verify signature uses thought_summary as fallback
+        # ✓ Verify signature uses thought_summary as fallback
         assert "Old format thinking" in signature
 
     def test_calculate_similarity_uses_current_step_thoughts(self):
@@ -219,7 +219,7 @@ class TestDeduplicationLogic:
 
         similarity = MemoryCompressor._calculate_similarity(decision1, decision2)
 
-        # ✅ Verify similarity calculation uses current_step_thoughts
+        # ✓ Verify similarity calculation uses current_step_thoughts
         assert similarity > 0.8  # Should be high similarity
 
     def test_calculate_similarity_backward_compatible(self):
@@ -235,7 +235,7 @@ class TestDeduplicationLogic:
 
         similarity = MemoryCompressor._calculate_similarity(decision1, decision2)
 
-        # ✅ Verify similarity calculation works with old field name
+        # ✓ Verify similarity calculation works with old field name
         assert similarity > 0.8
 
 
@@ -264,7 +264,7 @@ class TestCompressionIntegration:
         assert len(state.memory.learnings) > 0
         learning = state.memory.learnings[-1]
         
-        # ✅ Verify improved summary contains key facts
+        # ✓ Verify improved summary contains key facts
         assert "历史" in learning
         assert "停止原因分布" in learning or "验证结果" in learning or "常用工具" in learning
 

@@ -23,8 +23,8 @@ class MultiEditFileTool(BaseTool):
     - Coordinated updates that must happen together
 
     **When to use:**
-    - ✅ Need to edit multiple files atomically
-    - ✅ Changes must all succeed or all fail
+    - ✓ Need to edit multiple files atomically
+    - ✓ Changes must all succeed or all fail
     - ❌ Single file edit → use `edit_file` (simpler)
     - ❌ Independent edits → use multiple `edit_file` calls
     """

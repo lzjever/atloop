@@ -181,7 +181,7 @@ class LLMClient:
         test_results_section = ""
         if test_results:
             if verification_success is True:
-                test_status = "✅ **Tests Passed**"
+                test_status = "✓ **Tests Passed**"
                 # Guide LLM to make correct decision when verification passes
                 completion_reminder = """
 🚨 **DECISION REQUIRED**: Tests have PASSED. You must now decide:

@@ -174,7 +174,7 @@ class PlanManager:
                 step.completed_at_step = state.step
                 if notes:
                     step.notes = notes
-                logger.info(f"[PlanManager] ✅ 标记步骤完成: {step_id} - {step.description[:50]}")
+                logger.info(f"[PlanManager] ✓ 标记步骤完成: {step_id} - {step.description[:50]}")
                 return True
 
         return False
@@ -205,7 +205,7 @@ class PlanManager:
                     step.status = "in_progress"
                     step.started_at_step = state.step
                     logger.info(
-                        f"[PlanManager] 🔄 标记步骤进行中: {step_id} - {step.description[:50]}"
+                        f"[PlanManager] ↻ 标记步骤进行中: {step_id} - {step.description[:50]}"
                     )
                     return True
 
@@ -268,8 +268,8 @@ class PlanManager:
                 lines = []
                 for step in plan:
                     status_icon = {
-                        "completed": "✅",
-                        "in_progress": "🔄",
+                        "completed": "✓",
+                        "in_progress": "↻",
                         "pending": "⏳",
                         "skipped": "⏭️",
                         "failed": "❌",
@@ -283,8 +283,8 @@ class PlanManager:
                     status = step_dict.get("status", "pending")
                     description = step_dict.get("description", step_dict.get("id", "Unknown"))
                     status_icon = {
-                        "completed": "✅",
-                        "in_progress": "🔄",
+                        "completed": "✓",
+                        "in_progress": "↻",
                         "pending": "⏳",
                         "skipped": "⏭️",
                         "failed": "❌",

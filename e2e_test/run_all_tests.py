@@ -82,7 +82,7 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
         test_result.duration = duration
         
         if success:
-            print(f"✅ Test {test_num} PASSED ({duration:.1f}s)")
+            print(f"✓ Test {test_num} PASSED ({duration:.1f}s)")
         else:
             print(f"❌ Test {test_num} FAILED ({duration:.1f}s)")
             if error_msg:

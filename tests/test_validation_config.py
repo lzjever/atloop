@@ -33,7 +33,7 @@ class TestConfigValidation:
         assert config.default_budget is not None
         assert config.memory is not None
 
-        logger.info("Real config validation successful ✅")
+        logger.info("Real config validation successful ✓")
 
     def test_validation_config_structure(self, real_config_file: Path):
         """Test config structure validation."""
@@ -59,7 +59,7 @@ class TestConfigValidation:
         assert config.ai.performance.max_tokens_input > 0
         assert config.ai.performance.max_tokens_output > 0
 
-        logger.info("Config structure validation successful ✅")
+        logger.info("Config structure validation successful ✓")
 
     def test_validation_config_types(self, real_config_file: Path):
         """Test config type validation."""
@@ -79,7 +79,7 @@ class TestConfigValidation:
         assert isinstance(config.default_budget.max_llm_calls, int)
         assert isinstance(config.default_budget.max_tool_calls, int)
 
-        logger.info("Config type validation successful ✅")
+        logger.info("Config type validation successful ✓")
 
     def test_validation_config_required_fields(self, real_config_file: Path):
         """Test required fields validation."""
@@ -96,7 +96,7 @@ class TestConfigValidation:
         assert config.ai.completion.api_base is not None
         # API key might be None in some cases, but model and api_base are required
 
-        logger.info("Required fields validation successful ✅")
+        logger.info("Required fields validation successful ✓")
 
     def test_validation_config_ranges(self, real_config_file: Path):
         """Test config value ranges."""
@@ -115,7 +115,7 @@ class TestConfigValidation:
         assert config.default_budget.max_tool_calls > 0
         assert config.default_budget.max_wall_time_sec > 0
 
-        logger.info("Config value ranges validation successful ✅")
+        logger.info("Config value ranges validation successful ✓")
 
     def test_validation_config_env_overrides(self, real_config_file: Path, temp_atloop_dir: Path):
         """Test environment variable overrides."""
@@ -153,7 +153,7 @@ default_budget:
 
             # Environment variable should override file config
             assert config.ai.completion.model == "env-model"
-            logger.info("Environment variable overrides validation successful ✅")
+            logger.info("Environment variable overrides validation successful ✓")
         finally:
             # Clean up
             os.environ.pop("ATLOOP__AI__COMPLETION__MODEL", None)

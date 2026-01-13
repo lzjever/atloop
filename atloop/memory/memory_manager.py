@@ -127,7 +127,7 @@ class MemoryManager:
         """
         old_summary = state.memory.task_summary
         state.memory.task_summary = summary
-        logger.info(f"[MemoryManager] 📋 更新任务概览: {summary[:100]}...")
+        logger.info(f"[MemoryManager] ≡ 更新任务概览: {summary[:100]}...")
 
         if old_summary:
             logger.debug(f"[MemoryManager] 旧概览: {old_summary[:100]}...")

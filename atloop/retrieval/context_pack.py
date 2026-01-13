@@ -74,7 +74,7 @@ class ContextPack:
         if self.test_results:
             parts.append("## Latest Test/Verification Results")
             if self.verification_success is True:
-                parts.append("✅ **Tests Passed**")
+                parts.append("✓ **Tests Passed**")
             elif self.verification_success is False:
                 parts.append("❌ **Tests Failed**")
             else:

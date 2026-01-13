@@ -597,7 +597,7 @@ def parse_action_json(
             data = json.loads(fixed_json_str)
             is_valid, error = validate_action_json(data)
             if is_valid:
-                logger.info("[parse_action_json] ✅ 使用JSON修复成功解析")
+                logger.info("[parse_action_json] ✓ 使用JSON修复成功解析")
                 return ActionJSON.from_dict(data), None, file_contents
             else:
                 return None, error, file_contents
@@ -612,7 +612,7 @@ def parse_action_json(
             data = json.loads(repaired_json)
             is_valid, error = validate_action_json(data)
             if is_valid:
-                logger.info("[parse_action_json] ✅ 使用json-repair成功修复并解析")
+                logger.info("[parse_action_json] ✓ 使用json-repair成功修复并解析")
                 return ActionJSON.from_dict(data), None, file_contents
             else:
                 return None, error, file_contents
@@ -626,7 +626,7 @@ def parse_action_json(
             data = json5.loads(json_to_parse)
             is_valid, error = validate_action_json(data)
             if is_valid:
-                logger.info("[parse_action_json] ✅ 使用json5成功解析")
+                logger.info("[parse_action_json] ✓ 使用json5成功解析")
                 return ActionJSON.from_dict(data), None, file_contents
             else:
                 return None, error, file_contents

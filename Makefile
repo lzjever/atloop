@@ -64,7 +64,7 @@ setup-venv:
 	@echo "This is useful for CI/CD, code review, or when you only need development tools."
 	@if [ -n "$(UV)" ]; then \
 		uv sync --group docs --all-extras --no-install-project; \
-		echo "✅ Virtual environment created and dependencies installed!"; \
+		echo "✓ Virtual environment created and dependencies installed!"; \
 		echo "   To install the package later, run: make install"; \
 		echo "   Note: Some tests may fail without the package installed."; \
 	else \
@@ -86,7 +86,7 @@ dev-install:
 	else \
 		$(PIP_CMD) install -e ".[dev]"; \
 	fi
-	@echo "✅ Package and dependencies installed! Ready for development."
+	@echo "✓ Package and dependencies installed! Ready for development."
 
 test:
 	$(PYTHON_CMD) -m pytest tests/ -v

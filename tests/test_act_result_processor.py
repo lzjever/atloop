@@ -213,7 +213,7 @@ class TestToolResultFormatter:
 
         assert "Tool: load_skill" in summary
         config = ConfigLoader.get()
-        # ✅ Skill tool should use file_view limit (60KB), not other limit (2KB)
+        # ✓ Skill tool should use file_view limit (60KB), not other limit (2KB)
         # Content should be much more than 2KB limit
         assert len(summary) > 40000  # Should have significant content (at least 40KB)
         assert "Skill content:" in summary
@@ -236,7 +236,7 @@ class TestToolResultFormatter:
 
         summary = ToolResultFormatter.format_result_summary(tool, args, result)
 
-        # ✅ load_skill tool should use file_view limit (60KB), so 5KB content should be fully shown
+        # ✓ load_skill tool should use file_view limit (60KB), so 5KB content should be fully shown
         assert "This is a skill content." in summary
         # Should not be truncated to 2KB (other limit)
         # Should show most of the 5KB content

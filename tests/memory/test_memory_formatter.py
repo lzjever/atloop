@@ -31,7 +31,7 @@ class TestMemoryFormatter:
 
         overview = formatter._format_task_overview(state, task_goal="Test task")
 
-        assert "### 📋 Task Overview" in overview
+        assert "### ≡ Task Overview" in overview
         assert "Test task" in overview
         assert "**Status**" in overview
         assert "**Created Files**" in overview

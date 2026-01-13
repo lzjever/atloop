@@ -163,7 +163,7 @@ class TestCLIE2ESubprocess:
                 f"Python file {py_file} contains only comments or whitespace"
             )
 
-        logger.info(f"✅ Test passed: Created {len(python_files)} Python file(s)")
+        logger.info(f"✓ Test passed: Created {len(python_files)} Python file(s)")
 
     def test_e2e_cli_execute_create_specific_file(
         self, real_config_file: Path, test_workspace: Path
@@ -201,7 +201,7 @@ class TestCLIE2ESubprocess:
             f"File {target_file} does not contain expected 'Hello' text. Content: {content[:200]}"
         )
 
-        logger.info("✅ Test passed: Specific file created with correct content")
+        logger.info("✓ Test passed: Specific file created with correct content")
 
     def test_e2e_cli_execute_empty_workspace(self, real_config_file: Path, test_workspace: Path):
         """Test CLI execution with empty workspace."""
@@ -235,7 +235,7 @@ class TestCLIE2ESubprocess:
             f"No files were created in empty workspace. Workspace: {test_workspace}"
         )
 
-        logger.info("✅ Test passed: Files created in empty workspace")
+        logger.info("✓ Test passed: Files created in empty workspace")
 
     def test_e2e_cli_execute_existing_files_preserved(
         self, real_config_file: Path, test_workspace: Path
@@ -271,7 +271,7 @@ class TestCLIE2ESubprocess:
             f"Original: {original_content}\nCurrent: {current_content}"
         )
 
-        logger.info("✅ Test passed: Existing files preserved")
+        logger.info("✓ Test passed: Existing files preserved")
 
     def test_e2e_cli_execute_invalid_workspace(self, real_config_file: Path, tmp_path):
         """Test CLI execution with invalid/non-existent workspace."""
@@ -296,7 +296,7 @@ class TestCLIE2ESubprocess:
             f"Unexpected exit code {exit_code}. Stdout: {stdout}\nStderr: {stderr}"
         )
 
-        logger.info(f"✅ Test passed: Handled invalid workspace (exit_code={exit_code})")
+        logger.info(f"✓ Test passed: Handled invalid workspace (exit_code={exit_code})")
 
     def test_e2e_cli_execute_timeout_handling(self, real_config_file: Path, test_workspace: Path):
         """Test that timeout is properly handled."""
@@ -319,7 +319,7 @@ class TestCLIE2ESubprocess:
             f"Unexpected exit code {exit_code} for timeout test. Stdout: {stdout}\nStderr: {stderr}"
         )
 
-        logger.info(f"✅ Test passed: Timeout handled (exit_code={exit_code})")
+        logger.info(f"✓ Test passed: Timeout handled (exit_code={exit_code})")
 
     def test_e2e_cli_execute_multiple_files(self, real_config_file: Path, test_workspace: Path):
         """Test CLI execution that creates multiple files."""
@@ -356,7 +356,7 @@ class TestCLIE2ESubprocess:
             content = py_file.read_text(encoding="utf-8")
             assert len(content) > 0, f"File {py_file} is empty"
 
-        logger.info(f"✅ Test passed: Created {len(python_files)} Python files")
+        logger.info(f"✓ Test passed: Created {len(python_files)} Python files")
 
     def test_e2e_cli_execute_with_syntax_error_handling(
         self, real_config_file: Path, test_workspace: Path
@@ -389,7 +389,7 @@ class TestCLIE2ESubprocess:
             except Exception as e:
                 pytest.fail(f"Failed to read created file {py_file}: {e}")
 
-        logger.info("✅ Test passed: Syntax error handling works")
+        logger.info("✓ Test passed: Syntax error handling works")
 
     def test_e2e_cli_execute_output_validation(self, real_config_file: Path, test_workspace: Path):
         """Test that CLI output contains expected information."""
@@ -423,7 +423,7 @@ class TestCLIE2ESubprocess:
                 "Successful execution should produce output or create files"
             )
 
-        logger.info("✅ Test passed: Output validation works")
+        logger.info("✓ Test passed: Output validation works")
 
     def test_e2e_cli_execute_workspace_permissions(
         self, real_config_file: Path, test_workspace: Path
@@ -450,7 +450,7 @@ class TestCLIE2ESubprocess:
             f"Stdout: {stdout}\nStderr: {stderr}"
         )
 
-        logger.info("✅ Test passed: Workspace permissions handled correctly")
+        logger.info("✓ Test passed: Workspace permissions handled correctly")
 
     def test_e2e_cli_execute_file_creation_despite_error(
         self, real_config_file: Path, test_workspace: Path
@@ -505,4 +505,4 @@ class TestCLIE2ESubprocess:
                 f"Files present: {list(test_workspace.iterdir())}"
             )
 
-        logger.info("✅ Test passed: File creation validation works")
+        logger.info("✓ Test passed: File creation validation works")

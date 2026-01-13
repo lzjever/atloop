@@ -15,10 +15,10 @@ class EditFileTool(BaseTool):
     **⚠️ This is the preferred tool for modifying existing files!**
 
     **Why use edit_file instead of write_file:**
-    - ✅ More precise: Only modifies the specified part
-    - ✅ Safer: Doesn't risk overwriting unrelated code
-    - ✅ More efficient: No need to read and rewrite entire file
-    - ✅ Better for local modifications: Functions, classes, paragraphs, etc.
+    - ✓ More precise: Only modifies the specified part
+    - ✓ Safer: Doesn't risk overwriting unrelated code
+    - ✓ More efficient: No need to read and rewrite entire file
+    - ✓ Better for local modifications: Functions, classes, paragraphs, etc.
 
     **⚠️ CRITICAL: Do NOT generate code with {variable} patterns**: Patterns like `{error_output}`,
     `{variable}`, etc. will be written literally to the file and will NOT be populated by shell

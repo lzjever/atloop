@@ -54,18 +54,18 @@ def create_sample_state(
         ]
     elif stage == "mid":
         memory.plan = [
-            "✅ 检查当前目录和Python环境",
-            "✅ 检查必要的Python库",
-            "✅ 创建数据生成脚本",
+            "✓ 检查当前目录和Python环境",
+            "✓ 检查必要的Python库",
+            "✓ 创建数据生成脚本",
             "创建绘图脚本",
             "运行脚本生成图表",
         ]
     else:  # late
         memory.plan = [
-            "✅ 检查当前目录和Python环境",
-            "✅ 检查必要的Python库",
-            "✅ 创建数据生成脚本",
-            "✅ 创建绘图脚本",
+            "✓ 检查当前目录和Python环境",
+            "✓ 检查必要的Python库",
+            "✓ 创建数据生成脚本",
+            "✓ 创建绘图脚本",
             "运行脚本生成图表",
             "验证图表生成",
         ]

@@ -69,7 +69,7 @@ def test_subtract():
         # Verify files exist
         assert calc_file.exists()
         assert test_file.exists()
-        logger.info("Calculator bugfix scenario setup successful ✅")
+        logger.info("Calculator bugfix scenario setup successful ✓")
 
 
 class TestE2EPythonProjectSetup:
@@ -117,7 +117,7 @@ class TestE2EPythonProjectSetup:
         assert (temp_workspace / "src" / "mypackage" / "module.py").exists()
         assert (temp_workspace / "tests" / "test_module.py").exists()
         assert (temp_workspace / "pyproject.toml").exists()
-        logger.info("Python project setup scenario successful ✅")
+        logger.info("Python project setup scenario successful ✓")
 
 
 class TestE2ENodeJSProjectSetup:
@@ -156,7 +156,7 @@ class TestE2ENodeJSProjectSetup:
         # Verify project structure
         assert (temp_workspace / "src" / "index.js").exists()
         assert (temp_workspace / "package.json").exists()
-        logger.info("Node.js project setup scenario successful ✅")
+        logger.info("Node.js project setup scenario successful ✓")
 
 
 class TestE2EGoProjectSetup:
@@ -195,7 +195,7 @@ class TestE2EGoProjectSetup:
         # Verify project structure
         assert (temp_workspace / "cmd" / "myapp" / "main.go").exists()
         assert (temp_workspace / "go.mod").exists()
-        logger.info("Go project setup scenario successful ✅")
+        logger.info("Go project setup scenario successful ✓")
 
 
 class TestE2EMultiLanguageProject:
@@ -236,7 +236,7 @@ class TestE2EMultiLanguageProject:
         assert (temp_workspace / "python" / "app.py").exists()
         assert (temp_workspace / "javascript" / "app.js").exists()
         assert (temp_workspace / "go" / "app.go").exists()
-        logger.info("Multi-language project scenario successful ✅")
+        logger.info("Multi-language project scenario successful ✓")
 
 
 class TestE2ELargeCodebase:
@@ -272,7 +272,7 @@ class TestE2ELargeCodebase:
         # Verify files exist
         files = list(temp_workspace.glob("module_*.py"))
         assert len(files) == 20
-        logger.info("Large codebase scenario successful ✅")
+        logger.info("Large codebase scenario successful ✓")
 
 
 class TestE2EComplexRefactoring:
@@ -323,4 +323,4 @@ result = old_function()
         # Verify files exist
         assert (temp_workspace / "old_module.py").exists()
         assert (temp_workspace / "consumer.py").exists()
-        logger.info("Complex refactoring scenario successful ✅")
+        logger.info("Complex refactoring scenario successful ✓")

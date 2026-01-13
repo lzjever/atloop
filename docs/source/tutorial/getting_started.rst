@@ -58,7 +58,7 @@ Check the result:
 .. code-block:: python
 
    if result["status"] == "success":
-       print(f"✅ Task completed in {result['step']} steps")
+       print(f"✓ Task completed in {result['step']} steps")
        # Review the diff
        print(result.get('diff', ''))
    else:

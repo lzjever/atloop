@@ -61,7 +61,7 @@ class MemorySummarizer:
             if state.memory.milestones:
                 long_term_parts.append(f"Milestones:{len(state.memory.milestones)}")
             if long_term_parts:
-                parts.append(f"📋 {' | '.join(long_term_parts)}")
+                parts.append(f"≡ {' | '.join(long_term_parts)}")
 
         # Last error (if any, very brief)
         if state.last_error.summary:
@@ -116,7 +116,7 @@ class MemorySummarizer:
 
         # Long-term memory: Task summary (shown first, persists across steps)
         if state.memory.task_summary:
-            parts.append("## 📋 Task Overview (Long-term Memory)")
+            parts.append("## ≡ Task Overview (Long-term Memory)")
             parts.append(state.memory.task_summary)
             parts.append("")
 
@@ -342,7 +342,7 @@ class MemorySummarizer:
                 or "file" in task_goal_lower
                 or "python" in task_goal_lower
             ):
-                parts.insert(0, "\n## ✅ Task Completion Status")
+                parts.insert(0, "\n## ✓ Task Completion Status")
                 parts.insert(1, f"**Task Goal**: {task_goal}")
                 parts.insert(2, f"**Created Files**: {', '.join(state.memory.created_files)}")
                 parts.insert(3, "")
@@ -361,7 +361,7 @@ class MemorySummarizer:
             parts.insert(0, "\n## ⚠️⚠️⚠️ Created Files (CRITICAL: Do NOT recreate!)")
             parts.insert(1, f"**{len(state.memory.created_files)} files created**:")
             for i, file_path in enumerate(state.memory.created_files[-20:], 1):  # Last 20 files
-                parts.insert(1 + i, f"- ✅ {file_path}")
+                parts.insert(1 + i, f"- ✓ {file_path}")
             if len(state.memory.created_files) > 20:
                 parts.insert(
                     1 + len(state.memory.created_files[-20:]) + 1,

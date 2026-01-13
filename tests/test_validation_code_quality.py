@@ -24,7 +24,7 @@ class TestCodeQualityValidation:
         line_count = len(code_lines)
 
         assert line_count < 50, f"AgentLoop should be < 50 lines, got {line_count}"
-        logger.info(f"AgentLoop size: {line_count} lines ✅")
+        logger.info(f"AgentLoop size: {line_count} lines ✓")
 
     def test_validation_cli_main_size(self):
         """Test CLI main < 100 lines."""
@@ -38,7 +38,7 @@ class TestCodeQualityValidation:
         line_count = len(code_lines)
 
         assert line_count < 100, f"CLI main should be < 100 lines, got {line_count}"
-        logger.info(f"CLI main size: {line_count} lines ✅")
+        logger.info(f"CLI main size: {line_count} lines ✓")
 
     def test_validation_module_sizes(self):
         """Test all modules < 300 lines."""
@@ -66,7 +66,7 @@ class TestCodeQualityValidation:
             # Report but don't fail (some files may legitimately be larger)
             logger.warning(f"Large files found: {[(str(f), n) for f, n in large_files]}")
         else:
-            logger.info("All modules < 300 lines ✅")
+            logger.info("All modules < 300 lines ✓")
 
     def test_validation_no_chinese_text(self):
         """Test no Chinese text in code."""
@@ -102,7 +102,7 @@ class TestCodeQualityValidation:
             logger.warning(f"Files with Chinese text: {files_with_chinese[:5]}")
             # Don't fail, just warn (some comments might still have Chinese)
         else:
-            logger.info("No Chinese text in code ✅")
+            logger.info("No Chinese text in code ✓")
 
     def test_validation_english_logs(self):
         """Test all log messages are in English."""
@@ -125,7 +125,7 @@ class TestCodeQualityValidation:
         if files_with_chinese_logs:
             logger.warning(f"Files with Chinese in logs: {files_with_chinese_logs[:5]}")
         else:
-            logger.info("All log messages in English ✅")
+            logger.info("All log messages in English ✓")
 
     def test_validation_type_hints(self):
         """Test type hints coverage (basic check)."""
@@ -161,7 +161,7 @@ class TestCodeQualityValidation:
                 coverage = len(functions_with_hints) / len(functions) if functions else 0
                 logger.info(f"Type hints coverage in {file_path}: {coverage:.1%}")
 
-        logger.info("Type hints validation completed ✅")
+        logger.info("Type hints validation completed ✓")
 
     def test_validation_docstrings(self):
         """Test docstring coverage (basic check)."""
@@ -198,7 +198,7 @@ class TestCodeQualityValidation:
                 func_coverage = len(functions_with_docs) / len(functions)
                 logger.info(f"Function docstring coverage in {file_path}: {func_coverage:.1%}")
 
-        logger.info("Docstring validation completed ✅")
+        logger.info("Docstring validation completed ✓")
 
 
 class TestFunctionalityValidation:
@@ -210,7 +210,7 @@ class TestFunctionalityValidation:
         # Should have only one workflow implementation
         assert len(workflow_files) >= 1, "Should have at least one workflow file"
         logger.info(f"Workflow files: {[str(f) for f in workflow_files]}")
-        logger.info("Single workflow implementation ✅")
+        logger.info("Single workflow implementation ✓")
 
     def test_validation_single_execution_method(self):
         """Test only one execution method."""
@@ -222,7 +222,7 @@ class TestFunctionalityValidation:
         # Count run methods (should be only one)
         run_methods = re.findall(r"def run\(", content)
         assert len(run_methods) == 1, f"Should have only one run() method, found {len(run_methods)}"
-        logger.info("Single execution method ✅")
+        logger.info("Single execution method ✓")
 
     def test_validation_varlord_usage(self):
         """Test varlord usage in lib/api."""
@@ -233,7 +233,7 @@ class TestFunctionalityValidation:
 
         assert "from varlord import" in content, "ConfigLoader should use varlord"
         assert "get_global_config" in content, "ConfigLoader should use get_global_config"
-        logger.info("Varlord usage in lib/api ✅")
+        logger.info("Varlord usage in lib/api ✓")
 
     def test_validation_prompt_templates(self):
         """Test prompt templates exist (English version)."""
@@ -245,7 +245,7 @@ class TestFunctionalityValidation:
 
         assert system_prompt.exists(), "system.txt should exist"
         assert developer_prompt.exists(), "developer.txt should exist"
-        logger.info("Prompt templates (English) exist ✅")
+        logger.info("Prompt templates (English) exist ✓")
 
     def test_validation_rich_logging(self):
         """Test rich debug logging exists."""
@@ -267,7 +267,7 @@ class TestFunctionalityValidation:
             assert "logger.debug" in content, f"{file_path} should have debug logging"
             assert "logging.getLogger" in content, f"{file_path} should use logging"
 
-        logger.info("Rich debug logging exists ✅")
+        logger.info("Rich debug logging exists ✓")
 
     def test_validation_config_loader_usage(self):
         """Test ConfigLoader usage pattern."""
@@ -279,4 +279,4 @@ class TestFunctionalityValidation:
         assert "def get(" in content, "ConfigLoader should provide get() method"
         assert "def setup(" in content, "ConfigLoader should provide setup() method"
         assert "class ConfigLoader" in content, "ConfigLoader class should exist"
-        logger.info("ConfigLoader usage pattern ✅")
+        logger.info("ConfigLoader usage pattern ✓")

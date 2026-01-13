@@ -45,7 +45,7 @@ class TestE2ESimpleWrite:
         assert coordinator.tool_runtime is not None
         assert coordinator.tool_runtime.registry is not None
 
-        logger.info("Simple write scenario setup successful ✅")
+        logger.info("Simple write scenario setup successful ✓")
 
     def test_e2e_simple_write_tool_execution(self, real_config_file: Path, temp_workspace: Path):
         """Test tool execution in simple write scenario."""
@@ -88,7 +88,7 @@ class TestE2ESimpleWrite:
             logger.info(f"Tool execution result: success={result.get('success')}")
             assert "success" in result
             assert result.get("tool") == "write_file"
-            logger.info("Tool execution test successful ✅")
+            logger.info("Tool execution test successful ✓")
         except AttributeError as e:
             if "execute_tool" in str(e):
                 pytest.fail(
@@ -138,4 +138,4 @@ class TestE2ESimpleWrite:
             # Test that we can access registry.execute
             assert hasattr(coordinator.tool_runtime.registry, "execute")
 
-            logger.info("Full workflow setup test successful ✅")
+            logger.info("Full workflow setup test successful ✓")

@@ -23,8 +23,8 @@ class WriteFileTool(BaseTool):
       f-strings, format(), etc.)
 
     **When to use write_file vs edit_file:**
-    - ✅ Creating a new file → use `write_file`
-    - ✅ Completely rewriting a file → use `write_file`
+    - ✓ Creating a new file → use `write_file`
+    - ✓ Completely rewriting a file → use `write_file`
     - ❌ Modifying a function/class → use `edit_file` (more precise and safer)
     - ❌ Adding/removing a few lines → use `edit_file` (more precise and safer)
 
@@ -77,8 +77,8 @@ class WriteFileTool(BaseTool):
         all existing content will be replaced with the new content.
 
         **When to use this tool:**
-        - ✅ Creating a new file
-        - ✅ Completely rewriting an existing file
+        - ✓ Creating a new file
+        - ✓ Completely rewriting an existing file
         - ❌ Modifying part of a file → use `edit_file` instead
         - ❌ Appending content → use `append_file` instead
 

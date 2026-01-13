@@ -53,7 +53,7 @@ def test_add():
         assert coordinator is not None
         assert coordinator.task_spec.task_id == "e2e-bugfix-001"
         assert coordinator.state_manager.agent_state.phase == "DISCOVER"
-        logger.info("E2E bugfix setup successful ✅")
+        logger.info("E2E bugfix setup successful ✓")
 
     def test_e2e_simple_feature_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for simple feature scenario."""
@@ -78,7 +78,7 @@ def test_add():
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
         assert coordinator.task_spec.goal == "Implement a simple feature"
-        logger.info("E2E feature setup successful ✅")
+        logger.info("E2E feature setup successful ✓")
 
     def test_e2e_simple_refactor_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for simple refactor scenario."""
@@ -103,7 +103,7 @@ def test_add():
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
         assert coordinator.task_spec.goal == "Refactor code to improve structure"
-        logger.info("E2E refactor setup successful ✅")
+        logger.info("E2E refactor setup successful ✓")
 
     def test_e2e_multi_file_edit_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup for multi-file editing scenario."""
@@ -136,7 +136,7 @@ def test_add():
         # Verify workspace has files
         files = list(temp_workspace.glob("*.py"))
         assert len(files) >= 3
-        logger.info("E2E multi-file edit setup successful ✅")
+        logger.info("E2E multi-file edit setup successful ✓")
 
     def test_e2e_with_tests_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E setup with test execution."""
@@ -169,7 +169,7 @@ def test_add():
         # Initialize coordinator
         coordinator = WorkflowCoordinator(task_spec, config)
         assert coordinator is not None
-        logger.info("E2E with tests setup successful ✅")
+        logger.info("E2E with tests setup successful ✓")
 
     def test_e2e_error_scenarios(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E error scenario handling."""
@@ -197,7 +197,7 @@ def test_add():
         state = coordinator.state_manager.agent_state
         assert state.last_error is not None
         assert state.last_error.summary == ""
-        logger.info("E2E error scenarios setup successful ✅")
+        logger.info("E2E error scenarios setup successful ✓")
 
     def test_e2e_budget_exhaustion_setup(self, real_config_file: Path, temp_workspace: Path):
         """Test E2E budget exhaustion scenario."""
@@ -224,7 +224,7 @@ def test_add():
         # Verify budget is set correctly
         assert coordinator.budget_manager.budget.max_llm_calls == 1
         assert coordinator.budget_manager.budget.max_tool_calls == 1
-        logger.info("E2E budget exhaustion setup successful ✅")
+        logger.info("E2E budget exhaustion setup successful ✓")
 
     def test_e2e_state_recovery_setup(
         self, real_config_file: Path, temp_workspace: Path, temp_atloop_dir: Path
@@ -279,7 +279,7 @@ runs_dir: runs
         # Verify state recovery
         assert coordinator2.state_manager.agent_state.step == 10
         assert coordinator2.state_manager.agent_state.phase == "ACT"
-        logger.info("E2E state recovery setup successful ✅")
+        logger.info("E2E state recovery setup successful ✓")
 
 
 class TestE2ETaskRunner:
@@ -309,7 +309,7 @@ class TestE2ETaskRunner:
         # Verify config can be loaded
         config = ConfigLoader.get()
         assert config is not None
-        logger.info("TaskRunner E2E initialization successful ✅")
+        logger.info("TaskRunner E2E initialization successful ✓")
 
     def test_e2e_task_runner_config_validation(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner config validation."""
@@ -332,4 +332,4 @@ class TestE2ETaskRunner:
         invalid_config = {"goal": "Test"}
         assert "workspace_root" not in invalid_config
 
-        logger.info("TaskRunner config validation successful ✅")
+        logger.info("TaskRunner config validation successful ✓")

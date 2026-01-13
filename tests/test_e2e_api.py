@@ -43,7 +43,7 @@ class TestAPIE2E:
 
         # Note: Actual execution would require sandbox/LLM
         # This test just verifies the setup works
-        logger.info("TaskRunner E2E setup successful ✅")
+        logger.info("TaskRunner E2E setup successful ✓")
 
     def test_e2e_custom_config(
         self, real_config_file: Path, temp_workspace: Path, temp_atloop_dir: Path
@@ -83,7 +83,7 @@ default_budget:
         # Verify custom config loaded
         config = ConfigLoader.get()
         assert config.ai.completion.model == "test-model"
-        logger.info("TaskRunner custom config E2E successful ✅")
+        logger.info("TaskRunner custom config E2E successful ✓")
 
     def test_e2e_sandbox_override(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner with sandbox override end-to-end."""
@@ -108,7 +108,7 @@ default_budget:
         # Verify config structure
         assert "sandbox" in task_config
         assert task_config["sandbox"]["local_test"] is True
-        logger.info("TaskRunner sandbox override E2E successful ✅")
+        logger.info("TaskRunner sandbox override E2E successful ✓")
 
     def test_e2e_error_handling(self, real_config_file: Path, temp_workspace: Path):
         """Test TaskRunner error handling end-to-end."""
@@ -126,4 +126,4 @@ default_budget:
         # (Actual execution would fail, but setup should work)
         config = ConfigLoader.get()
         assert config is not None
-        logger.info("TaskRunner error handling E2E successful ✅")
+        logger.info("TaskRunner error handling E2E successful ✓")

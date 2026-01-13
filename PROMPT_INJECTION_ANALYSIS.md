@@ -155,11 +155,11 @@ The `developer.txt` prompt has two main sections:
 
 ### Strengths
 
-✅ **Clear Separation**: Static instructions vs. dynamic context
-✅ **Memory Integration**: Comprehensive memory summary via `{STATE_SUMMARY}`
-✅ **Context Rich**: Multiple context sources (project profile, relevant files, errors, diffs, tests)
-✅ **Feedback Loop Prevention**: Memory intentionally excludes LLM's own thoughts to prevent circular reasoning
-✅ **Critical Warnings**: Created files warning is prominently placed in memory
+✓ **Clear Separation**: Static instructions vs. dynamic context
+✓ **Memory Integration**: Comprehensive memory summary via `{STATE_SUMMARY}`
+✓ **Context Rich**: Multiple context sources (project profile, relevant files, errors, diffs, tests)
+✓ **Feedback Loop Prevention**: Memory intentionally excludes LLM's own thoughts to prevent circular reasoning
+✓ **Critical Warnings**: Created files warning is prominently placed in memory
 
 ### Potential Issues
 
@@ -289,7 +289,7 @@ Since memory can be large, add guidance on how to navigate it:
 
 **Partially Yes, but with room for improvement:**
 
-✅ **What Works Well**:
+✓ **What Works Well**:
 - Comprehensive memory injection via `{STATE_SUMMARY}`
 - Rich context from multiple sources
 - Clear static instructions
@@ -310,9 +310,9 @@ Since memory can be large, add guidance on how to navigate it:
 ### System Design Alignment
 
 The current prompt design **aligns well** with the system's memory architecture:
-- ✅ Memory summarizer provides comprehensive context
-- ✅ Memory excludes LLM thoughts (prevents feedback loops)
-- ✅ Multiple context sources are integrated
-- ✅ Critical warnings (created files) are prominently placed
+- ✓ Memory summarizer provides comprehensive context
+- ✓ Memory excludes LLM thoughts (prevents feedback loops)
+- ✓ Multiple context sources are integrated
+- ✓ Critical warnings (created files) are prominently placed
 
 The main gap is **explicit guidance** on how the LLM should interpret and use the memory structure, which could improve decision-making quality.

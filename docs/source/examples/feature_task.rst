@@ -33,7 +33,7 @@ Example: Add Authentication
    result = runner.execute(task)
 
    if result["status"] == "success":
-       print("✅ Feature implemented!")
+       print("✓ Feature implemented!")
        print(f"Files created: {result.get('created_files', [])}")
        print(f"Files modified: {result.get('modified_files', [])}")
    else:

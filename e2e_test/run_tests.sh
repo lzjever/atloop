@@ -34,7 +34,7 @@ for i in {1..10}; do
     
     # Run test
     if uv run atloopc execute --workspace "./$TEST_DIR" --prompt-file "./$PROMPT_FILE" --local-test 2>&1 | tee "test_${i}_output.log"; then
-        echo "✅ Test $i: PASSED"
+        echo "✓ Test $i: PASSED"
         PASSED=$((PASSED + 1))
     else
         echo "❌ Test $i: FAILED"

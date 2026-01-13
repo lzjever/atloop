@@ -33,7 +33,7 @@ Example: Refactor Legacy Code
    result = runner.execute(task)
 
    if result["status"] == "success":
-       print("✅ Refactoring complete!")
+       print("✓ Refactoring complete!")
        print(f"Refactored files: {result.get('modified_files', [])}")
    else:
        print(f"❌ Refactoring failed: {result.get('reason')}")

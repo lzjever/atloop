@@ -32,7 +32,7 @@ Example: Fix Failing Tests
    result = runner.execute(task)
 
    if result["status"] == "success":
-       print("✅ All tests fixed!")
+       print("✓ All tests fixed!")
        print(f"Modified files: {result.get('modified_files', [])}")
    else:
        print(f"❌ Fix failed: {result.get('reason')}")

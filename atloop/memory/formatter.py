@@ -96,7 +96,7 @@ class ToolResultFormatter:
         # 添加状态信息（符合设计文档格式）
         exit_code = result.get("exit_code", -1)
         if ok:
-            status_text = "✅ **Status**: Success"
+            status_text = "✓ **Status**: Success"
             if exit_code != -1 and exit_code != 0:
                 status_text += f" - Exit Code: {exit_code}"
         else:
@@ -326,7 +326,7 @@ class MemoryFormatter:
         parts = ["### ⚠️ Critical Warnings"]
         parts.append("🚨 **DO NOT recreate these files**:")
         for file_path in state.memory.created_files[-20:]:  # Last 20 files
-            parts.append(f"- ✅ `{file_path}`")
+            parts.append(f"- ✓ `{file_path}`")
         if len(state.memory.created_files) > 20:
             parts.append(f"... ({len(state.memory.created_files) - 20} more files)")
 
@@ -336,7 +336,7 @@ class MemoryFormatter:
         self, state: "AgentState", task_goal: Optional[str] = None
     ) -> str:
         """格式化任务概览"""
-        parts = ["### 📋 Task Overview"]
+        parts = ["### ≡ Task Overview"]
 
         if task_goal:
             parts.append(f"**Goal**: {task_goal}")
@@ -439,7 +439,7 @@ class MemoryFormatter:
 
     def _get_current_plan_item(self, state: "AgentState") -> Optional[str]:
         """
-        Get the current plan item being executed (marked with 🔄).
+        Get the current plan item being executed (marked with ↻).
         
         Args:
             state: AgentState instance
@@ -459,9 +459,9 @@ class MemoryFormatter:
             # Handle list of strings (with emoji markers)
             if isinstance(first_item, str):
                 for item in plan:
-                    if "🔄" in str(item):
+                    if "↻" in str(item):
                         # Remove emoji markers and return clean description
-                        clean_item = str(item).replace("🔄", "").replace("✅", "").replace("📋", "").strip()
+                        clean_item = str(item).replace("↻", "").replace("✓", "").replace("≡", "").strip()
                         return clean_item if clean_item else None
             
             # Handle PlanStep objects or dicts
@@ -493,8 +493,8 @@ class MemoryFormatter:
         elif isinstance(plan, str):
             lines = plan.split("\n")
             for line in lines:
-                if "🔄" in line:
-                    clean_line = line.replace("🔄", "").replace("✅", "").replace("📋", "").strip()
+                if "↻" in line:
+                    clean_line = line.replace("↻", "").replace("✓", "").replace("≡", "").strip()
                     return clean_line if clean_line else None
         
         return None
@@ -521,7 +521,7 @@ class MemoryFormatter:
                 # Add current plan item if available
                 step_entry = f"- Step {step}: [{tools_str}] → {stop_reason}"
                 if current_plan_item:
-                    step_entry += f" (🔄 {current_plan_item})"
+                    step_entry += f" (↻ {current_plan_item})"
                 parts.append(step_entry)
         else:
             parts.append("**Steps**: (无)")
@@ -663,7 +663,7 @@ class MemoryFormatter:
         # Check if files were created
         if state.memory.created_files:
             latest_file = state.memory.created_files[-1]
-            guidance_parts.append(f"✅ **Latest File Created**: `{latest_file}`")
+            guidance_parts.append(f"✓ **Latest File Created**: `{latest_file}`")
 
         # Check execution plan progress
         if state.memory.plan:
@@ -671,8 +671,8 @@ class MemoryFormatter:
 
             plan_str = PlanManager.plan_to_string(state.memory.plan)
             if plan_str:
-                # Count completed steps (marked with ✅)
-                completed = plan_str.count("✅")
+                # Count completed steps (marked with ✓)
+                completed = plan_str.count("✓")
                 total = len([line for line in plan_str.split("\n") if line.strip()])
                 if completed > 0:
                     guidance_parts.append(f"📊 **Progress**: {completed}/{total} steps completed")
@@ -691,7 +691,7 @@ class MemoryFormatter:
             ok = result.get("ok", False)
 
             if tool_name == "run" and ok:
-                guidance_parts.append("✅ **Last Command Successful**: Continue with next step")
+                guidance_parts.append("✓ **Last Command Successful**: Continue with next step")
             elif not ok:
                 guidance_parts.append("❌ **Last Command Failed**: Review error and fix")
 

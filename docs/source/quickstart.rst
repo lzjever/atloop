@@ -47,7 +47,7 @@ Using the Python API
 
    # Review results
    if result["status"] == "success":
-       print(f"✅ Task completed in {result['step']} steps")
+       print(f"✓ Task completed in {result['step']} steps")
        print(f"📝 Diff:\n{result['diff']}")
        print(f"📊 Budget used: {result['budget_used']}")
    else:

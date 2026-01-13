@@ -136,7 +136,7 @@ uv run atloopc execute \
 +---------------------------------------------+----------------+
 | 🧠 LONG-TERM MEMORY (Validated Information) |          Value |
 +---------------------------------------------+----------------+
-| 📋 Plan                                     | list (3 items) |
+| ≡ Plan                                     | list (3 items) |
 | 📝 Task Summary                             |      250 chars |
 | ⭐ Important Decisions                      |              1 |
 | 🏆 Milestones                               |              1 |

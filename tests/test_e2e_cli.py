@@ -33,7 +33,7 @@ class TestCLIE2E:
         # Execute init command
         result = cmd_init(args)
         assert result == 0
-        logger.info("CLI init E2E successful ✅")
+        logger.info("CLI init E2E successful ✓")
 
     def test_cli_e2e_config(self, real_config_file: Path):
         """Test CLI config command end-to-end."""
@@ -51,7 +51,7 @@ class TestCLIE2E:
         # Execute config command
         result = cmd_config(args)
         assert result == 0
-        logger.info("CLI config E2E successful ✅")
+        logger.info("CLI config E2E successful ✓")
 
     def test_cli_e2e_execute_simple(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command with simple task."""
@@ -79,7 +79,7 @@ class TestCLIE2E:
             result = cmd_execute(args)
             # Accept both success (0) and failure (1) as valid for this test
             assert result in [0, 1]
-            logger.info("CLI execute simple E2E completed ✅")
+            logger.info("CLI execute simple E2E completed ✓")
         except Exception as e:
             # Expected if dependencies are not available
             logger.debug(f"CLI execute failed (expected): {e}")
@@ -112,7 +112,7 @@ class TestCLIE2E:
         try:
             result = cmd_execute(args)
             assert result in [0, 1]
-            logger.info("CLI execute with file E2E completed ✅")
+            logger.info("CLI execute with file E2E completed ✓")
         except Exception as e:
             logger.debug(f"CLI execute failed (expected): {e}")
             pytest.skip(f"CLI execute requires sandbox/LLM: {e}")
@@ -139,7 +139,7 @@ class TestCLIE2E:
         # Verify args are set correctly
         assert args.sandbox_url == "http://127.0.0.1:8080"
         assert args.local_test is False
-        logger.info("CLI execute with sandbox E2E setup successful ✅")
+        logger.info("CLI execute with sandbox E2E setup successful ✓")
 
     def test_cli_e2e_execute_local_test(self, real_config_file: Path, temp_workspace: Path):
         """Test CLI execute command in local test mode."""
@@ -162,7 +162,7 @@ class TestCLIE2E:
 
         # Verify local_test is set
         assert args.local_test is True
-        logger.info("CLI execute local test E2E setup successful ✅")
+        logger.info("CLI execute local test E2E setup successful ✓")
 
     def test_cli_e2e_config_display(self, real_config_file: Path):
         """Test CLI config display end-to-end."""
@@ -180,7 +180,7 @@ class TestCLIE2E:
         # Execute config command
         result = cmd_config(args)
         assert result == 0
-        logger.info("CLI config display E2E successful ✅")
+        logger.info("CLI config display E2E successful ✓")
 
 
 class TestCLIArgumentParsing:
@@ -194,7 +194,7 @@ class TestCLIArgumentParsing:
         args = parser.parse_args(["init"])
 
         assert args.command == "init"
-        logger.info("CLI parser init command successful ✅")
+        logger.info("CLI parser init command successful ✓")
 
     def test_cli_parser_execute(self):
         """Test CLI parser for execute command."""
@@ -216,7 +216,7 @@ class TestCLIArgumentParsing:
         assert args.workspace == "/tmp/test"
         assert args.prompt == "Test task"
         assert args.local_test is True
-        logger.info("CLI parser execute command successful ✅")
+        logger.info("CLI parser execute command successful ✓")
 
     def test_cli_parser_config(self):
         """Test CLI parser for config command."""
@@ -226,4 +226,4 @@ class TestCLIArgumentParsing:
         args = parser.parse_args(["config"])
 
         assert args.command == "config"
-        logger.info("CLI parser config command successful ✅")
+        logger.info("CLI parser config command successful ✓")

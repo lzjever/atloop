@@ -46,7 +46,7 @@ class TestWorkflowPhaseTransitions:
         state = coordinator.state_manager.agent_state
         assert state.phase == "DISCOVER"
         assert coordinator.state_machine.current_phase == Phase.DISCOVER
-        logger.info("Workflow starts in DISCOVER phase ✅")
+        logger.info("Workflow starts in DISCOVER phase ✓")
 
     def test_workflow_phase_transition_discover_to_plan(
         self, real_config_file: Path, temp_workspace: Path
@@ -79,7 +79,7 @@ class TestWorkflowPhaseTransitions:
         # Verify transition
         assert coordinator.state_machine.current_phase == Phase.PLAN
         assert coordinator.state_manager.agent_state.phase == "PLAN"
-        logger.info("DISCOVER -> PLAN transition successful ✅")
+        logger.info("DISCOVER -> PLAN transition successful ✓")
 
     def test_workflow_phase_transition_plan_to_act(
         self, real_config_file: Path, temp_workspace: Path
@@ -114,7 +114,7 @@ class TestWorkflowPhaseTransitions:
         # Verify transition
         assert coordinator.state_machine.current_phase == Phase.ACT
         assert coordinator.state_manager.agent_state.phase == "ACT"
-        logger.info("PLAN -> ACT transition successful ✅")
+        logger.info("PLAN -> ACT transition successful ✓")
 
     def test_workflow_phase_transition_act_to_verify(
         self, real_config_file: Path, temp_workspace: Path
@@ -151,7 +151,7 @@ class TestWorkflowPhaseTransitions:
         # Verify transition
         assert coordinator.state_machine.current_phase == Phase.VERIFY
         assert coordinator.state_manager.agent_state.phase == "VERIFY"
-        logger.info("ACT -> VERIFY transition successful ✅")
+        logger.info("ACT -> VERIFY transition successful ✓")
 
     def test_workflow_phase_transition_verify_to_discover(
         self, real_config_file: Path, temp_workspace: Path
@@ -190,7 +190,7 @@ class TestWorkflowPhaseTransitions:
         # Verify transition
         assert coordinator.state_machine.current_phase == Phase.DISCOVER
         assert coordinator.state_manager.agent_state.phase == "DISCOVER"
-        logger.info("VERIFY -> DISCOVER transition successful ✅")
+        logger.info("VERIFY -> DISCOVER transition successful ✓")
 
 
 class TestWorkflowBudgetTracking:
@@ -227,7 +227,7 @@ class TestWorkflowBudgetTracking:
         # Check initial budget usage
         assert coordinator.budget_manager.budget_used.llm_calls == 0
         assert coordinator.budget_manager.budget_used.tool_calls == 0
-        logger.info("Budget initialization successful ✅")
+        logger.info("Budget initialization successful ✓")
 
     def test_workflow_budget_tracking_llm_calls(self, real_config_file: Path, temp_workspace: Path):
         """Test budget tracking for LLM calls."""
@@ -259,7 +259,7 @@ class TestWorkflowBudgetTracking:
         within_budget, msg = coordinator.budget_manager.check_llm_calls()
         assert within_budget is True
         assert coordinator.budget_manager.budget_used.llm_calls == 3
-        logger.info("LLM budget tracking successful ✅")
+        logger.info("LLM budget tracking successful ✓")
 
     def test_workflow_budget_tracking_tool_calls(
         self, real_config_file: Path, temp_workspace: Path
@@ -293,7 +293,7 @@ class TestWorkflowBudgetTracking:
         within_budget, msg = coordinator.budget_manager.check_tool_calls()
         assert within_budget is True
         assert coordinator.budget_manager.budget_used.tool_calls == 20
-        logger.info("Tool budget tracking successful ✅")
+        logger.info("Tool budget tracking successful ✓")
 
     def test_workflow_budget_exhaustion(self, real_config_file: Path, temp_workspace: Path):
         """Test budget exhaustion detection."""
@@ -322,7 +322,7 @@ class TestWorkflowBudgetTracking:
         within_budget, msg = coordinator.budget_manager.check_llm_calls()
         assert within_budget is False
         assert msg is not None
-        logger.info("Budget exhaustion detection successful ✅")
+        logger.info("Budget exhaustion detection successful ✓")
 
 
 class TestWorkflowStatePersistence:
@@ -381,4 +381,4 @@ runs_dir: runs
         # Verify state persistence
         assert coordinator2.state_manager.agent_state.step == 5
         assert coordinator2.state_manager.agent_state.phase == "PLAN"
-        logger.info("State persistence successful ✅")
+        logger.info("State persistence successful ✓")

@@ -211,7 +211,7 @@ class MemoryCompressor:
         total = len(decisions)
         total_actions = sum(len(d.get("actions", [])) for d in decisions)
         
-        # ✅ 改进：提取关键事实信息
+        # ✓ 改进：提取关键事实信息
         key_facts = []
         
         # 统计 stop_reason 分布
@@ -290,7 +290,7 @@ class MemoryCompressor:
         logger.info(f"[MemoryCompressor] 开始 LLM 压缩: {len(old_decisions)} 个旧决策")
 
         try:
-            # ✅ 改进：过滤掉不应反馈给 LLM 的字段
+            # ✓ 改进：过滤掉不应反馈给 LLM 的字段
             # 只保留事实信息，排除 LLM 的主观内容（current_step_thoughts, plan, llm_output）
             filtered_decisions = []
             for decision in old_decisions:
@@ -367,7 +367,7 @@ class MemoryCompressor:
             # Replace with compressed + recent
             state.memory.decisions = [compressed_record] + recent_decisions
             logger.info(
-                f"[MemoryCompressor] ✅ LLM 压缩完成: {len(old_decisions)} 个决策压缩为摘要，保留 {len(recent_decisions)} 个最近的"
+                f"[MemoryCompressor] ✓ LLM 压缩完成: {len(old_decisions)} 个决策压缩为摘要，保留 {len(recent_decisions)} 个最近的"
             )
 
         except Exception as e:
@@ -471,7 +471,7 @@ class MemoryCompressor:
         """Get a signature for a decision (for deduplication)."""
         # Create signature from key fields
         step = decision.get("step", "")
-        # ✅ 更新：使用 current_step_thoughts 而不是 thought_summary
+        # ✓ 更新：使用 current_step_thoughts 而不是 thought_summary
         # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
         thought = (
             decision.get("current_step_thoughts", "") or 
@@ -496,7 +496,7 @@ class MemoryCompressor:
     def _calculate_similarity(decision1: Dict[str, Any], decision2: Dict[str, Any]) -> float:
         """Calculate similarity between two decisions (0.0-1.0)."""
         # Compare key fields
-        # ✅ 更新：使用 current_step_thoughts 而不是 thought_summary
+        # ✓ 更新：使用 current_step_thoughts 而不是 thought_summary
         # 支持向后兼容：如果 current_step_thoughts 不存在，尝试 thought_summary
         thought1 = str(
             decision1.get("current_step_thoughts", "") or 

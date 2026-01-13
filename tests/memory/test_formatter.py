@@ -31,7 +31,7 @@ class TestToolResultFormatter:
         assert "[run]" in formatted
         assert "python3 --version" in formatted
         assert "Python 3.10.12" in formatted
-        assert "✅ **Status**: Success" in formatted
+        assert "✓ **Status**: Success" in formatted
 
     def test_format_single_result_failure(self):
         """Test formatting a failed tool result."""

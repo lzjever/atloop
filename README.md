@@ -31,7 +31,7 @@ Every developer faces these time-consuming scenarios:
 #### ❌ **Multi-File Changes**
 > "This feature requires changes across 10 files. I have to keep track of all dependencies manually."
 
-### ✅ **atloop's Solution**
+### ✓ **atloop's Solution**
 
 **Autonomous execution. Sandbox isolation. Complete auditability. Structured workflow.**
 
@@ -53,7 +53,7 @@ result = runner.execute(task)
 
 # Review results
 if result["status"] == "success":
-    print(f"✅ Task completed in {result['step']} steps")
+    print(f"✓ Task completed in {result['step']} steps")
     print(f"📝 Diff:\n{result['diff']}")
     print(f"📊 Budget used: {result['budget_used']}")
 else:
@@ -62,11 +62,11 @@ else:
 
 **What just happened?**
 
-1. **✅ Autonomous Execution**: atloop analyzed the codebase, identified the issue, and fixed it
-2. **✅ Sandbox Isolation**: All changes executed in isolated environment—your workspace stays safe
-3. **✅ Automatic Verification**: Tests run automatically after changes
-4. **✅ Complete Audit Trail**: Every action logged with full context
-5. **✅ Structured Output**: Clean diff, test results, and execution report
+1. **✓ Autonomous Execution**: atloop analyzed the codebase, identified the issue, and fixed it
+2. **✓ Sandbox Isolation**: All changes executed in isolated environment—your workspace stays safe
+3. **✓ Automatic Verification**: Tests run automatically after changes
+4. **✓ Complete Audit Trail**: Every action logged with full context
+5. **✓ Structured Output**: Clean diff, test results, and execution report
 
 **Try it:**
 
@@ -240,10 +240,10 @@ result = runner.execute(task)
 ```
 
 **Benefits**:
-- ✅ Handles multiple files automatically
-- ✅ Runs tests after each change
-- ✅ Stops when all tests pass
-- ✅ Provides complete diff for review
+- ✓ Handles multiple files automatically
+- ✓ Runs tests after each change
+- ✓ Stops when all tests pass
+- ✓ Provides complete diff for review
 
 ### Use Case 2: Feature Implementation
 
@@ -268,10 +268,10 @@ result = runner.execute(task)
 ```
 
 **Benefits**:
-- ✅ Creates multiple files in correct structure
-- ✅ Implements tests alongside code
-- ✅ Updates documentation automatically
-- ✅ Verifies completion criteria
+- ✓ Creates multiple files in correct structure
+- ✓ Implements tests alongside code
+- ✓ Updates documentation automatically
+- ✓ Verifies completion criteria
 
 ### Use Case 3: Code Refactoring
 
@@ -296,10 +296,10 @@ result = runner.execute(task)
 ```
 
 **Benefits**:
-- ✅ Maintains test coverage
-- ✅ Preserves functionality
-- ✅ Improves code structure
-- ✅ Complete audit trail
+- ✓ Maintains test coverage
+- ✓ Preserves functionality
+- ✓ Improves code structure
+- ✓ Complete audit trail
 
 ---
 
@@ -401,10 +401,10 @@ Budget(max_llm_calls=80, max_tool_calls=300, max_wall_time_sec=1800)
 
 **atloop** is part of the **Agentsmith** ecosystem, battle-tested in production environments:
 
-- ✅ Used for automated code fixes in production codebases
-- ✅ Handles complex multi-file refactoring tasks
-- ✅ Manages long-running tasks with intelligent memory compression
-- ✅ Provides complete audit trails for compliance
+- ✓ Used for automated code fixes in production codebases
+- ✓ Handles complex multi-file refactoring tasks
+- ✓ Manages long-running tasks with intelligent memory compression
+- ✓ Provides complete audit trails for compliance
 
 ### 🌟 Agentsmith Open-Source Projects
 
@@ -451,10 +451,10 @@ Licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
 **atloop automates coding tasks autonomously:**
 
-1. ✅ **Define your task** - goal, workspace, constraints
-2. ✅ **Set budget** - control LLM calls, tool calls, time
-3. ✅ **Execute** - atloop handles discovery, planning, execution, verification
-4. ✅ **Review results** - diff, test results, execution report
+1. ✓ **Define your task** - goal, workspace, constraints
+2. ✓ **Set budget** - control LLM calls, tool calls, time
+3. ✓ **Execute** - atloop handles discovery, planning, execution, verification
+4. ✓ **Review results** - diff, test results, execution report
 
 **No manual file editing. No test running. No diff generation. atloop does it all.**
 
@@ -474,7 +474,7 @@ result = TaskRunner().execute(task)
 - **📦 PyPI**: [pypi.org/project/atloop](https://pypi.org/project/atloop)
 - **📚 Documentation**: [atloop.readthedocs.io](https://atloop.readthedocs.io)
 - **🐙 GitHub**: [github.com/lzjever/atloop](https://github.com/lzjever/atloop)
-- **📋 Issues**: [github.com/lzjever/atloop/issues](https://github.com/lzjever/atloop/issues)
+- **≡ Issues**: [github.com/lzjever/atloop/issues](https://github.com/lzjever/atloop/issues)
 
 ---
 

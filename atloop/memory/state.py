@@ -42,9 +42,9 @@ class Memory:
        - These contain LLM's interpretations which could cause feedback loops
     
     Memory 模块负责：
-    - ✅ 原始数据的存储和管理
-    - ✅ 各个条目的格式转换和控制输出（考虑约束：单条长度、字符串映射等）
-    - ✅ 提供统一的格式化接口，返回可直接注入 prompt 的字符串
+    - ✓ 原始数据的存储和管理
+    - ✓ 各个条目的格式转换和控制输出（考虑约束：单条长度、字符串映射等）
+    - ✓ 提供统一的格式化接口，返回可直接注入 prompt 的字符串
     
     Memory 模块不负责：
     - ❌ 数据压缩（由独立的 CompressionPolicy 负责）
@@ -106,7 +106,7 @@ class Memory:
     # PARTIALLY VISIBLE - Facts only (NOT fully DEBUG-ONLY)
     # =========================================================================
     # decisions: Partially visible to LLM - only factual information is shown
-    #   - ✅ Visible: step, actions_count, tools_used, stop_reason
+    #   - ✓ Visible: step, actions_count, tools_used, stop_reason
     #   - ❌ NOT visible: current_step_thoughts, plan, llm_output
     #   - Purpose: Provide context about what was done, without LLM's thinking process
     decisions: List[Dict[str, Any]] = field(default_factory=list)
