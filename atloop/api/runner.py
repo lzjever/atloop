@@ -65,57 +65,74 @@ class TaskRunner:
         logger.debug("[TaskRunner] Config setup complete")
 
     def execute(
-        self, task_config: Dict[str, Any], console: bool = False, upload_workspace: bool = False
+        self,
+        goal: str,
+        workspace_root: Optional[str] = None,
+        upload_workspace: Optional[bool] = None,
+        budget: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Any]:
         """
         Execute task - single method.
 
         Args:
-            task_config: Task configuration
-            console: Whether to show console output
-            upload_workspace: Whether to upload workspace files to sandbox before execution
+            goal: Task goal/prompt
+            workspace_root: Workspace root directory (overrides config default)
+            upload_workspace: Whether to upload workspace files to sandbox (overrides config default)
+            budget: Optional budget override
 
         Returns:
             Execution result
         """
-        logger.debug(f"[TaskRunner] Execute called with config: {task_config}, console: {console}")
+        logger.debug(
+            f"[TaskRunner] Execute called with goal (length: {len(goal)}), "
+            f"workspace_root: {workspace_root}, upload_workspace: {upload_workspace}"
+        )
 
         try:
             # Get config (uses varlord global config)
             config = ConfigLoader.get()
             logger.debug(f"[TaskRunner] Config loaded: ai={config.ai.completion.model}")
 
+            # Use workspace_root from parameter or config (defaults to current directory)
+            if workspace_root is None:
+                workspace_root = config.runtime.workspace_root
+                if workspace_root is None:
+                    from pathlib import Path
+
+                    workspace_root = str(Path.cwd())
+                    logger.debug(f"[TaskRunner] Using current directory as workspace: {workspace_root}")
+                else:
+                    from pathlib import Path
+
+                    workspace_root = str(Path(workspace_root).resolve())
+                    logger.debug(f"[TaskRunner] Using workspace_root from config: {workspace_root}")
+            else:
+                from pathlib import Path
+
+                workspace_root = str(Path(workspace_root).resolve())
+                logger.debug(f"[TaskRunner] Using workspace_root from parameter: {workspace_root}")
+
+            # Use upload_workspace from parameter or config
+            if upload_workspace is None:
+                upload_workspace = config.runtime.upload_workspace
+                logger.debug(f"[TaskRunner] Using upload_workspace from config: {upload_workspace}")
+            else:
+                logger.debug(f"[TaskRunner] Using upload_workspace from parameter: {upload_workspace}")
+
             # Create task spec
             logger.debug("[TaskRunner] Creating task spec")
             task_spec = load_task_spec(
-                goal=task_config["goal"],
-                workspace_root=task_config["workspace_root"],
-                budget=task_config.get("budget"),
+                goal=goal,
+                workspace_root=workspace_root,
+                budget=budget,
             )
             logger.debug(f"[TaskRunner] Task spec created: task_id={task_spec.task_id}")
 
-            # Override sandbox config if provided
-            if "sandbox" in task_config:
-                sandbox_config = SandboxConfig(
-                    base_url=task_config["sandbox"].get("base_url"),
-                    local_test=task_config["sandbox"].get("local_test", False),
-                )
-                # Update config with sandbox override
-                from dataclasses import replace
+            # Sandbox session: from config (will fallback to task_id in Coordinator)
+            sandbox_session_id = config.sandbox.default_session_id
 
-                config = replace(config, sandbox=sandbox_config)
-                logger.debug(f"[TaskRunner] Sandbox config overridden: {sandbox_config}")
-
-            # Sandbox session: from config or task_config override
-            sandbox_session_id = task_config.get("sandbox_session_id")
-            if not sandbox_session_id:
-                # Use config default (will fallback to task_id in Coordinator)
-                sandbox_session_id = config.sandbox.default_session_id
-
-            # Agent session: from task_config or config default
-            agent_session_id = task_config.get("agent_session_id")
-            if not agent_session_id:
-                agent_session_id = config.runtime.default_agent_session_id
+            # Agent session: from config
+            agent_session_id = config.runtime.default_agent_session_id
 
             # Create agent loop (creates coordinator and sandbox adapter)
             logger.info("[TaskRunner] Creating agent loop")
@@ -137,7 +154,7 @@ class TaskRunner:
                     )
                     return {"success": False, "error": f"Failed to upload workspace: {e}"}
             else:
-                logger.info("[TaskRunner] Skipping workspace upload (use --upload to enable)")
+                logger.info("[TaskRunner] Skipping workspace upload (configure via runtime.upload_workspace)")
 
             # Execute
             logger.info("[TaskRunner] Starting agent loop")

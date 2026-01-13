@@ -62,15 +62,18 @@ class TestCLIE2ESubprocess:
             "python",
             "-m",
             "atloop.cli.main",
-            "execute",
-            "--workspace",
-            str(workspace),
-            "--prompt",
+            "exec",
             prompt,
         ]
 
+        # Set config via environment variables
+        import os
+        env = os.environ.copy()
+        env["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(workspace)
         if local_test:
-            cmd.append("--local-test")
+            env["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
+        else:
+            env.pop("ATLOOP__SANDBOX__LOCAL_TEST", None)
 
         logger.info(f"Running command: {' '.join(cmd)}")
 
@@ -81,6 +84,7 @@ class TestCLIE2ESubprocess:
                 text=True,
                 timeout=timeout + 10,  # Add buffer for subprocess timeout
                 cwd=Path(__file__).parent.parent,  # Run from project root
+                env=env,
             )
 
             exit_code = result.returncode

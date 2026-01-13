@@ -33,7 +33,7 @@ for i in {1..10}; do
     mkdir -p "$TEST_DIR"
     
     # Run test
-    if uv run atloopc execute --workspace "./$TEST_DIR" --prompt-file "./$PROMPT_FILE" --local-test 2>&1 | tee "test_${i}_output.log"; then
+    if ATLOOP__RUNTIME__WORKSPACE_ROOT="./$TEST_DIR" ATLOOP__SANDBOX__LOCAL_TEST=true uv run atloopc exec-file "./$PROMPT_FILE" 2>&1 | tee "test_${i}_output.log"; then
         echo "✓ Test $i: PASSED"
         PASSED=$((PASSED + 1))
     else

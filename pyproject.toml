@@ -24,7 +24,7 @@ classifiers = [
 
 # Core dependencies (includes varlord - used by both lib/api and CLI)
 dependencies = [
-    "varlord>=0.7.2",  # Configuration management (used by lib/api and CLI)
+    "varlord>=0.7.3",  # Configuration management (used by lib/api and CLI)
     "lexilux>=2.1.0",  # LLM communication
     "noxrunner>=2.0.0",  # Sandbox execution
     "rich>=13.0.0",  # Console output

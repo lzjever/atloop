@@ -40,11 +40,13 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
     test_dir.mkdir(exist_ok=True)
     
     # Run test
+    import os
+    env = os.environ.copy()
+    env["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(test_dir)
+    env["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
+    
     cmd = [
-        "uv", "run", "atloopc", "execute",
-        "--workspace", str(test_dir),
-        "--prompt-file", str(prompt_file),
-        "--local-test",
+        "uv", "run", "atloopc", "exec-file", str(prompt_file),
     ]
     
     print(f"\n{'='*60}")
@@ -59,6 +61,7 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=env,
         )
         duration = time.time() - start_time
         

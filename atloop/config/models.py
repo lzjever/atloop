@@ -173,6 +173,18 @@ class RuntimeConfig:
         default=None,
         metadata={"description": "Default agent session ID for resuming/continuing runs"},
     )
+    workspace_root: Optional[str] = field(
+        default=None,
+        metadata={
+            "description": "Default workspace root directory (uses current directory if not set)"
+        },
+    )
+    upload_workspace: bool = field(
+        default=False,
+        metadata={
+            "description": "Upload workspace files to sandbox before execution (default: false)"
+        },
+    )
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,8 @@ import argparse
 import sys
 
 # CLI uses varlord for CLI argument parsing
-from atloop.cli.commands import cmd_config, cmd_execute, cmd_init
+from atloop.cli.commands import cmd_config, cmd_exec, cmd_exec_file, cmd_init
+from atloop.cli.commands.variables import check_variables, show_variable_help
 from atloop.cli.logging_config import setup_logging
 from atloop.config.loader import ConfigLoader
 
@@ -19,11 +20,15 @@ def create_parser() -> argparse.ArgumentParser:
             "                       Default: INFO\n"
             "\n"
             "Examples:\n"
-            "  # Set log level via environment variable\n"
-            "  ATLOOP_LOG_LEVEL=DEBUG atloopc execute --workspace ./workspace --prompt 'task'\n"
+            "  # Execute with prompt string\n"
+            "  atloopc exec 'fix the bug in main.py'\n"
             "\n"
-            "  # Use default INFO level\n"
-            "  atloopc execute --workspace ./workspace --prompt 'task'\n"
+            "  # Execute with prompt file\n"
+            "  atloopc exec-file ./prompt.txt\n"
+            "\n"
+            "  # Configuration via varlord (YAML, env vars, or CLI args)\n"
+            "  atloopc exec 'task' --sandbox-base-url http://localhost:8080\n"
+            "  ATLOOP__RUNTIME__UPLOAD_WORKSPACE=true atloopc exec 'task'\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -33,35 +38,27 @@ def create_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init", help="Initialize configuration")
     add_atloop_dir_arg(init_parser)
 
-    # execute (only execution method)
-    execute_parser = subparsers.add_parser("execute", help="Execute a task")
-    add_atloop_dir_arg(execute_parser)
-    execute_parser.add_argument(
-        "--workspace", help="Workspace directory (default: current directory)"
+    # exec - execute with prompt string
+    exec_parser = subparsers.add_parser("exec", help="Execute a task with prompt string")
+    add_atloop_dir_arg(exec_parser)
+    exec_parser.add_argument(
+        "prompt", nargs="?", help="Task prompt (text). If not provided, reads from stdin."
     )
-    execute_parser.add_argument("--prompt", help="Task prompt (text)")
-    execute_parser.add_argument("--prompt-file", help="Task prompt (file)")
-    execute_parser.add_argument(
-        "--sandbox-url", default="http://127.0.0.1:8080", help="Sandbox base URL"
-    )
-    execute_parser.add_argument("--local-test", action="store_true", help="Use local test mode")
-    execute_parser.add_argument(
-        "--sandbox-session", help="Sandbox session ID (overrides config default)"
-    )
-    execute_parser.add_argument(
-        "--agent-session", help="Agent session ID for resuming/continuing runs"
-    )
-    execute_parser.add_argument(
-        "--upload",
-        action="store_true",
-        help="Upload workspace files to sandbox before execution (default: false)",
-    )
-
-    execute_parser.add_argument(
+    exec_parser.add_argument(
         "--help-variables", action="store_true", help="Show available variables and their sources"
     )
+    exec_parser.add_argument(
+        "--check-variables", action="store_true", help="Check variables and exit"
+    )
 
-    execute_parser.add_argument(
+    # exec-file - execute with prompt file
+    exec_file_parser = subparsers.add_parser("exec-file", help="Execute a task with prompt file")
+    add_atloop_dir_arg(exec_file_parser)
+    exec_file_parser.add_argument("file_path", help="Path to prompt file")
+    exec_file_parser.add_argument(
+        "--help-variables", action="store_true", help="Show available variables and their sources"
+    )
+    exec_file_parser.add_argument(
         "--check-variables", action="store_true", help="Check variables and exit"
     )
 
@@ -91,78 +88,20 @@ def main() -> int:
     atloop_dir = getattr(args, "atloop_dir", None)
     config_obj = ConfigLoader.setup(atloop_dir=atloop_dir)
 
-    # Handle variable help and check commands (only for execute command)
+    # Handle variable help and check commands (for exec and exec-file commands)
     if hasattr(args, "help_variables") and args.help_variables:
-        # Generate custom help text showing all configuration variables
-        from varlord.metadata import get_all_fields_info
-
-        field_infos = get_all_fields_info(config_obj._model)
-
-        print("atloop Configuration Variables")
-        print("=" * 80)
-        print("\nAll configuration variables can be set via:")
-        print("  1. YAML files: ~/.atloop/config/atloop.yaml or ./.atloop/config/atloop.yaml")
-        print("  2. Environment variables: ATLOOP__<VARIABLE_NAME>")
-        print("  3. .env file: ATLOOP__<VARIABLE_NAME>=value")
-        print("\nVariable Mapping Rules:")
-        print("  - Use double underscore (__) for nested keys")
-        print("  - Example: ATLOOP__AI__COMPLETION__MODEL=deepseek-chat")
-        print("  - Example: ATLOOP__RUNTIME__STUCK_SIGNATURE_REPEATS=3")
-        print("\nAvailable Variables:")
-        print("-" * 80)
-
-        for field_info in field_infos:
-            var_name = field_info.normalized_key
-            var_type = (
-                field_info.type.__name__
-                if hasattr(field_info.type, "__name__")
-                else str(field_info.type)
-            )
-            is_required = field_info.required
-            description = field_info.description or "No description"
-
-            # Handle default value display
-            if is_required:
-                default_str = ""
-            elif field_info.default != "MISSING" and field_info.default is not None:
-                # Show default value if available
-                default_str = f" (default: {field_info.default})"
-            elif field_info.default_factory != "MISSING":
-                # Show default factory info
-                default_str = " (has default factory)"
-            else:
-                default_str = ""
-
-            env_var_name = f"ATLOOP__{var_name.upper().replace('.', '__')}"
-
-            status = "Required" if is_required else f"Optional{default_str}"
-            print(f"\n{var_name}")
-            print(f"  Type: {var_type}")
-            print(f"  Status: {status}")
-            print(f"  Description: {description}")
-            print(f"  Environment Variable: {env_var_name}")
-
-        print("\n" + "=" * 80)
-        print("For detailed variable diagnostics, use: atloop execute --check-variables")
-        return 0
+        return show_variable_help(config_obj)
 
     if hasattr(args, "check_variables") and args.check_variables:
-        diagnostic_table = config_obj.format_diagnostic_table()
-        print(diagnostic_table)
-        # Check if there are any missing required fields
-        try:
-            config_obj.load()
-            print("\n✓ All required configuration variables are present")
-            return 0
-        except Exception as e:
-            print(f"\n✗ Configuration validation failed: {e}", file=sys.stderr)
-            return 1
+        return check_variables(config_obj)
 
     try:
         if args.command == "init":
             return cmd_init(args)
-        elif args.command == "execute":
-            return cmd_execute(args)
+        elif args.command == "exec":
+            return cmd_exec(args)
+        elif args.command == "exec-file":
+            return cmd_exec_file(args)
         elif args.command == "config":
             return cmd_config(args)
         else:
