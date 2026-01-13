@@ -33,51 +33,21 @@ def format_memory_stats(state: Any) -> str:
     else:
         plan_size = 1 if memory.plan else 0
     
-    # Create compact two-column table
+    # Create compact single-row table with four columns
     table = PrettyTable()
-    table.field_names = ["Left", "Right"]  # Unique field names required by PrettyTable
-    table.header = False  # No header row
+    table.field_names = ["📁 Files", "🔧 Execution", "🧠 Memory", "💰 Budget"]
+    table.header = True
     table.border = True
-    table.hrules = 1  # Only horizontal rules between rows
-    table.vrules = 1  # Vertical rule in the middle
+    table.hrules = 0  # No horizontal rules between rows
+    table.vrules = 1  # Vertical rules between columns
     
-    # Left column: Files and Memory
-    # Right column: Execution and Budget
+    # Single row with all information
+    files_info = f"Created: {len(memory.created_files)}\nModified: {len(memory.modified_files_content)}"
+    execution_info = f"Attempts: {len(memory.attempts)}\nTool Results: {len(memory.tool_results_history)}"
+    memory_info = f"Plan: {plan_size} items\nDecisions: {len(memory.important_decisions)}\nMilestones: {len(memory.milestones)}"
+    budget_info = f"LLM: {state.budget_used.llm_calls}\nTools: {state.budget_used.tool_calls}\nTime: {state.budget_used.wall_time_sec}s"
     
-    # Row 1: Files section
-    left_col = "📁 Files"
-    right_col = "🔧 Execution"
-    table.add_row([left_col, right_col])
-    
-    # Row 2: Created and Modified files
-    left_col = f"  Created: {len(memory.created_files)}"
-    right_col = f"  Attempts: {len(memory.attempts)}"
-    table.add_row([left_col, right_col])
-    
-    # Row 3: Modified files and Tool Results
-    left_col = f"  Modified: {len(memory.modified_files_content)}"
-    right_col = f"  Tool Results: {len(memory.tool_results_history)}"
-    table.add_row([left_col, right_col])
-    
-    # Row 4: Memory section
-    left_col = "🧠 Memory"
-    right_col = "💰 Budget"
-    table.add_row([left_col, right_col])
-    
-    # Row 5: Plan and Decisions
-    left_col = f"  Plan: {plan_size} items"
-    right_col = f"  LLM: {state.budget_used.llm_calls}"
-    table.add_row([left_col, right_col])
-    
-    # Row 6: Decisions and Tool Calls
-    left_col = f"  Decisions: {len(memory.important_decisions)}"
-    right_col = f"  Tools: {state.budget_used.tool_calls}"
-    table.add_row([left_col, right_col])
-    
-    # Row 7: Milestones and Time
-    left_col = f"  Milestones: {len(memory.milestones)}"
-    right_col = f"  Time: {state.budget_used.wall_time_sec}s"
-    table.add_row([left_col, right_col])
+    table.add_row([files_info, execution_info, memory_info, budget_info])
     
     # Build output
     output_lines = []

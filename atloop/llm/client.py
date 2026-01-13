@@ -416,9 +416,9 @@ Please output only valid JSON, do not add any other text, comments, or explanati
     def _print_streaming_status(self, stream_callback: Optional[Callable[[str], None]]) -> None:
         """Print streaming status message."""
         if stream_callback:
-            print("    [Streaming] ", end="", flush=True)
+            print("LLM is streaming...\n", end="", flush=True)
         else:
-            print("    [Generating...] ", end="", flush=True)
+            print("LLM is generating...", end="", flush=True)
 
     def _stream_initial_response(
         self,

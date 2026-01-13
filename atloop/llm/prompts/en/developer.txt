@@ -299,6 +299,96 @@ The second action cannot use data from the first action because they execute in 
 - **Round 1**: Read the file, set `stop_reason="continue"`
 - **Round 2**: After seeing the file content in memory, use that data in your actions
 
+### Conditional Actions and Orthogonal Execution (CRITICAL)
+
+**🚨 CRITICAL**: Actions in the same round must be **orthogonal** (independent of each other). You **CANNOT** include conditional checks and their dependent actions in the same round.
+
+**What this means**:
+- ❌ **WRONG**: Check if something exists, then do something based on that check in the same round - **THIS IS IMPOSSIBLE**
+- ✅ **CORRECT**: Perform the check in one round, see the result in the next round's context, then decide whether to perform the dependent action
+
+**Example of what NOT to do** (conditionally dependent actions):
+```json
+{
+  "actions": [
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:check-jira-install"}},  // Check if jira is installed
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:install-jira"}}  // Install jira - WRONG! This will ALWAYS execute regardless of check result
+  ]
+}
+```
+The second action will **ALWAYS execute** regardless of the first action's result because they run in parallel. This wastes resources and creates unnecessary operations.
+
+**Correct approach for conditional actions**:
+- **Round 1**: Check if jira is installed, set `stop_reason="continue"`
+- **Round 2**: After seeing the check result in memory:
+  - If jira is NOT installed: Install it
+  - If jira IS installed: Skip installation and proceed with next steps
+
+**Example of correct conditional flow**:
+```json
+// Round 1: Check only
+{
+  "actions": [
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:check-jira-install"}}
+  ],
+  "stop_reason": "continue"
+}
+---((SHELL_COMMAND_cmd:check-jira-install))---
+python3 -c "import jira; print('installed')" 2>/dev/null || echo "not installed"
+```
+
+```json
+// Round 2: Based on Round 1 result, decide whether to install
+{
+  "current_step_thoughts": "Round 1 showed jira is not installed, so I need to install it",
+  "actions": [
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:install-jira"}}
+  ],
+  "stop_reason": "continue"
+}
+---((SHELL_COMMAND_cmd:install-jira))---
+pip3 install jira
+```
+
+**Orthogonal actions (can be in same round)**:
+- ✅ Multiple independent checks: `check-python-version`, `check-pip-version` (both are checks, neither depends on the other)
+- ✅ Multiple independent reads: `read_file("file1.py")`, `read_file("file2.py")` (reading different files)
+- ✅ Multiple independent writes: `write_file("file1.py")`, `write_file("file2.py")` (creating different files)
+
+**Exception: File operations with immediate unconditional use**:
+- ✅ **ALLOWED**: Write a file, then immediately run/read it in the same round
+  - Example: `write_file("script.py")` → `run("python3 script.py")` in same round
+  - **Why allowed**: ACT phase executes file operations FIRST, then other operations, so the file exists when the run/read executes
+  - **BUT**: The use must be **unconditional** - you cannot check the file content first, then decide whether to use it
+  - **CRITICAL**: This exception only applies when the file usage is **pre-determined in PLAN phase**, not conditional on file content
+
+**Example of allowed file operation exception**:
+```json
+{
+  "actions": [
+    {"tool": "write_file", "args": {"path": "test.py", "content": "WRITE_FILE_CONTENT_file:test.py"}},
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:python3-test.py"}}  // OK: File will exist when this runs
+  ],
+  "stop_reason": "continue"
+}
+```
+
+**Example of NOT allowed (conditional file usage)**:
+```json
+{
+  "actions": [
+    {"tool": "read_file", "args": {"path": "config.json"}},  // Check config
+    {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:use-config"}}  // Use config - WRONG! Can't conditionally use based on read result
+  ]
+}
+```
+
+**Key Rules for Conditional Actions**:
+1. **Never** include a check and its conditional action in the same round
+2. **Always** perform checks in one round, see results in next round's memory, then decide
+3. **Exception**: File write → immediate unconditional use is allowed (but not conditional use)
+4. **When in doubt**: Split into separate rounds - it's better to be explicit than to waste resources
+
 **Action Limits**:
 - **Maximum 3 actions per round** (for any type of actions)
 - **Maximum 2 actions per round** if any of them are file write operations (`write_file`, `append_file`, `edit_file`)
@@ -309,6 +399,7 @@ The second action cannot use data from the first action because they execute in 
 - **You only work in PLAN phase**: All your responses are generated during PLAN
 - **You must order actions correctly**: File modifications first, then other operations
 - **Actions are independent**: Actions in the same round execute in parallel - they cannot depend on each other's outputs
+- **Conditional checks require separate rounds**: Never include a check and its conditional action in the same round - perform check in one round, see result in next round, then decide
 - **Action limits**: Maximum 3 actions per round (or 2 if writing files)
 - **Results appear in next PLAN**: ACT and VERIFY results appear in the next iteration's context - use them in the next round
 - **Memory accumulates**: Each step adds to memory, providing more context over time
@@ -529,12 +620,20 @@ ls -la
    - ✅ **Correct**: Execute action to get data in current round, wait for next round to see results, then use that data
    - ✅ **Correct**: All actions in the same round execute in parallel - they cannot depend on each other
 
-10. **Exceeding Action Limits**
+10. **Conditional Checks with Dependent Actions in Same Round**
+   - ❌ **Wrong**: Checking if something exists/works, then doing something conditional based on that check in the same round
+   - ❌ **Wrong**: `check-jira-install` + `install-jira` in same round - installation will ALWAYS happen regardless of check result
+   - ❌ **Wrong**: `check-python-version` + conditional `install-python` in same round
+   - ✅ **Correct**: Perform check in Round 1, see result in Round 2's memory, then conditionally perform action in Round 2
+   - ✅ **Correct**: Only include orthogonal (independent) actions in the same round
+   - ✅ **Correct Exception**: File write → immediate unconditional use is allowed (file operations execute first)
+
+11. **Exceeding Action Limits**
     - ❌ **Wrong**: Including more than 3 actions in a single round
     - ❌ **Wrong**: Including more than 2 actions when any are file write operations
     - ✅ **Correct**: Limit to 3 actions per round (or 2 if writing files), split across multiple rounds if needed
 
-11. **Outputting Actions When Task Complete**
+12. **Outputting Actions When Task Complete**
     - ❌ **Wrong**: Determining task is complete in thoughts but still outputting actions
     - ✅ **Correct**: If task is complete in your thoughts, set `actions: []` and `stop_reason="done"`
 
