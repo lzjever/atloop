@@ -1,7 +1,10 @@
 """Agent state data structures."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
+if TYPE_CHECKING:
+    pass  # AgentState is defined in this file, no need to import
 
 # Import PlanStep for type hints (avoid circular import)
 try:
@@ -37,6 +40,15 @@ class Memory:
     3. DEBUG-ONLY (NOT fed back to LLM):
        - decisions, llm_responses
        - These contain LLM's interpretations which could cause feedback loops
+    
+    Memory 模块负责：
+    - ✅ 原始数据的存储和管理
+    - ✅ 各个条目的格式转换和控制输出（考虑约束：单条长度、字符串映射等）
+    - ✅ 提供统一的格式化接口，返回可直接注入 prompt 的字符串
+    
+    Memory 模块不负责：
+    - ❌ 数据压缩（由独立的 CompressionPolicy 负责）
+    - ❌ 数据重要性评分（由独立的 Scorer 负责，如果使用）
     """
 
     # =========================================================================
@@ -108,6 +120,46 @@ class Memory:
     llm_responses: List[Dict[str, Any]] = field(default_factory=list)
     # WARNING: Contains current_step_thoughts - DO NOT feed back to LLM
     # Format: {"step": int, "current_step_thoughts": str, "plan": List[str], ...}
+
+    def get_formatted_context(
+        self,
+        state: "AgentState",
+        task_goal: Optional[str] = None,
+        max_length: Optional[int] = None,
+        format_options: Optional[Dict[str, Any]] = None,
+        tool_registry: Optional[Any] = None,
+    ) -> str:
+        """
+        获取格式化后的记忆上下文，可直接注入到 prompt 中。
+        
+        这是 Memory 模块的主要输出接口，返回格式化的字符串。
+        
+        Args:
+            state: AgentState 实例（需要访问 memory, last_error, artifacts）
+            task_goal: 任务目标（可选，用于任务概览）
+            max_length: 最大长度限制（可选）
+            format_options: 格式选项
+                - tool_results_count: int (默认 5)
+                - steps_summary_count: int (默认 3)
+                - include_file_content: bool (默认 True)
+                - max_file_content_length: int (默认 20000)
+                - string_mappings: Dict[str, str] (字符串映射规则)
+            tool_registry: 工具注册表（用于输出限制策略）
+        
+        Returns:
+            格式化后的字符串，可直接用于 prompt 注入
+            格式：符合 MEMORY_PROMPT_FORMAT_DEMO.md 中定义的格式
+        """
+        from atloop.memory.formatter import MemoryFormatter
+
+        formatter = MemoryFormatter(tool_registry=tool_registry)
+
+        # 合并 format_options 和 max_length
+        options = format_options or {}
+        if max_length:
+            options["max_length"] = max_length
+
+        return formatter.format(state, task_goal=task_goal, format_options=options)
 
 
 @dataclass

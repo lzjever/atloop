@@ -583,13 +583,13 @@ class ActPhase(BasePhase):
             modified_files: List of modified files
             success: Whether all actions succeeded
         """
-        # Record attempt
+        # Record attempt (without results field - results are in tool_results_history)
         state.memory.attempts.append(
             {
                 "step": state.step,
                 "files": modified_files,
                 "success": success,
-                "results": results,
+                # NOTE: results field removed - tool execution results are stored in tool_results_history
             }
         )
         logger.debug(
@@ -603,13 +603,14 @@ class ActPhase(BasePhase):
             placeholder = placeholder_data["placeholder"]
             args = placeholder_data["args"]
             
-            # Record to tool_results_history
+            # Record to tool_results_history (with modified_files field)
             tool_result_record = {
                 "step": state.step,
                 "tool": tool,
                 "args": args if args is not None else {},  # Use actual args if no placeholder
                 "placeholder": placeholder,  # Placeholder name if exists, None otherwise
                 "result": result,
+                "modified_files": modified_files if tool in ["write_file", "edit_file", "append_file"] else [],
             }
             state.memory.tool_results_history.append(tool_result_record)
         

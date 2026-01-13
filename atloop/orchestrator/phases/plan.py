@@ -3,7 +3,6 @@
 import logging
 from typing import Any, Optional
 
-from atloop.memory.summarizer import MemorySummarizer
 from atloop.orchestrator.loop_intervention_executor import (
     InterventionAction,
     LoopInterventionExecutor,
@@ -54,14 +53,21 @@ class PlanPhase(BasePhase):
                     f"[PlanPhase] Using default memory summary max length: {memory_summary_max_length}"
                 )
 
-            memory_summary = MemorySummarizer.summarize(
-                state,
-                max_length=memory_summary_max_length,
+            # Get formatted memory context using new interface
+            memory_context = state.memory.get_formatted_context(
+                state=state,
                 task_goal=self.coordinator.task_spec.goal,
+                max_length=memory_summary_max_length,
+                format_options={
+                    "tool_results_count": 5,
+                    "steps_summary_count": 3,
+                    "include_file_content": True,
+                    "max_file_content_length": 20000,
+                },
                 tool_registry=self.coordinator.tool_runtime.registry,
             )
             logger.debug(
-                f"[PlanPhase] Memory summary length: {len(memory_summary)} chars "
+                f"[PlanPhase] Memory context length: {len(memory_context)} chars "
                 f"(max: {memory_summary_max_length})"
             )
 
@@ -120,12 +126,12 @@ class PlanPhase(BasePhase):
                         next_phase=Phase.ACT,
                     )
                 
-                # Handle INJECT_WARNING - add to memory summary
+                # Handle INJECT_WARNING - add to memory context
                 if intervention_result.prompt_injection:
-                    memory_summary = intervention_result.prompt_injection + "\n\n" + memory_summary
+                    memory_context = intervention_result.prompt_injection + "\n\n" + memory_context
                     logger.info("[PlanPhase] Injected warning into prompt")
             
-            # Add progress metrics to memory summary for LLM awareness
+            # Add progress metrics to memory context for LLM awareness
             metrics = self.coordinator.progress_tracker.get_metrics(window=10)
             if metrics.total_actions > 0:
                 progress_info = (
@@ -136,7 +142,7 @@ class PlanPhase(BasePhase):
                     f"- View/Modify ratio: {metrics.view_to_modify_ratio:.1f}\n"
                     f"- Consecutive same pattern: {metrics.consecutive_same_pattern}\n"
                 )
-                memory_summary = memory_summary + progress_info
+                memory_context = memory_context + progress_info
 
             # Extract keywords
             logger.debug("[PlanPhase] Extracting keywords")
@@ -152,7 +158,7 @@ class PlanPhase(BasePhase):
                 current_diff=state.artifacts.current_diff,
                 test_results=state.artifacts.test_results,
                 verification_success=state.artifacts.verification_success,
-                memory_summary=memory_summary,
+                memory_summary=memory_context,  # Pass memory_context as memory_summary for backward compatibility
                 keywords=keywords,
             )
             logger.debug(
@@ -165,7 +171,7 @@ class PlanPhase(BasePhase):
                 goal=self.coordinator.task_spec.goal,
                 constraints=self.coordinator.task_spec.constraints,
                 budget=self.coordinator.task_spec.budget.to_dict(),
-                state_summary=memory_summary,
+                memory_context=memory_context,  # Use new memory_context parameter
                 project_profile=context_pack.project_profile,
                 relevant_files=context_pack.relevant_files,
                 recent_error=context_pack.recent_error,
@@ -529,7 +535,7 @@ class PlanPhase(BasePhase):
                 ]
                 
                 # CRITICAL: Update state.memory.plan with LLM's plan for Long-term Memory
-                # This ensures the plan is visible in MemorySummarizer output
+                # This ensures the plan is visible in formatted memory context
                 if action_json.plan:
                     state.memory.plan = action_json.plan
                     logger.info(

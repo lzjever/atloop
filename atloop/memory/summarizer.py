@@ -11,6 +11,7 @@ from atloop.config.limits import (
     MEMORY_SUMMARY_STDOUT_STDERR_OTHER,
     MEMORY_SUMMARY_STDOUT_STDERR_SHELL,
 )
+from atloop.memory.formatter import ToolResultFormatter
 from atloop.memory.state import AgentState
 from atloop.tools.base import BaseTool
 from atloop.tools.output_limit_strategy import OutputLimitStrategy
@@ -296,81 +297,44 @@ class MemorySummarizer:
         # NOTE: llm_responses are NOT shown to LLM to prevent feedback loops
         # They are preserved in memory for debugging only
 
-        # Recent attempts (last 3) - include detailed tool execution results
-        # CRITICAL: Show ALL tool outputs, especially for shell commands
-        if state.memory.attempts:
-            parts.append("\n## Recent Attempts")
+        # Recent File Modifications - extracted from tool_results_history
+        # NOTE: This replaces the old "Recent Attempts" section
+        # We extract file modifications from tool_results_history to have a single source of truth
+        if state.memory.tool_results_history:
+            # Extract file modifications by step
+            step_files = {}
+            for tool_result in state.memory.tool_results_history:
+                step = tool_result.get("step", 0)
+                modified_files = tool_result.get("modified_files", [])
+                if modified_files:
+                    if step not in step_files:
+                        step_files[step] = []
+                    step_files[step].extend(modified_files)
+            
+            # Display recent file modifications (last 3 steps)
+            if step_files:
+                parts.append("\n## Recent File Modifications")
+                recent_steps = sorted(step_files.keys(), reverse=True)[:3]
+                for step in recent_steps:
+                    files = list(set(step_files[step]))  # Remove duplicates
+                    parts.append(f"- Step {step}: Modified {len(files)} files")
+                    if files:
+                        parts.append(f"  Files: {', '.join(files[:5])}")
+                        if len(files) > 5:
+                            parts.append(f"  ... (+{len(files) - 5} more)")
+        
+        # Backward compatibility: Also show attempts if tool_results_history is empty
+        # This handles cases where old data doesn't have tool_results_history
+        elif state.memory.attempts:
+            parts.append("\n## Recent File Modifications")
             for attempt in state.memory.attempts[-3:]:
+                step = attempt.get("step", "?")
                 files = attempt.get("files", [])
-                success = attempt.get("success", False)
-                status = "Success" if success else "Failed"
-                parts.append(f"- Modified {len(files)} files: {status}")
-
-                # Include detailed tool execution results for LLM to judge
-                results = attempt.get("results", [])
-                if results:
-                    parts.append("  Tool Execution Details:")
-                    for i, result in enumerate(results[-3:], 1):  # Last 3 results
-                        tool = result.get("tool", "unknown")
-                        tool_ok = result.get("ok", False)
-                        exit_code = result.get("exit_code", -1)
-                        stderr = result.get("stderr", "")
-                        stdout = result.get("stdout", "")
-                        error = result.get("error", "")
-
-                        status_icon = "✓" if tool_ok else "✗"
-                        parts.append(f"    {status_icon} [{tool}] Exit Code: {exit_code}")
-
-                        # Get tool instance and use unified strategy system
-                        tool_instance: Optional[BaseTool] = None
-                        if tool_registry:
-                            tool_instance = tool_registry.get(tool)
-                        
-                        if tool_instance:
-                            # Use unified strategy system based on semantic types
-                            max_stderr = OutputLimitStrategy.get_limit_for_memory_summary(
-                                tool_instance, is_stderr=True
-                            )
-                            max_stdout = OutputLimitStrategy.get_limit_for_memory_summary(
-                                tool_instance, is_stderr=False
-                            )
-                        else:
-                            # Fallback: use tool name-based logic (backward compatibility)
-                            is_shell = tool == "run"
-                            max_stderr = (
-                                MEMORY_SUMMARY_STDOUT_STDERR_SHELL
-                                if is_shell
-                                else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
-                            )
-                            max_stdout = (
-                                MEMORY_SUMMARY_STDOUT_STDERR_SHELL
-                                if is_shell
-                                else MEMORY_SUMMARY_STDOUT_STDERR_OTHER
-                            )
-
-                        if error:
-                            parts.append(f"      Error: {error}")
-                        if stderr:
-                            if len(stderr) > max_stderr:
-                                stderr_preview = (
-                                    stderr[: max_stderr // 2]
-                                    + f"\n... [Omitted {len(stderr) - max_stderr} chars] ...\n"
-                                    + stderr[-max_stderr // 2 :]
-                                )
-                            else:
-                                stderr_preview = stderr
-                            parts.append(f"      Stderr ({len(stderr)} chars):\n{stderr_preview}")
-                        if stdout:
-                            # Always show stdout for shell commands, even if long
-                            if len(stdout) > max_stdout:
-                                stdout_preview = (
-                                    stdout[: max_stdout // 2]
-                                    + f"\n... [Omitted {len(stdout) - max_stdout} chars] ...\n"
-                                    + stdout[-max_stdout // 2 :]
-                                )
-                            else:
-                                stdout_preview = stdout
-                            parts.append(f"      Stdout ({len(stdout)} chars):\n{stdout_preview}")
+                parts.append(f"- Step {step}: Modified {len(files)} files")
+                if files:
+                    parts.append(f"  Files: {', '.join(files[:5])}")
+                    if len(files) > 5:
+                        parts.append(f"  ... (+{len(files) - 5} more)")
 
         # Task completion status check (add at the beginning for visibility)
         # Check if task goal matches created files for simple "write code" tasks
@@ -537,141 +501,22 @@ class MemorySummarizer:
                     f"\nComplete Stderr Details ({len(state.last_error.raw_stderr_tail)} chars):\n{stderr_tail}"
                 )
 
-        # Phase 3: Enhanced - Show recent tool results from tool_results_history if available
+        # Recent Tool Execution Results - unified display from tool_results_history
+        # This is the ONLY place where tool execution results are shown
         if state.memory.tool_results_history:
-            parts.append("\n## Recent Tool Execution Results (Enhanced Storage)")
-            for tool_result in state.memory.tool_results_history[-5:]:  # Last 5 tool results
-                step = tool_result.get("step", "?")
-                tool_name = tool_result.get("tool", "unknown")
-                placeholder = tool_result.get("placeholder")
-                args = tool_result.get("args", {})
-                result = tool_result.get("result", {})
-                ok = result.get("ok", False)
-                status = "✓" if ok else "✗"
-                
-                # Show placeholder name if available, otherwise show key args info
-                if placeholder:
-                    parts.append(f"- Step {step}: {status} [{tool_name}] ({placeholder})")
-                elif args:
-                    # Show key information from args
-                    if tool_name == "run" and "cmd" in args:
-                        cmd_preview = str(args["cmd"])[:50]
-                        parts.append(f"- Step {step}: {status} [{tool_name}] (cmd: {cmd_preview}...)")
-                    elif tool_name in ["write_file", "edit_file", "append_file"] and "path" in args:
-                        path = args.get("path", "")
-                        parts.append(f"- Step {step}: {status} [{tool_name}] (path: {path})")
-                    else:
-                        # Show first few args keys
-                        args_keys = list(args.keys())[:3]
-                        parts.append(f"- Step {step}: {status} [{tool_name}] (args: {', '.join(args_keys)})")
-                else:
-                    parts.append(f"- Step {step}: {status} [{tool_name}]")
-                if result.get("stdout"):
-                    # Get tool instance and use unified strategy for preview size
-                    tool_instance: Optional[BaseTool] = None
-                    if tool_registry:
-                        tool_instance = tool_registry.get(tool_name)
-                    
-                    if tool_instance:
-                        # Use semantic type to determine preview size
-                        semantic_type = tool_instance.stdout_semantic_type
-                        # For knowledge/file content, show more preview
-                        if semantic_type in (
-                            OutputSemanticType.KNOWLEDGE_CONTENT,
-                            OutputSemanticType.FILE_CONTENT,
-                        ):
-                            stdout_preview = result.get("stdout", "")[:5000]
-                            total_len = len(result.get("stdout", ""))
-                            if total_len > 5000:
-                                stdout_preview += f"... (total {total_len} chars, see full content in Recent Attempts section above)"
-                            parts.append(f"  Stdout ({total_len} chars):\n{stdout_preview}")
-                        else:
-                            stdout_preview = result.get("stdout", "")[:100]
-                            if len(result.get("stdout", "")) > 100:
-                                stdout_preview += "..."
-                            parts.append(f"  Stdout: {stdout_preview}")
-                    else:
-                        # Fallback: use tool name-based logic
-                        if tool_name == "skill":
-                            stdout_preview = result.get("stdout", "")[:5000]
-                            total_len = len(result.get("stdout", ""))
-                            if total_len > 5000:
-                                stdout_preview += f"... (total {total_len} chars, see full content in Recent Attempts section above)"
-                            parts.append(f"  Stdout ({total_len} chars):\n{stdout_preview}")
-                        else:
-                            stdout_preview = result.get("stdout", "")[:100]
-                            if len(result.get("stdout", "")) > 100:
-                                stdout_preview += "..."
-                            parts.append(f"  Stdout: {stdout_preview}")
-                if result.get("stderr"):
-                    stderr_preview = result.get("stderr", "")[:100]
-                    if len(result.get("stderr", "")) > 100:
-                        stderr_preview += "..."
-                    parts.append(f"  Stderr: {stderr_preview}")
+            parts.append("\n## Recent Tool Execution Results")
+            formatted = ToolResultFormatter.format_results_list(
+                state.memory.tool_results_history,
+                tool_registry=tool_registry,
+                max_count=5,
+            )
+            if formatted:
+                parts.append(formatted)
             parts.append("")
 
-        # Recent tool executions (both success and failure) - let LLM judge
-        # CRITICAL: Include ALL tool outputs so LLM has complete context
-        # This is especially important for shell commands where stderr may contain critical info
-        if state.memory.attempts:
-            recent_executions = []
-            for attempt in state.memory.attempts[-2:]:  # Last 2 attempts
-                results = attempt.get("results", [])
-                for result in results[-2:]:  # Last 2 results per attempt
-                    tool = result.get("tool", "unknown")
-                    tool_ok = result.get("ok", False)
-                    exit_code = result.get("exit_code", -1)
-                    stderr = result.get("stderr", "")
-                    stdout = result.get("stdout", "")
-                    error = result.get("error", "")
-
-                    # Build comprehensive execution info (success or failure)
-                    # For shell commands, preserve more output
-                    is_shell = tool == "run"
-                    max_stderr = (
-                        MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_SHELL
-                        if is_shell
-                        else MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_OTHER
-                    )
-                    max_stdout = (
-                        MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_SHELL
-                        if is_shell
-                        else MEMORY_SUMMARY_LAST_ERROR_STDOUT_STDERR_OTHER
-                    )
-
-                    exec_parts = [f"[{tool}] Exit Code: {exit_code}, Success: {tool_ok}"]
-                    if error:
-                        exec_parts.append(f"Error: {error}")
-                    if stderr:
-                        if len(stderr) > max_stderr:
-                            stderr_preview = (
-                                stderr[: max_stderr // 2]
-                                + f"\n... [Omitted {len(stderr) - max_stderr} chars] ...\n"
-                                + stderr[-max_stderr // 2 :]
-                            )
-                        else:
-                            stderr_preview = stderr
-                        exec_parts.append(f"Stderr ({len(stderr)} chars):\n{stderr_preview}")
-                    if stdout:
-                        if len(stdout) > max_stdout:
-                            stdout_preview = (
-                                stdout[: max_stdout // 2]
-                                + f"\n... [Omitted {len(stdout) - max_stdout} chars] ...\n"
-                                + stdout[-max_stdout // 2 :]
-                            )
-                        else:
-                            stdout_preview = stdout
-                        exec_parts.append(f"Stdout ({len(stdout)} chars):\n{stdout_preview}")
-
-                    recent_executions.append("\n".join(exec_parts))
-
-            if recent_executions:
-                parts.append("\n## Recent Tool Execution Results")
-                parts.append(
-                    "⚠️ Important: Includes both success and failure, please judge based on complete information (especially stderr)"
-                )
-                for execution in recent_executions[-3:]:  # Last 3 executions
-                    parts.append(f"- {execution}")
+        # NOTE: Removed duplicate "Recent Tool Execution Results" section
+        # Tool execution results are now only shown once in the section above
+        # (from tool_results_history using ToolResultFormatter)
 
         summary = "\n".join(parts)
 

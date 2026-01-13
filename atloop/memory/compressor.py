@@ -88,13 +88,12 @@ class MemoryCompressor:
         # Phase 4: 2. LLM compression (if enabled and threshold exceeded)
         if memory_config and memory_config.llm_compression_enabled and llm_client:
             try:
-                # Estimate memory size by generating a summary with very large limit
-                from atloop.memory.summarizer import MemorySummarizer
-
-                memory_summary = MemorySummarizer.summarize(
-                    state, max_length=999999, task_goal=None
+                # Estimate memory size using new interface
+                memory_context = state.memory.get_formatted_context(
+                    state=state,
+                    max_length=999999,
                 )
-                memory_size = len(memory_summary)
+                memory_size = len(memory_context)
 
                 if memory_size > memory_config.llm_compression_threshold:
                     logger.info(

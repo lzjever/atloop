@@ -149,6 +149,7 @@ class LLMClient:
         constraints: List[str],
         budget: Dict[str, int],
         state_summary: Optional[str] = None,
+        memory_context: Optional[str] = None,  # New parameter
         project_profile: Optional[str] = None,
         relevant_files: Optional[str] = None,
         recent_error: Optional[str] = None,
@@ -207,8 +208,11 @@ class LLMClient:
 {completion_reminder}
 """
 
+        # Use memory_context if provided, otherwise fall back to state_summary (backward compatibility)
+        memory_content = memory_context if memory_context is not None else (state_summary or "Initial state")
+        
         logger.debug(
-            f"[LLMClient] build_user_message: state_summary length={len(state_summary) if state_summary else 0}"
+            f"[LLMClient] build_user_message: memory_content length={len(memory_content) if memory_content else 0}"
         )
 
         replacements = {
@@ -217,7 +221,7 @@ class LLMClient:
             "{MAX_LLM_CALLS}": str(budget.get("max_llm_calls", 30)),
             "{MAX_TOOL_CALLS}": str(budget.get("max_tool_calls", 200)),
             "{MAX_WALL_TIME_SEC}": str(budget.get("max_wall_time_sec", 1800)),
-            "{STATE_SUMMARY}": state_summary or "Initial state",
+            "{STATE_SUMMARY}": memory_content,  # Use memory_context or state_summary
             "{PROJECT_PROFILE}": project_profile or "Not identified",
             "{RELEVANT_FILES}": relevant_files or "None",
             "{RECENT_ERROR}": recent_error or "None",
