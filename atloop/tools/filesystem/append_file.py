@@ -143,11 +143,17 @@ class AppendFileTool(BaseTool):
 
         # Determine success based on stderr content, not exit code
         stderr = result.get("stderr", "")
+        exit_code = result.get("exitCode", result.get("exit_code", -1))
         ok = not bool(stderr.strip())  # Success if no error messages in stderr
 
         return ToolResult(
             ok=ok,
             stdout=result.get("stdout", ""),
             stderr=stderr,
-            meta={"path": path, "cmd": cmd, "duration_ms": result.get("durationMs", 0)},
+            meta={
+                "path": path,
+                "cmd": cmd,
+                "duration_ms": result.get("durationMs", 0),
+                "exitCode": exit_code,  # Include exit code for proper display
+            },
         )

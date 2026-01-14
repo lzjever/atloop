@@ -216,6 +216,7 @@ class SearchTool(BaseTool):
 
         # Determine success based on stderr content, not exit code
         stderr = result.get("stderr", "")
+        exit_code = result.get("exitCode", result.get("exit_code", -1))
         ok = not bool(stderr.strip())  # Success if no error messages in stderr
 
         return ToolResult(
@@ -228,5 +229,6 @@ class SearchTool(BaseTool):
                 "output_mode": output_mode,
                 "max_results": max_results,
                 "cmd": cmd,
+                "exitCode": exit_code,  # Include exit code for proper display
             },
         )

@@ -158,6 +158,7 @@ class RunShellScriptStringTool(BaseTool):
 
             stdout = result.get("stdout", "")
             stderr = result.get("stderr", "")
+            exit_code = result.get("exitCode", result.get("exit_code", -1))
             # Determine success based on stderr content, not exit code
             ok = not bool(stderr.strip())  # Success if no error messages in stderr
 
@@ -170,6 +171,7 @@ class RunShellScriptStringTool(BaseTool):
                 stderr=stderr,
                 meta={
                     "script_preview": script_preview,
+                    "exitCode": exit_code,  # Include exit code for proper display
                     "script_length": len(script),
                     "duration_ms": result.get("durationMs", 0),
                 },

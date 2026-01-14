@@ -18,6 +18,8 @@ from atloop.llm.schema import (
     parse_action_json,
 )
 from atloop.skills import EnhancedSkillLoader
+from atloop.output.emitter import OutputEventEmitter
+from atloop.output.events import LLMCallEvent, LLMStreamEvent, LLMResultEvent
 
 logger = logging.getLogger(__name__)
 
@@ -296,6 +298,8 @@ class LLMClient:
         user_message: str,
         max_retries: int = 2,
         stream_callback: Optional[Callable[[str], None]] = None,
+        step: Optional[int] = None,
+        task_id: Optional[str] = None,
     ) -> Tuple[Optional[ActionJSON], Optional[str], Dict[str, Any], Optional[str], Dict[str, str]]:
         """
         Call LLM to plan and generate actions.
@@ -310,6 +314,8 @@ class LLMClient:
             user_message: Required user message content containing all context (including memory summary)
             max_retries: Maximum retry attempts if JSON parsing fails
             stream_callback: Optional callback function to receive streaming output chunks
+            step: Optional step number for event emission
+            task_id: Optional task ID for event emission
 
         Returns:
             Tuple of (ActionJSON or None, error_message, usage_info, full_output_text, file_contents_dict)
@@ -324,6 +330,12 @@ class LLMClient:
 
         self._log_prompt_size(user_message)
 
+        # Get event emitter if step and task_id are provided
+        event_emitter = None
+        if step is not None and task_id:
+            event_emitter = OutputEventEmitter()
+
+        llm_call_start_time = None
         for attempt in range(max_retries + 1):
             try:
                 current_message = self._build_retry_message(user_message, attempt, error)
@@ -334,11 +346,25 @@ class LLMClient:
                     max_tokens=self.config.ai.performance.max_tokens_output,
                 )
 
+                # Emit LLM call event before calling
+                if event_emitter:
+                    llm_call_start_time = time.time()
+                    event_emitter.emit(
+                        LLMCallEvent(
+                            step=step,
+                            task_id=task_id,
+                            model=self.config.ai.completion.model,
+                            prompt_length=len(current_message),
+                        )
+                    )
+
                 initial_result = self._stream_initial_response(
-                    current_message, chat_params, stream_callback
+                    current_message, chat_params, stream_callback, step, task_id, event_emitter
                 )
 
-                result = self._handle_truncation(initial_result, current_message, stream_callback)
+                result = self._handle_truncation(
+                    initial_result, current_message, stream_callback, step, task_id, event_emitter
+                )
 
                 usage_info["total_tokens"] = result.usage.total_tokens
                 usage_info["input_tokens"] = result.usage.input_tokens
@@ -349,6 +375,28 @@ class LLMClient:
 
                 action_json, error, file_contents = parse_action_json(full_output)
                 self._log_file_contents_extraction(file_contents, action_json, full_output)
+
+                # Emit LLM result event
+                if event_emitter and action_json and llm_call_start_time:
+                    # ActionJSON.actions is List[Dict[str, Any]], not objects with attributes
+                    actions_list = [
+                        {"tool": action.get("tool", ""), "args": action.get("args", {})}
+                        for action in action_json.actions
+                    ]
+                    duration_ms = int((time.time() - llm_call_start_time) * 1000)
+                    event_emitter.emit(
+                        LLMResultEvent(
+                            step=step,
+                            task_id=task_id,
+                            model=self.config.ai.completion.model,
+                            tokens_in=result.usage.input_tokens,
+                            tokens_out=result.usage.output_tokens,
+                            actions=actions_list,
+                            stop_reason=action_json.stop_reason,
+                            duration_ms=duration_ms,
+                            full_response=full_output,
+                        )
+                    )
 
                 if action_json:
                     return action_json, None, usage_info, full_output, file_contents
@@ -418,17 +466,23 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         return user_message
 
     def _print_streaming_status(self, stream_callback: Optional[Callable[[str], None]]) -> None:
-        """Print streaming status message."""
-        if stream_callback:
-            print("LLM is streaming...\n", end="", flush=True)
-        else:
-            print("LLM is generating...", end="", flush=True)
+        """Print streaming status message.
+        
+        Note: This is kept for backward compatibility but output system
+        handles LLM status display via events. This may be removed in future.
+        """
+        # Suppress direct print in favor of event-driven output
+        # Output system will handle status display via LLMCallEvent and LLMStreamEvent
+        pass
 
     def _stream_initial_response(
         self,
         current_message: str,
         chat_params: ChatParams,
         stream_callback: Optional[Callable[[str], None]],
+        step: Optional[int] = None,
+        task_id: Optional[str] = None,
+        event_emitter: Optional[OutputEventEmitter] = None,
     ) -> ChatResult:
         """Stream initial LLM response and return result."""
         stream_iterator = self.chat.stream(
@@ -440,15 +494,36 @@ Please output only valid JSON, do not add any other text, comments, or explanati
 
         chunk_count = 0
         total_delta_length = 0
+        start_time = time.time()
         try:
             for chunk in stream_iterator:
                 chunk_count += 1
                 if chunk.delta:
                     total_delta_length += len(chunk.delta)
                     if stream_callback:
-                        print(chunk.delta, end="", flush=True)
+                        # Don't print directly - let output system handle it via events
                         stream_callback(chunk.delta)
+                    # Emit stream event
+                    if event_emitter:
+                        event_emitter.emit(
+                            LLMStreamEvent(
+                                step=step or 0,
+                                task_id=task_id or "",
+                                chunk=chunk.delta,
+                                is_complete=False,
+                            )
+                        )
                 if chunk.done:
+                    # Emit stream complete event
+                    if event_emitter:
+                        event_emitter.emit(
+                            LLMStreamEvent(
+                                step=step or 0,
+                                task_id=task_id or "",
+                                chunk="",
+                                is_complete=True,
+                            )
+                        )
                     break
         except Exception as stream_error:
             logger.error(f"[LLMClient] Error during streaming: {stream_error}")
@@ -458,10 +533,8 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             f"[LLMClient] Streaming stats: {chunk_count} chunks, total delta length: {total_delta_length} chars"
         )
 
-        if stream_callback:
-            print()
-        else:
-            print("Done")
+        # Don't print directly - let output system handle it via events
+        # Status is shown via LLMResultEvent
 
         initial_result = stream_iterator.result.to_chat_result()
 
@@ -492,12 +565,15 @@ Please output only valid JSON, do not add any other text, comments, or explanati
         initial_result: ChatResult,
         current_message: str,
         stream_callback: Optional[Callable[[str], None]],
+        step: Optional[int] = None,
+        task_id: Optional[str] = None,
+        event_emitter: Optional[OutputEventEmitter] = None,
     ) -> ChatResult:
         """Handle response truncation by continuing generation."""
         if initial_result.finish_reason == "length":
             max_continue_attempts = 5
-            if stream_callback:
-                print("    [Truncation detected, continuing generation...] ", end="", flush=True)
+            # Truncation handling - output system will show this via events if needed
+            # Suppress direct print in favor of event-driven output
             try:
                 result = self._continue_with_streaming(
                     self.chat,
@@ -506,8 +582,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
                     original_user_message=current_message,
                     stream_callback=stream_callback,
                 )
-                if stream_callback:
-                    print()
+                # Don't print directly - output system handles it
                 logger.info(
                     f"[LLMClient] Continue generation successful, final result length: {len(result.text)} chars"
                 )

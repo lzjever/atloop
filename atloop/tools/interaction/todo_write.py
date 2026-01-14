@@ -209,12 +209,16 @@ class TodoWriteTool(BaseTool):
         if in_progress_count == 0 and len(todos) > 0:
             summary += "\n⚠️  Warning: No tasks are in_progress. Consider marking at least one task as in_progress."
 
+        # Get exit code from write_result
+        exit_code = write_result.get("exitCode", write_result.get("exit_code", 0))
+
         return ToolResult(
             ok=True,
             stdout=summary,
             stderr="",
             meta={
                 "todo_file": todo_file_path,
+                "exitCode": exit_code,  # Include exit code for proper display
                 "todo_count": len(todos),
                 "pending": pending_count,
                 "in_progress": in_progress_count,

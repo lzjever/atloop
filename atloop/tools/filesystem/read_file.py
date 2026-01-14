@@ -208,6 +208,7 @@ class ReadFileTool(BaseTool):
 
         # Determine success based on stderr content, not exit code
         stderr = result.get("stderr", "")
+        exit_code = result.get("exitCode", result.get("exit_code", -1))
         ok = not bool(stderr.strip())  # Success if no error messages in stderr
 
         return ToolResult(
@@ -217,6 +218,7 @@ class ReadFileTool(BaseTool):
             meta={
                 "path": path,
                 "file_type": "text",
+                "exitCode": exit_code,  # Include exit code for proper display
                 "file_size": file_size,
                 "file_type_info": file_type_info,
                 "start_line": start_line,

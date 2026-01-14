@@ -148,12 +148,17 @@ class GlobFilesTool(BaseTool):
 
         # Check for errors in stderr, not exit code
         stderr = result.get("stderr", "")
+        exit_code = result.get("exitCode", result.get("exit_code", -1))
         if stderr.strip():
             return ToolResult(
                 ok=False,
                 stdout="",
                 stderr=stderr or "Failed to execute glob pattern",
-                meta={"pattern": pattern, "max_results": max_results},
+                meta={
+                    "pattern": pattern,
+                    "max_results": max_results,
+                    "exitCode": exit_code,  # Include exit code for proper display
+                },
             )
 
         # Parse results - each line is a file path
@@ -180,6 +185,7 @@ class GlobFilesTool(BaseTool):
                 "max_results": max_results,
                 "matched_count": len(matched_files),
                 "matched_files": matched_files,
+                "exitCode": exit_code,  # Include exit code for proper display
             },
         )
 

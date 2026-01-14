@@ -206,6 +206,8 @@ class PlanPhase(BasePhase):
                 self.coordinator.llm_client.plan_and_act(
                     user_message,
                     stream_callback=stream_callback,
+                    step=state.step,
+                    task_id=self.coordinator.task_spec.task_id,
                 )
             )
             logger.debug(
@@ -565,6 +567,7 @@ class PlanPhase(BasePhase):
                     "plan": action_json.plan,
                     "actions": [a.to_dict() if hasattr(a, "to_dict") else a for a in actions],
                     "stop_reason": stop_reason,
+                    "result_message": action_json.result_message,  # Store result_message for footer display
                     "llm_output": full_output,
                 }
                 state.memory.llm_responses.append(llm_response_record)

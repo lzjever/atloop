@@ -158,12 +158,16 @@ class TodoReadTool(BaseTool):
 
         output += f"\nSummary: {len(pending)} pending, {len(in_progress)} in progress, {len(completed)} completed"
 
+        # Get exit code from read_result
+        exit_code = read_result.get("exitCode", read_result.get("exit_code", 0))
+
         return ToolResult(
             ok=True,
             stdout=output,
             stderr="",
             meta={
                 "todo_file": todo_file_path,
+                "exitCode": exit_code,  # Include exit code for proper display
                 "todo_count": len(todos),
                 "pending": len(pending),
                 "in_progress": len(in_progress),

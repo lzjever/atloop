@@ -1,11 +1,14 @@
 """Exec-file command - execute task with prompt file."""
 
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 from atloop.api.runner import TaskRunner
+from atloop.output.emitter import OutputEventEmitter
+from atloop.output.console.handler import ConsoleOutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +52,28 @@ def cmd_exec_file(args: Any) -> int:
         upload_workspace = config.runtime.upload_workspace
         logger.debug(f"[CLI] Upload workspace: {upload_workspace}")
 
-        # Execute
-        runner = TaskRunner(atloop_dir=getattr(args, "atloop_dir", None))
-        logger.debug("[CLI] Starting task execution")
-        result = runner.execute(goal=prompt, workspace_root=workspace_root, upload_workspace=upload_workspace)
-        logger.debug(f"[CLI] Task execution completed: success={result['success']}")
+        # Setup console output handler
+        output_format = (
+            getattr(args, "output_format", "minimal")
+            or os.getenv("ATLOOP_OUTPUT_FORMAT", "minimal")
+        )
+        event_emitter = OutputEventEmitter()
+        console_handler = ConsoleOutputHandler(output_format=output_format, enabled=True)
+        event_emitter.subscribe(console_handler.handle)
+        console_handler.start()
 
-        return 0 if result["success"] else 1
+        try:
+            # Execute
+            runner = TaskRunner(atloop_dir=getattr(args, "atloop_dir", None))
+            logger.debug("[CLI] Starting task execution")
+            result = runner.execute(goal=prompt, workspace_root=workspace_root, upload_workspace=upload_workspace)
+            logger.debug(f"[CLI] Task execution completed: success={result['success']}")
+
+            return 0 if result["success"] else 1
+        finally:
+            # Cleanup
+            console_handler.stop()
+            event_emitter.unsubscribe(console_handler.handle)
     except KeyboardInterrupt:
         print("\n[INTERRUPTED]", file=sys.stderr)
         return 1

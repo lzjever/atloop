@@ -157,6 +157,7 @@ class RunCommandTool(BaseTool):
 
         stdout = result.get("stdout", "")
         stderr = result.get("stderr", "")
+        exit_code = result.get("exitCode", result.get("exit_code", -1))
         # Determine success based on stderr content, not exit code
         # Many commands return exit_code=0 even with errors, or exit_code!=0 with no errors
         ok = not bool(stderr.strip())  # Success if no error messages in stderr
@@ -165,5 +166,9 @@ class RunCommandTool(BaseTool):
             ok=ok,
             stdout=stdout,
             stderr=stderr,
-            meta={"cmd": cmd, "duration_ms": result.get("durationMs", 0)},
+            meta={
+                "cmd": cmd,
+                "duration_ms": result.get("durationMs", 0),
+                "exitCode": exit_code,  # Include exit code for proper display
+            },
         )

@@ -45,6 +45,12 @@ def create_parser() -> argparse.ArgumentParser:
         "prompt", nargs="?", help="Task prompt (text). If not provided, reads from stdin."
     )
     exec_parser.add_argument(
+        "--output-format",
+        choices=["minimal", "verbose", "debug"],
+        default="minimal",
+        help="Output format: minimal (default), verbose, or debug",
+    )
+    exec_parser.add_argument(
         "--help-variables", action="store_true", help="Show available variables and their sources"
     )
     exec_parser.add_argument(
@@ -55,6 +61,12 @@ def create_parser() -> argparse.ArgumentParser:
     exec_file_parser = subparsers.add_parser("exec-file", help="Execute a task with prompt file")
     add_atloop_dir_arg(exec_file_parser)
     exec_file_parser.add_argument("file_path", help="Path to prompt file")
+    exec_file_parser.add_argument(
+        "--output-format",
+        choices=["minimal", "verbose", "debug"],
+        default="minimal",
+        help="Output format: minimal (default), verbose, or debug",
+    )
     exec_file_parser.add_argument(
         "--help-variables", action="store_true", help="Show available variables and their sources"
     )

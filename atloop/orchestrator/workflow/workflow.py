@@ -2,10 +2,19 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Dict
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from atloop.orchestrator.coordinator import WorkflowCoordinator
 from atloop.orchestrator.error_handler import ErrorClassifier, ErrorCategory, ErrorRecoveryStrategy
+from atloop.output.emitter import OutputEventEmitter
+from atloop.output.events import (
+    TaskStartEvent,
+    PhaseTransitionEvent,
+    BudgetUpdateEvent,
+    TaskCompleteEvent,
+    ErrorEvent,
+)
 
 if TYPE_CHECKING:
     from atloop.orchestrator.phases.base import PhaseResult
@@ -35,12 +44,51 @@ class Workflow:
         """Run workflow - single method."""
         logger.info("[Workflow] Starting workflow execution")
 
+        # Get event emitter
+        event_emitter = OutputEventEmitter()
+
+        # Get config for event data
+        from atloop.config.loader import ConfigLoader
+
+        config = ConfigLoader.get()
+        task_id = self.coordinator.task_spec.task_id
+        start_time = datetime.now()
+
+        # Get runs directory path
+        atloop_dir = ConfigLoader.get_atloop_dir()
+        runs_dir = str(atloop_dir / "runs" / task_id)
+
+        # Get agent session ID
+        session_id = getattr(self.coordinator, "agent_session_id", None)
+
+        # Emit task start event
+        event_emitter.emit(
+            TaskStartEvent(
+                step=0,
+                task_id=task_id,
+                goal=self.coordinator.task_spec.goal,
+                workspace_root=self.coordinator.task_spec.workspace_root,
+                model=config.ai.completion.model,
+                budget={
+                    "max_llm_calls": config.runtime.default_budget.max_llm_calls,
+                    "max_tool_calls": config.runtime.default_budget.max_tool_calls,
+                    "max_wall_time_sec": config.runtime.default_budget.max_wall_time_sec,
+                },
+                session_id=session_id,
+                runs_dir=runs_dir,
+                start_time=start_time,
+            )
+        )
+
         if not self.coordinator.initialize():
             logger.error("[Workflow] Workspace initialization failed")
             return self._failure("Workspace initialization failed")
 
         max_iterations = 100
         logger.debug(f"[Workflow] Max iterations: {max_iterations}")
+
+        last_budget_update_time = datetime.now()
+        previous_phase: Optional[str] = None
 
         for iteration in range(1, max_iterations + 1):
             logger.debug(f"[Workflow] Iteration {iteration}/{max_iterations}")
@@ -67,6 +115,45 @@ class Workflow:
                 phase=state.phase,
             )
 
+            # Emit phase transition event if phase changed
+            if state.phase != previous_phase:
+                # Get plan snapshot for minimal mode display
+                plan_snapshot = None
+                if hasattr(state, 'memory') and hasattr(state.memory, 'plan'):
+                    plan = state.memory.plan
+                    if isinstance(plan, list):
+                        plan_snapshot = plan
+                
+                event_emitter.emit(
+                    PhaseTransitionEvent(
+                        step=state.step,
+                        task_id=task_id,
+                        phase=state.phase,
+                        previous_phase=previous_phase,
+                        details={"iteration": iteration},
+                        plan_snapshot=plan_snapshot,
+                    )
+                )
+                previous_phase = state.phase
+
+            # Emit budget update periodically (every 5 seconds or every iteration in verbose mode)
+            current_time = datetime.now()
+            time_since_last_update = (current_time - last_budget_update_time).total_seconds()
+            if time_since_last_update >= 5.0:  # Update every 5 seconds
+                event_emitter.emit(
+                    BudgetUpdateEvent(
+                        step=state.step,
+                        task_id=task_id,
+                        llm_calls_used=state.budget_used.llm_calls,
+                        llm_calls_max=config.runtime.default_budget.max_llm_calls,
+                        tool_calls_used=state.budget_used.tool_calls,
+                        tool_calls_max=config.runtime.default_budget.max_tool_calls,
+                        wall_time_sec_used=state.budget_used.wall_time_sec,
+                        wall_time_sec_max=config.runtime.default_budget.max_wall_time_sec,
+                    )
+                )
+                last_budget_update_time = current_time
+
             # Execute phase
             current_phase = Phase.from_string(state.phase)
             logger.debug(f"[Workflow] Executing phase: {current_phase} at step {state.step}")
@@ -86,7 +173,41 @@ class Workflow:
             # Check termination
             if result.next_phase == Phase.DONE:
                 logger.info(f"[Workflow] Workflow completed successfully at step {state.step}")
-                return self._success()
+                success_result = self._success()
+                # Emit task complete event
+                end_time = datetime.now()
+                
+                # Collect file modification information
+                files_created = list(state.memory.created_files) if state.memory.created_files else []
+                files_modified = [
+                    record.get("path", "")
+                    for record in state.memory.modified_files_content
+                    if record.get("path") and record.get("path") not in files_created
+                ]
+                # Combine all file changes (created + modified)
+                all_files = list(set(files_created + files_modified))
+                
+                event_emitter.emit(
+                    TaskCompleteEvent(
+                        step=state.step,
+                        task_id=task_id,
+                        status="success",
+                        final_step=state.step,
+                        duration_sec=int((end_time - start_time).total_seconds()),
+                        budget_used={
+                            "llm_calls": state.budget_used.llm_calls,
+                            "tool_calls": state.budget_used.tool_calls,
+                            "wall_time_sec": state.budget_used.wall_time_sec,
+                        },
+                        files_modified=all_files,
+                        summary=success_result.get("summary"),
+                        session_id=session_id,
+                        runs_dir=runs_dir,
+                        end_time=end_time,
+                        start_time=start_time,
+                    )
+                )
+                return success_result
             elif result.next_phase == Phase.FAIL:
                 # Only fail if error is truly fatal (not recoverable)
                 if result.recoverable:
@@ -105,7 +226,52 @@ class Workflow:
                     result = recovery_result
                 else:
                     logger.error(f"[Workflow] Workflow failed with fatal error: {result.error}")
-                    return self._failure(result.error or "Workflow failed")
+                    failure_result = self._failure(result.error or "Workflow failed")
+                    # Emit error event
+                    event_emitter.emit(
+                        ErrorEvent(
+                            step=state.step,
+                            task_id=task_id,
+                            phase=state.phase,
+                            error_type=type(result.error).__name__ if result.error else "UnknownError",
+                            error_message=str(result.error) if result.error else "Workflow failed",
+                            error_details={"recoverable": False},
+                            recoverable=False,
+                        )
+                    )
+                    # Emit task complete event
+                    end_time = datetime.now()
+                    
+                    # Collect file modification information
+                    files_created = list(state.memory.created_files) if state.memory.created_files else []
+                    files_modified = [
+                        record.get("path", "")
+                        for record in state.memory.modified_files_content
+                        if record.get("path") and record.get("path") not in files_created
+                    ]
+                    all_files = list(set(files_created + files_modified))
+                    
+                    event_emitter.emit(
+                        TaskCompleteEvent(
+                            step=state.step,
+                            task_id=task_id,
+                            status="failure",
+                            final_step=state.step,
+                            duration_sec=int((end_time - start_time).total_seconds()),
+                            budget_used={
+                                "llm_calls": state.budget_used.llm_calls,
+                                "tool_calls": state.budget_used.tool_calls,
+                                "wall_time_sec": state.budget_used.wall_time_sec,
+                            },
+                            files_modified=all_files,
+                            error=str(result.error) if result.error else "Workflow failed",
+                            session_id=session_id,
+                            runs_dir=runs_dir,
+                            end_time=end_time,
+                            start_time=start_time,
+                        )
+                    )
+                    return failure_result
 
             # Print memory statistics if debug mode is enabled
             # Print before breakpoint so user can see stats before pausing
@@ -129,7 +295,41 @@ class Workflow:
                 self.coordinator.state_manager.update(phase=result.next_phase.value)
 
         logger.warning(f"[Workflow] Max iterations reached: {max_iterations}")
-        return self._failure("Max iterations reached")
+        failure_result = self._failure("Max iterations reached")
+        # Emit task complete event
+        state = self.coordinator.state_manager.agent_state
+        end_time = datetime.now()
+        
+        # Collect file modification information
+        files_created = list(state.memory.created_files) if state.memory.created_files else []
+        files_modified = [
+            record.get("path", "")
+            for record in state.memory.modified_files_content
+            if record.get("path") and record.get("path") not in files_created
+        ]
+        all_files = list(set(files_created + files_modified))
+        
+        event_emitter.emit(
+            TaskCompleteEvent(
+                step=state.step,
+                task_id=task_id,
+                status="failure",
+                final_step=state.step,
+                duration_sec=int((end_time - start_time).total_seconds()),
+                budget_used={
+                    "llm_calls": state.budget_used.llm_calls,
+                    "tool_calls": state.budget_used.tool_calls,
+                    "wall_time_sec": state.budget_used.wall_time_sec,
+                },
+                files_modified=all_files,
+                error="Max iterations reached",
+                session_id=session_id,
+                runs_dir=runs_dir,
+                end_time=end_time,
+                start_time=start_time,
+            )
+        )
+        return failure_result
 
     def _execute_phase(self, phase: Phase, step: int) -> "PhaseResult":
         """
@@ -343,12 +543,60 @@ class Workflow:
         """Generate success report."""
         state = self.coordinator.state_manager.agent_state
         logger.debug(f"[Workflow] Generating success report for step {state.step}")
+        
+        # Extract result_message from multiple sources (in order of preference)
+        result_message = None
+        
+        # 1. Try job_state.shared_data["actions"] (most recent, stored when stop_reason="done")
+        actions_dict = self.coordinator.job_state.shared_data.get("actions")
+        if actions_dict and isinstance(actions_dict, dict):
+            result_message = actions_dict.get("result_message")
+            if result_message:
+                logger.debug(
+                    f"[Workflow] Extracted result_message from job_state.shared_data['actions']: "
+                    f"{result_message[:100]}..."
+                )
+        
+        # 2. Fallback: try to get from last LLM response in memory
+        if not result_message and state.memory.llm_responses:
+            # Search backwards through llm_responses to find the most recent result_message
+            for response in reversed(state.memory.llm_responses):
+                if isinstance(response, dict):
+                    # Check if response has stop_reason="done" and result_message
+                    if response.get("stop_reason") == "done":
+                        result_message = response.get("result_message")
+                        if result_message:
+                            logger.debug(
+                                f"[Workflow] Extracted result_message from memory.llm_responses: "
+                                f"{result_message[:100]}..."
+                            )
+                            break
+        
+        # 3. Final fallback: check important_decisions for task completion message
+        if not result_message and state.memory.important_decisions:
+            # Look for decision that indicates task completion
+            for decision in reversed(state.memory.important_decisions):
+                if isinstance(decision, dict):
+                    decision_text = decision.get("decision", "")
+                    if "Task completed" in decision_text and ":" in decision_text:
+                        # Extract result_message from decision text (format: "Task completed: {result_message}")
+                        parts = decision_text.split(":", 1)
+                        if len(parts) == 2:
+                            result_message = parts[1].strip()
+                            if result_message:
+                                logger.debug(
+                                    f"[Workflow] Extracted result_message from important_decisions: "
+                                    f"{result_message[:100]}..."
+                                )
+                                break
+        
         return {
             "status": "success",
             "task_id": self.coordinator.task_spec.task_id,
             "step": state.step,
             "diff": state.artifacts.current_diff,
             "test_results": state.artifacts.test_results,
+            "summary": result_message,  # Include result_message as summary
             "budget_used": {
                 "llm_calls": state.budget_used.llm_calls,
                 "tool_calls": state.budget_used.tool_calls,

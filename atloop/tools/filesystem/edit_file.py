@@ -286,6 +286,9 @@ class EditFileTool(BaseTool):
             new_string,
         )
 
+        # Get exit code from write_result
+        exit_code = write_result.get("exitCode", write_result.get("exit_code", 0))
+
         return ToolResult(
             ok=True,
             stdout=diff_summary,
@@ -295,6 +298,7 @@ class EditFileTool(BaseTool):
                 "operation": "create"
                 if not old_string
                 else ("delete" if not new_string else "update"),
+                "exitCode": exit_code,  # Include exit code for proper display
                 "replace_all": replace_all,
             },
         )

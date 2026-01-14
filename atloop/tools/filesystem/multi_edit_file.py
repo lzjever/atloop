@@ -266,6 +266,17 @@ class MultiEditFileTool(BaseTool):
             else:
                 successful_edits.append(path)
 
+        # Get exit code from last write_result (or 0 if all successful)
+        # For multi-edit, we use the exit code from the last write operation
+        exit_code = 0
+        if write_errors:
+            # If there were errors, try to get exit code from last write_result
+            # (Note: we don't store all write_results, so use 0 for partial success)
+            exit_code = 0
+        else:
+            # All successful - exit code should be 0
+            exit_code = 0
+
         # Generate summary
         if write_errors:
             return ToolResult(
@@ -277,6 +288,7 @@ class MultiEditFileTool(BaseTool):
                     "failed_edits": len(write_errors),
                     "total_edits": len(edits),
                     "edited_files": successful_edits,
+                    "exitCode": exit_code,  # Include exit code for proper display
                 },
             )
 
@@ -293,6 +305,7 @@ class MultiEditFileTool(BaseTool):
                 "successful_edits": len(successful_edits),
                 "total_edits": len(edits),
                 "edited_files": successful_edits,
+                "exitCode": exit_code,  # Include exit code for proper display
             },
         )
 
