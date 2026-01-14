@@ -1,0 +1,13 @@
+The cat sat on the mat. The dog ran in the park. The bird flew in the sky. The fish swam in the water. 
+
+Hello world! This is a simple text for training a language model. Language models learn to predict the next word in a sequence.
+
+The sun rises in the east and sets in the west. The moon shines at night.
+
+Transformers are neural network architectures used for natural language processing. They use self-attention mechanisms to process sequential data.
+
+This model is very small and will be trained on this simple dataset for demonstration purposes. Overfitting is expected.
+
+Artificial intelligence is transforming how we interact with technology. Machine learning algorithms learn patterns from data.
+
+Python is a popular programming language. PyTorch is a deep learning framework built on Python.
