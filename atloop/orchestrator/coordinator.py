@@ -1,10 +1,9 @@
 """Workflow coordinator - manages all components."""
 
 import logging
-from pathlib import Path
 from typing import Optional
 
-from atloop.config.loop_detection import DEFAULT_LOOP_DETECTION_CONFIG, LoopDetectionConfig
+from atloop.config.loop_detection import DEFAULT_LOOP_DETECTION_CONFIG
 from atloop.config.models import AtloopConfig, TaskSpec
 from atloop.llm import LLMClient
 from atloop.logging import EventLogger
@@ -139,7 +138,7 @@ class WorkflowCoordinator:
             task_summary = "\n".join(summary_parts)
 
             MemoryManager.update_task_summary(state, task_summary)
-            logger.info(f"[Coordinator] Initialized task_summary in long-term memory")
+            logger.info("[Coordinator] Initialized task_summary in long-term memory")
 
         # Save state after initialization
         self.state_manager.save()

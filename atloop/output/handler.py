@@ -5,7 +5,6 @@ All output backends (console, HTTP, file, etc.) must implement this interface.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from atloop.output.events import OutputEvent
 

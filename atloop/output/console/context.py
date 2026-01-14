@@ -5,24 +5,24 @@ and updates from events. It serves as the single source of truth for formatters.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from atloop.output.console.plan_state import PlanState
 from atloop.output.events import (
+    LLMResultEvent,
     OutputEvent,
     PhaseTransitionEvent,
-    TaskStartEvent,
     TaskCompleteEvent,
-    LLMResultEvent,
+    TaskStartEvent,
     ToolResultEvent,
 )
-from atloop.output.console.plan_state import PlanState
 
 
 @dataclass
 class FormatterContext:
     """Centralized state context for formatters.
-    
+
     This class maintains execution state and updates from events.
     It serves as the single source of truth for all formatting components.
     """
@@ -49,16 +49,16 @@ class FormatterContext:
 
     def update_from_event(self, event: OutputEvent) -> None:
         """Update context from event.
-        
+
         Args:
             event: Output event to process
         """
         if isinstance(event, PhaseTransitionEvent):
             self.phase = event.phase
             self.step = event.step
-            
+
             # Update plan if provided in event
-            if hasattr(event, 'plan_snapshot') and event.plan_snapshot:
+            if hasattr(event, "plan_snapshot") and event.plan_snapshot:
                 self.plan_state.update_plan(event.plan_snapshot)
 
         elif isinstance(event, TaskStartEvent):
@@ -90,12 +90,12 @@ class FormatterContext:
                 pass
 
     # Plan query methods (delegate to plan_state for efficiency)
-    
+
     def get_current_plan_entry(self) -> Optional[str]:
         """Get current plan entry description.
-        
+
         Delegates to plan_state for efficient O(1) query.
-        
+
         Returns:
             Description of current plan entry, or None if not available
         """
@@ -103,9 +103,9 @@ class FormatterContext:
 
     def get_plan_position(self) -> tuple[int, int]:
         """Get (current, total) plan position.
-        
+
         Delegates to plan_state for efficient O(1) query.
-        
+
         Returns:
             Tuple of (current_position, total_count)
             current_position is 1-based, 0 means no active task
@@ -114,15 +114,15 @@ class FormatterContext:
 
     def _extract_plan_from_response(self, event: LLMResultEvent) -> Optional[List[Any]]:
         """Extract plan from LLM response.
-        
+
         This method tries multiple sources to extract plan information:
         1. Parse from full_response JSON
         2. Extract from actions
         3. Use existing plan in context
-        
+
         Args:
             event: LLM result event
-        
+
         Returns:
             Extracted plan list, or None if not found
         """
@@ -130,6 +130,7 @@ class FormatterContext:
         if event.full_response:
             try:
                 import json
+
                 data = json.loads(event.full_response)
                 if "plan" in data and data["plan"]:
                     # Convert to list if needed
@@ -141,7 +142,7 @@ class FormatterContext:
                         return [line.strip() for line in plan_data.split("\n") if line.strip()]
             except (json.JSONDecodeError, KeyError):
                 pass
-        
+
         # Try to extract from actions (if plan is embedded)
         # This is a fallback - plan extraction from actions is complex
         # For now, we'll rely on state.memory.plan being updated separately
@@ -149,7 +150,7 @@ class FormatterContext:
 
     def update_plan(self, plan: Optional[List[Any]]) -> None:
         """Update plan from external source (e.g., state.memory.plan).
-        
+
         Args:
             plan: Plan list (List[PlanStep] or List[str])
         """
@@ -157,7 +158,7 @@ class FormatterContext:
 
     def update_diff(self, diff: Optional[str]) -> None:
         """Update current diff.
-        
+
         Args:
             diff: Diff string or None
         """
@@ -165,9 +166,9 @@ class FormatterContext:
 
     def has_plan_state_changed(self) -> bool:
         """Check if plan state has changed since last display.
-        
+
         Delegates to plan_state for efficient O(1) check.
-        
+
         Returns:
             True if plan position or status changed, False otherwise
         """
@@ -175,28 +176,28 @@ class FormatterContext:
 
     def _get_current_plan_status(self) -> Optional[str]:
         """Get status of current plan entry.
-        
+
         Delegates to plan_state for efficient O(1) query.
-        
+
         Returns:
             Status string ("completed", "in_progress", "pending", etc.) or None
         """
         return self.plan_state.get_current_status()
-    
+
     # Backward compatibility: expose plan for components that need direct access
     @property
     def plan(self) -> Optional[List[Any]]:
         """Get plan list (for backward compatibility).
-        
+
         Returns:
             Plan list from plan_state
         """
         return self.plan_state.plan
-    
+
     @plan.setter
     def plan(self, value: Optional[List[Any]]) -> None:
         """Set plan list (for backward compatibility).
-        
+
         Args:
             value: Plan list to set
         """

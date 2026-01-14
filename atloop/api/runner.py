@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from atloop.config.loader import ConfigLoader  # Uses varlord internally
-from atloop.config.models import Budget, SandboxConfig, TaskSpec
+from atloop.config.models import Budget, TaskSpec
 from atloop.orchestrator import AgentLoop
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,9 @@ class TaskRunner:
                     from pathlib import Path
 
                     workspace_root = str(Path.cwd())
-                    logger.debug(f"[TaskRunner] Using current directory as workspace: {workspace_root}")
+                    logger.debug(
+                        f"[TaskRunner] Using current directory as workspace: {workspace_root}"
+                    )
                 else:
                     from pathlib import Path
 
@@ -117,7 +119,9 @@ class TaskRunner:
                 upload_workspace = config.runtime.upload_workspace
                 logger.debug(f"[TaskRunner] Using upload_workspace from config: {upload_workspace}")
             else:
-                logger.debug(f"[TaskRunner] Using upload_workspace from parameter: {upload_workspace}")
+                logger.debug(
+                    f"[TaskRunner] Using upload_workspace from parameter: {upload_workspace}"
+                )
 
             # Create task spec
             logger.debug("[TaskRunner] Creating task spec")
@@ -129,7 +133,6 @@ class TaskRunner:
             logger.debug(f"[TaskRunner] Task spec created: task_id={task_spec.task_id}")
 
             # Sandbox session: from config (will fallback to task_id in Coordinator)
-            sandbox_session_id = config.sandbox.default_session_id
 
             # Agent session: from config
             agent_session_id = config.runtime.default_agent_session_id
@@ -154,7 +157,9 @@ class TaskRunner:
                     )
                     return {"success": False, "error": f"Failed to upload workspace: {e}"}
             else:
-                logger.info("[TaskRunner] Skipping workspace upload (configure via runtime.upload_workspace)")
+                logger.info(
+                    "[TaskRunner] Skipping workspace upload (configure via runtime.upload_workspace)"
+                )
 
             # Execute
             logger.info("[TaskRunner] Starting agent loop")

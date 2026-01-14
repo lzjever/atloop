@@ -109,7 +109,7 @@ class ToolResultFormatter:
             error = result.get("error", "")
             if error:
                 lines.append(f"  🔍 **Root Cause**: {error}")
-                lines.append(f"  💡 **Solution**: Check error details above and fix the issue")
+                lines.append("  💡 **Solution**: Check error details above and fix the issue")
 
         return "\n".join(lines)
 
@@ -715,13 +715,6 @@ class MemoryFormatter:
             return text
 
         # 优先保留的部分（按顺序）
-        priority_sections = [
-            "Critical Warnings",
-            "Task Overview",
-            "Execution Plan",
-            "Important Context",
-            "Current State",
-        ]
 
         # 简单实现：保留前面的部分，截断后面的部分
         # 在实际实现中，可以更智能地截断

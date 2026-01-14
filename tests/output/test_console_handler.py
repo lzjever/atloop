@@ -1,24 +1,25 @@
 """Test console output handler and formatters."""
 
-import pytest
 from io import StringIO
+
 from rich.console import Console
-from atloop.output.console.handler import ConsoleOutputHandler
+
 from atloop.output.console.formatters import (
     MinimalConsoleFormatter,
     VerboseConsoleFormatter,
 )
+from atloop.output.console.handler import ConsoleOutputHandler
 from atloop.output.events import (
-    TaskStartEvent,
+    BudgetUpdateEvent,
+    ErrorEvent,
+    LLMCallEvent,
+    LLMResultEvent,
+    LLMStreamEvent,
     PhaseTransitionEvent,
+    TaskCompleteEvent,
+    TaskStartEvent,
     ToolCallEvent,
     ToolResultEvent,
-    LLMCallEvent,
-    LLMStreamEvent,
-    LLMResultEvent,
-    BudgetUpdateEvent,
-    TaskCompleteEvent,
-    ErrorEvent,
 )
 
 
@@ -42,6 +43,7 @@ class TestMinimalConsoleFormatter:
         assert output is not None
         # Check it's a Rich renderable (Panel)
         from rich.panel import Panel
+
         assert isinstance(output, Panel)
 
     def test_format_phase_transition(self):

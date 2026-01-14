@@ -68,6 +68,7 @@ class TestCLIE2ESubprocess:
 
         # Set config via environment variables
         import os
+
         env = os.environ.copy()
         env["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(workspace)
         if local_test:

@@ -1,7 +1,6 @@
 """LLM client wrapper for lexilux."""
 
 import logging
-import re
 import time
 import traceback
 from pathlib import Path
@@ -17,16 +16,16 @@ from atloop.llm.schema import (
     ActionJSON,
     parse_action_json,
 )
-from atloop.skills import EnhancedSkillLoader
 from atloop.output.emitter import OutputEventEmitter
-from atloop.output.events import LLMCallEvent, LLMStreamEvent, LLMResultEvent
+from atloop.output.events import LLMCallEvent, LLMResultEvent, LLMStreamEvent
+from atloop.skills import EnhancedSkillLoader
 
 logger = logging.getLogger(__name__)
 
 # Import placeholder patterns from centralized module
 from atloop.llm.placeholder_patterns import (
-    PLACEHOLDER_DELIMITER_REGEX,
     PARTIAL_PLACEHOLDER_REGEX,
+    PLACEHOLDER_DELIMITER_REGEX,
 )
 
 
@@ -467,7 +466,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
 
     def _print_streaming_status(self, stream_callback: Optional[Callable[[str], None]]) -> None:
         """Print streaming status message.
-        
+
         Note: This is kept for backward compatibility but output system
         handles LLM status display via events. This may be removed in future.
         """
@@ -494,7 +493,7 @@ Please output only valid JSON, do not add any other text, comments, or explanati
 
         chunk_count = 0
         total_delta_length = 0
-        start_time = time.time()
+        time.time()
         try:
             for chunk in stream_iterator:
                 chunk_count += 1

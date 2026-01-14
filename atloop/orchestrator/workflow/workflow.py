@@ -6,14 +6,14 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from atloop.orchestrator.coordinator import WorkflowCoordinator
-from atloop.orchestrator.error_handler import ErrorClassifier, ErrorCategory, ErrorRecoveryStrategy
+from atloop.orchestrator.error_handler import ErrorCategory, ErrorClassifier, ErrorRecoveryStrategy
 from atloop.output.emitter import OutputEventEmitter
 from atloop.output.events import (
-    TaskStartEvent,
-    PhaseTransitionEvent,
     BudgetUpdateEvent,
-    TaskCompleteEvent,
     ErrorEvent,
+    PhaseTransitionEvent,
+    TaskCompleteEvent,
+    TaskStartEvent,
 )
 
 if TYPE_CHECKING:
@@ -119,11 +119,11 @@ class Workflow:
             if state.phase != previous_phase:
                 # Get plan snapshot for minimal mode display
                 plan_snapshot = None
-                if hasattr(state, 'memory') and hasattr(state.memory, 'plan'):
+                if hasattr(state, "memory") and hasattr(state.memory, "plan"):
                     plan = state.memory.plan
                     if isinstance(plan, list):
                         plan_snapshot = plan
-                
+
                 event_emitter.emit(
                     PhaseTransitionEvent(
                         step=state.step,
@@ -176,9 +176,11 @@ class Workflow:
                 success_result = self._success()
                 # Emit task complete event
                 end_time = datetime.now()
-                
+
                 # Collect file modification information
-                files_created = list(state.memory.created_files) if state.memory.created_files else []
+                files_created = (
+                    list(state.memory.created_files) if state.memory.created_files else []
+                )
                 files_modified = [
                     record.get("path", "")
                     for record in state.memory.modified_files_content
@@ -186,7 +188,7 @@ class Workflow:
                 ]
                 # Combine all file changes (created + modified)
                 all_files = list(set(files_created + files_modified))
-                
+
                 event_emitter.emit(
                     TaskCompleteEvent(
                         step=state.step,
@@ -212,8 +214,8 @@ class Workflow:
                 # Only fail if error is truly fatal (not recoverable)
                 if result.recoverable:
                     logger.warning(
-                        f"[Workflow] Phase returned FAIL but marked as recoverable. "
-                        f"Treating as recoverable error."
+                        "[Workflow] Phase returned FAIL but marked as recoverable. "
+                        "Treating as recoverable error."
                     )
                     # Treat as recoverable and transition to PLAN
                     recovery_result = self._handle_recoverable_error(
@@ -233,7 +235,9 @@ class Workflow:
                             step=state.step,
                             task_id=task_id,
                             phase=state.phase,
-                            error_type=type(result.error).__name__ if result.error else "UnknownError",
+                            error_type=type(result.error).__name__
+                            if result.error
+                            else "UnknownError",
                             error_message=str(result.error) if result.error else "Workflow failed",
                             error_details={"recoverable": False},
                             recoverable=False,
@@ -241,16 +245,18 @@ class Workflow:
                     )
                     # Emit task complete event
                     end_time = datetime.now()
-                    
+
                     # Collect file modification information
-                    files_created = list(state.memory.created_files) if state.memory.created_files else []
+                    files_created = (
+                        list(state.memory.created_files) if state.memory.created_files else []
+                    )
                     files_modified = [
                         record.get("path", "")
                         for record in state.memory.modified_files_content
                         if record.get("path") and record.get("path") not in files_created
                     ]
                     all_files = list(set(files_created + files_modified))
-                    
+
                     event_emitter.emit(
                         TaskCompleteEvent(
                             step=state.step,
@@ -299,7 +305,7 @@ class Workflow:
         # Emit task complete event
         state = self.coordinator.state_manager.agent_state
         end_time = datetime.now()
-        
+
         # Collect file modification information
         files_created = list(state.memory.created_files) if state.memory.created_files else []
         files_modified = [
@@ -308,7 +314,7 @@ class Workflow:
             if record.get("path") and record.get("path") not in files_created
         ]
         all_files = list(set(files_created + files_modified))
-        
+
         event_emitter.emit(
             TaskCompleteEvent(
                 step=state.step,
@@ -448,7 +454,7 @@ class Workflow:
 
             if error_category == ErrorCategory.RECOVERABLE:
                 logger.warning(
-                    f"[Workflow] Treating exception as recoverable, transitioning to recovery phase"
+                    "[Workflow] Treating exception as recoverable, transitioning to recovery phase"
                 )
                 return self._handle_recoverable_error(
                     phase, error_msg, {}, error_already_set_in_state=error_already_set_in_state
@@ -543,10 +549,10 @@ class Workflow:
         """Generate success report."""
         state = self.coordinator.state_manager.agent_state
         logger.debug(f"[Workflow] Generating success report for step {state.step}")
-        
+
         # Extract result_message from multiple sources (in order of preference)
         result_message = None
-        
+
         # 1. Try job_state.shared_data["actions"] (most recent, stored when stop_reason="done")
         actions_dict = self.coordinator.job_state.shared_data.get("actions")
         if actions_dict and isinstance(actions_dict, dict):
@@ -556,7 +562,7 @@ class Workflow:
                     f"[Workflow] Extracted result_message from job_state.shared_data['actions']: "
                     f"{result_message[:100]}..."
                 )
-        
+
         # 2. Fallback: try to get from last LLM response in memory
         if not result_message and state.memory.llm_responses:
             # Search backwards through llm_responses to find the most recent result_message
@@ -571,7 +577,7 @@ class Workflow:
                                 f"{result_message[:100]}..."
                             )
                             break
-        
+
         # 3. Final fallback: check important_decisions for task completion message
         if not result_message and state.memory.important_decisions:
             # Look for decision that indicates task completion
@@ -589,7 +595,7 @@ class Workflow:
                                     f"{result_message[:100]}..."
                                 )
                                 break
-        
+
         return {
             "status": "success",
             "task_id": self.coordinator.task_spec.task_id,

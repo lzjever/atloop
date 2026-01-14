@@ -1,8 +1,9 @@
 """Test OutputHandler interface."""
 
 import pytest
-from atloop.output.handler import OutputHandler
+
 from atloop.output.events import OutputEvent, TaskStartEvent
+from atloop.output.handler import OutputHandler
 
 
 class TestAbstractBaseClass:
@@ -19,6 +20,7 @@ class TestConcreteImplementation:
 
     def test_handler_enabled(self):
         """Test handler enable/disable."""
+
         class TestHandler(OutputHandler):
             def handle(self, event: OutputEvent) -> None:
                 pass
@@ -71,6 +73,7 @@ class TestConcreteImplementation:
 
     def test_lifecycle_methods(self):
         """Test start/stop lifecycle methods."""
+
         class LifecycleHandler(OutputHandler):
             def __init__(self):
                 super().__init__()

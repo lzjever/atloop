@@ -63,6 +63,7 @@ class TestCLIE2E:
 
         # Set workspace_root in config via environment variable
         import os
+
         os.environ["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(temp_workspace)
         os.environ["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
 
@@ -103,6 +104,7 @@ class TestCLIE2E:
 
         # Set workspace_root in config via environment variable
         import os
+
         os.environ["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(temp_workspace)
         os.environ["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
 
@@ -135,6 +137,7 @@ class TestCLIE2E:
 
         # Set config via environment variables
         import os
+
         os.environ["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(temp_workspace)
         os.environ["ATLOOP__SANDBOX__BASE_URL"] = "http://127.0.0.1:8080"
         os.environ["ATLOOP__SANDBOX__LOCAL_TEST"] = "false"
@@ -144,11 +147,11 @@ class TestCLIE2E:
             atloop_dir = None
             prompt = "Test task"
 
-        args = MockArgs()
+        MockArgs()
 
         # Verify config is set correctly (will be read from env vars)
         logger.info("CLI exec with sandbox E2E setup successful ✓")
-        
+
         # Cleanup
         os.environ.pop("ATLOOP__RUNTIME__WORKSPACE_ROOT", None)
         os.environ.pop("ATLOOP__SANDBOX__BASE_URL", None)
@@ -163,6 +166,7 @@ class TestCLIE2E:
 
         # Set config via environment variables
         import os
+
         os.environ["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(temp_workspace)
         os.environ["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
 
@@ -171,11 +175,11 @@ class TestCLIE2E:
             atloop_dir = None
             prompt = "Test task"
 
-        args = MockArgs()
+        MockArgs()
 
         # Verify config is set correctly (will be read from env vars)
         logger.info("CLI exec local test E2E setup successful ✓")
-        
+
         # Cleanup
         os.environ.pop("ATLOOP__RUNTIME__WORKSPACE_ROOT", None)
         os.environ.pop("ATLOOP__SANDBOX__LOCAL_TEST", None)

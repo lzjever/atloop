@@ -118,9 +118,9 @@ class ActPhase(BasePhase):
                     ]
                     combined_error = "\n".join(error_messages[:3])  # Limit to first 3 errors
                     logger.warning(
-                        f"[ActPhase] Actions completed with errors. "
-                        f"Detailed error info already set in state.last_error.summary. "
-                        f"Workflow will handle error recovery."
+                        "[ActPhase] Actions completed with errors. "
+                        "Detailed error info already set in state.last_error.summary. "
+                        "Workflow will handle error recovery."
                     )
                     return PhaseResult(
                         success=False,

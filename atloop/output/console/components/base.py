@@ -7,6 +7,7 @@ responsibility principle - each component formats one specific type of data.
 
 from abc import ABC, abstractmethod
 from typing import Optional
+
 from rich.console import Console, RenderableType
 
 from atloop.output.console.context import FormatterContext
@@ -15,7 +16,7 @@ from atloop.output.events import OutputEvent
 
 class FormattingComponent(ABC):
     """Abstract base class for formatting components.
-    
+
     Formatting components are stateless, pure functions that format
     data based on context and events. They can be composed by strategies
     to create different output formats.
@@ -24,7 +25,7 @@ class FormattingComponent(ABC):
     def __init__(self, console: Console):
         """
         Initialize formatting component.
-        
+
         Args:
             console: Rich Console instance for rendering
         """
@@ -38,11 +39,11 @@ class FormattingComponent(ABC):
     ) -> Optional[RenderableType]:
         """
         Format data into Rich renderable.
-        
+
         Args:
             context: Formatter context with current state
             event: Optional event that triggered formatting
-        
+
         Returns:
             Rich renderable (Panel, Text, Table, etc.) or None to skip output
         """
@@ -50,14 +51,14 @@ class FormattingComponent(ABC):
 
     def can_format(self, context: FormatterContext, event: Optional[OutputEvent]) -> bool:
         """Check if this component can format given context/event.
-        
+
         Override this method to provide custom filtering logic.
         By default, returns True (component will attempt to format).
-        
+
         Args:
             context: Formatter context
             event: Optional event
-        
+
         Returns:
             True if component can format, False otherwise
         """

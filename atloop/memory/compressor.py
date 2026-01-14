@@ -212,7 +212,6 @@ class MemoryCompressor:
         total_actions = sum(len(d.get("actions", [])) for d in decisions)
 
         # ✓ 改进：提取关键事实信息
-        key_facts = []
 
         # 统计 stop_reason 分布
         stop_reasons = {}

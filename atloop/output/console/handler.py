@@ -1,18 +1,16 @@
 """Console output handler using Rich library."""
 
 from typing import Optional
+
 from rich.console import Console
 
-from atloop.output.handler import OutputHandler
-from atloop.output.events import OutputEvent
 from atloop.output.console.context import FormatterContext
-from atloop.output.console.strategy import MinimalStrategy, VerboseStrategy, DebugStrategy
-from atloop.output.events import LLMStreamEvent
 from atloop.output.console.formatters import (
     ConsoleFormatter,
-    MinimalConsoleFormatter,
-    VerboseConsoleFormatter,
 )
+from atloop.output.console.strategy import DebugStrategy, MinimalStrategy, VerboseStrategy
+from atloop.output.events import LLMStreamEvent, OutputEvent
+from atloop.output.handler import OutputHandler
 
 
 class ConsoleOutputHandler(OutputHandler):
@@ -41,16 +39,16 @@ class ConsoleOutputHandler(OutputHandler):
         """
         super().__init__(enabled=enabled)
         self.console = console or Console()
-        
+
         # Handle deprecated verbose parameter
         if verbose is not None:
             output_format = "verbose" if verbose else "minimal"
-        
+
         self.output_format = output_format
-        
+
         # Create formatter context (shared state)
         self.context = FormatterContext()
-        
+
         # Use new strategy-based architecture
         # Fallback to old formatters for debug until implemented
         if output_format == "minimal":
@@ -69,7 +67,7 @@ class ConsoleOutputHandler(OutputHandler):
             # Default to minimal
             self.strategy: Optional[MinimalStrategy] = MinimalStrategy(self.console, self.context)
             self.formatter: Optional[ConsoleFormatter] = None
-        
+
         self.current_status_line: Optional[str] = None
 
     def handle(self, event: OutputEvent) -> None:
@@ -79,11 +77,7 @@ class ConsoleOutputHandler(OutputHandler):
 
         try:
             # Special handling for LLM streaming in debug mode
-            if (
-                self.output_format == "debug"
-                and isinstance(event, LLMStreamEvent)
-                and event.chunk
-            ):
+            if self.output_format == "debug" and isinstance(event, LLMStreamEvent) and event.chunk:
                 # Output LLM stream chunks directly without formatting
                 # Use print() instead of console.print() to avoid Rich formatting
                 print(event.chunk, end="", flush=True)

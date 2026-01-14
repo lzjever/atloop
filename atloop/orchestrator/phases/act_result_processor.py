@@ -1,7 +1,7 @@
 """Tool result processing utilities for ActPhase."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from atloop.config.loader import ConfigLoader
 from atloop.tools.base import BaseTool

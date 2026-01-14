@@ -1,9 +1,9 @@
 """Test OutputEventEmitter."""
 
-import pytest
 import threading
+
 from atloop.output.emitter import OutputEventEmitter
-from atloop.output.events import TaskStartEvent, EventType
+from atloop.output.events import EventType, TaskStartEvent
 
 
 class TestSingleton:

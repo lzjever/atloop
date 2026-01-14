@@ -878,8 +878,8 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
         Content is extracted as-is without any trimming to preserve indentation and formatting.
     """
     from atloop.llm.placeholder_patterns import (
-        find_placeholder_delimiters,
         extract_placeholder_name,
+        find_placeholder_delimiters,
     )
 
     file_contents = {}

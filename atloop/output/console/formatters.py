@@ -5,24 +5,23 @@ Formatters convert events into formatted strings for console display.
 
 from abc import ABC, abstractmethod
 from typing import Optional, Union
+
 from rich.console import Console
-from rich.text import Text
 from rich.panel import Panel
-from rich.table import Table
-from rich.syntax import Syntax
+from rich.text import Text
 
 from atloop.output.events import (
+    BudgetUpdateEvent,
+    ErrorEvent,
+    LLMCallEvent,
+    LLMResultEvent,
+    LLMStreamEvent,
     OutputEvent,
-    TaskStartEvent,
     PhaseTransitionEvent,
+    TaskCompleteEvent,
+    TaskStartEvent,
     ToolCallEvent,
     ToolResultEvent,
-    LLMCallEvent,
-    LLMStreamEvent,
-    LLMResultEvent,
-    BudgetUpdateEvent,
-    TaskCompleteEvent,
-    ErrorEvent,
 )
 
 
@@ -262,7 +261,9 @@ class VerboseConsoleFormatter(ConsoleFormatter):
 
         # Output
         if event.stdout:
-            content.append("\n\n┌─ Output ───────────────────────────────────────────┐\n", style="dim")
+            content.append(
+                "\n\n┌─ Output ───────────────────────────────────────────┐\n", style="dim"
+            )
             # Truncate long output
             stdout = event.stdout
             if len(stdout) > 2000:
@@ -272,17 +273,25 @@ class VerboseConsoleFormatter(ConsoleFormatter):
 
         # Error
         if event.error:
-            content.append("\n\n┌─ Error ────────────────────────────────────────────┐\n", style="red dim")
+            content.append(
+                "\n\n┌─ Error ────────────────────────────────────────────┐\n", style="red dim"
+            )
             content.append(event.error, style="red")
-            content.append("\n└─────────────────────────────────────────────────────┘", style="red dim")
+            content.append(
+                "\n└─────────────────────────────────────────────────────┘", style="red dim"
+            )
 
         if event.stderr:
-            content.append("\n\n┌─ Stderr ───────────────────────────────────────────┐\n", style="yellow dim")
+            content.append(
+                "\n\n┌─ Stderr ───────────────────────────────────────────┐\n", style="yellow dim"
+            )
             stderr = event.stderr
             if len(stderr) > 1000:
                 stderr = stderr[:1000] + "\n... (truncated)"
             content.append(stderr, style="yellow")
-            content.append("\n└─────────────────────────────────────────────────────┘", style="yellow dim")
+            content.append(
+                "\n└─────────────────────────────────────────────────────┘", style="yellow dim"
+            )
 
         return Panel(content, border_style=status_style)
 
@@ -326,14 +335,18 @@ class VerboseConsoleFormatter(ConsoleFormatter):
 
         # Full response
         if event.full_response:
-            content.append("\n\n┌─ Response ─────────────────────────────────────────┐\n", style="dim")
+            content.append(
+                "\n\n┌─ Response ─────────────────────────────────────────┐\n", style="dim"
+            )
             response = event.full_response
             if len(response) > 5000:
                 response = response[:5000] + "\n... (truncated)"
             content.append(response)
             content.append("\n└─────────────────────────────────────────────────────┘", style="dim")
         elif self._llm_stream_buffer:
-            content.append("\n\n┌─ Response ─────────────────────────────────────────┐\n", style="dim")
+            content.append(
+                "\n\n┌─ Response ─────────────────────────────────────────┐\n", style="dim"
+            )
             buffer = self._llm_stream_buffer
             if len(buffer) > 5000:
                 buffer = buffer[:5000] + "\n... (truncated)"
@@ -355,14 +368,26 @@ class VerboseConsoleFormatter(ConsoleFormatter):
 
     def _format_budget_update(self, event: BudgetUpdateEvent) -> str:
         """Format budget update."""
-        llm_pct = (event.llm_calls_used / event.llm_calls_max * 100) if event.llm_calls_max > 0 else 0
-        tool_pct = (event.tool_calls_used / event.tool_calls_max * 100) if event.tool_calls_max > 0 else 0
-        time_pct = (event.wall_time_sec_used / event.wall_time_sec_max * 100) if event.wall_time_sec_max > 0 else 0
+        llm_pct = (
+            (event.llm_calls_used / event.llm_calls_max * 100) if event.llm_calls_max > 0 else 0
+        )
+        tool_pct = (
+            (event.tool_calls_used / event.tool_calls_max * 100) if event.tool_calls_max > 0 else 0
+        )
+        time_pct = (
+            (event.wall_time_sec_used / event.wall_time_sec_max * 100)
+            if event.wall_time_sec_max > 0
+            else 0
+        )
 
         result = "\nBudget Status:\n"
         result += f"  LLM calls: {event.llm_calls_used}/{event.llm_calls_max} ({llm_pct:.0f}%)\n"
-        result += f"  Tool calls: {event.tool_calls_used}/{event.tool_calls_max} ({tool_pct:.0f}%)\n"
-        result += f"  Wall time: {event.wall_time_sec_used}s/{event.wall_time_sec_max}s ({time_pct:.0f}%)"
+        result += (
+            f"  Tool calls: {event.tool_calls_used}/{event.tool_calls_max} ({tool_pct:.0f}%)\n"
+        )
+        result += (
+            f"  Wall time: {event.wall_time_sec_used}s/{event.wall_time_sec_max}s ({time_pct:.0f}%)"
+        )
         return result
 
     def _format_task_complete(self, event: TaskCompleteEvent) -> str:
@@ -374,7 +399,6 @@ class VerboseConsoleFormatter(ConsoleFormatter):
 
         # Status
         status_icon = "✓" if event.status == "success" else "✗"
-        status_style = "green" if event.status == "success" else "red"
         result += f"Status: {status_icon} {event.status.title()}\n"
         result += f"Steps: {event.final_step}\n"
         result += f"Duration: {event.duration_sec}s\n\n"

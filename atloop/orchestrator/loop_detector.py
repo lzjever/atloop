@@ -212,7 +212,6 @@ class LoopDetector:
             Intervention to apply
         """
         level = analysis.intervention_level
-        loop_type = analysis.loop_type
 
         # Build evidence string
         evidence_str = "\n".join(f"  - {e}" for e in analysis.evidence)

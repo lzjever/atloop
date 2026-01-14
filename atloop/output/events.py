@@ -5,9 +5,9 @@ Handlers subscribe to these events and format/display them appropriately.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, List
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class EventType(Enum):

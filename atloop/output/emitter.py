@@ -5,8 +5,8 @@ Core orchestrator emits events here, handlers subscribe to receive them.
 """
 
 import logging
-from typing import List, Callable, Optional
 from threading import Lock
+from typing import Callable, List, Optional
 
 from atloop.output.events import OutputEvent
 
@@ -49,7 +49,9 @@ class OutputEventEmitter:
         with self._handler_lock:
             if handler not in self._handlers:
                 self._handlers.append(handler)
-                logger.debug(f"Handler subscribed: {handler.__name__ if hasattr(handler, '__name__') else type(handler).__name__}")
+                logger.debug(
+                    f"Handler subscribed: {handler.__name__ if hasattr(handler, '__name__') else type(handler).__name__}"
+                )
 
     def unsubscribe(self, handler: Callable[[OutputEvent], None]) -> None:
         """
@@ -61,7 +63,9 @@ class OutputEventEmitter:
         with self._handler_lock:
             if handler in self._handlers:
                 self._handlers.remove(handler)
-                logger.debug(f"Handler unsubscribed: {handler.__name__ if hasattr(handler, '__name__') else type(handler).__name__}")
+                logger.debug(
+                    f"Handler unsubscribed: {handler.__name__ if hasattr(handler, '__name__') else type(handler).__name__}"
+                )
 
     def emit(self, event: OutputEvent) -> None:
         """

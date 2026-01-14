@@ -1,7 +1,8 @@
 """Diff component for displaying file diffs with syntax highlighting."""
 
 from typing import Optional
-from rich.console import Console, RenderableType
+
+from rich.console import RenderableType
 from rich.panel import Panel
 from rich.text import Text
 
@@ -12,7 +13,7 @@ from atloop.output.events import OutputEvent
 
 class DiffComponent(FormattingComponent):
     """Formats file diff with syntax highlighting using Rich.
-    
+
     Parses unified diff format and displays with color coding:
     - Green for added lines (+)
     - Red for removed lines (-)
@@ -26,14 +27,14 @@ class DiffComponent(FormattingComponent):
         event: Optional[OutputEvent] = None,
     ) -> Optional[RenderableType]:
         """Format diff from context.
-        
+
         This method is not typically called directly.
         Use format_diff() instead.
-        
+
         Args:
             context: Formatter context
             event: Optional event
-        
+
         Returns:
             None (use format_diff() instead)
         """
@@ -41,20 +42,20 @@ class DiffComponent(FormattingComponent):
 
     def format_diff(self, diff_text: str, file_path: str) -> Optional[Panel]:
         """Format unified diff text with syntax highlighting.
-        
+
         Args:
             diff_text: Unified diff text
             file_path: Path of the file being diffed
-        
+
         Returns:
             Rich Panel with formatted diff, or None if diff is empty
         """
         if not diff_text or not diff_text.strip():
             return None
-        
+
         # Parse unified diff line by line
         diff_lines = diff_text.splitlines()
-        
+
         # Build Rich Text with color coding
         text = Text()
         for line in diff_lines:
@@ -76,7 +77,7 @@ class DiffComponent(FormattingComponent):
             else:
                 # Context line
                 text.append(line + "\n", style="dim")
-        
+
         # Truncate if too long (limit to ~100 lines for display)
         if len(diff_lines) > 100:
             # Keep first 50 and last 50 lines
@@ -84,9 +85,11 @@ class DiffComponent(FormattingComponent):
             truncated = Text()
             truncated.append("\n".join(str(text_lines[i]) for i in range(50)))
             truncated.append("\n... (omitted middle part) ...\n", style="dim")
-            truncated.append("\n".join(str(text_lines[i]) for i in range(len(text_lines) - 50, len(text_lines))))
+            truncated.append(
+                "\n".join(str(text_lines[i]) for i in range(len(text_lines) - 50, len(text_lines)))
+            )
             text = truncated
-        
+
         # Create panel
         return Panel(
             text,

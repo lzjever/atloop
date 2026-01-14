@@ -1,7 +1,7 @@
 """Configuration data models."""
 
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 
 @dataclass(frozen=True)

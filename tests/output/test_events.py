@@ -1,20 +1,19 @@
 """Test event definitions."""
 
-import pytest
 from datetime import datetime
+
+import pytest
+
 from atloop.output.events import (
+    BudgetUpdateEvent,
+    ErrorEvent,
     EventType,
-    OutputEvent,
-    TaskStartEvent,
+    LLMResultEvent,
     PhaseTransitionEvent,
+    TaskCompleteEvent,
+    TaskStartEvent,
     ToolCallEvent,
     ToolResultEvent,
-    LLMCallEvent,
-    LLMStreamEvent,
-    LLMResultEvent,
-    BudgetUpdateEvent,
-    TaskCompleteEvent,
-    ErrorEvent,
 )
 
 
