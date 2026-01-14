@@ -1,4 +1,11 @@
-"""Tool runtime for executing tools in sandbox (legacy compatibility layer)."""
+"""Tool runtime for executing tools in sandbox (legacy compatibility layer).
+
+This module provides ToolRuntime as a legacy compatibility wrapper around ToolRegistry.
+New code should use ToolRegistry directly.
+
+Moved from atloop.runtime.tool_runtime to atloop.tools.runtime to avoid circular imports.
+ToolRuntime belongs with ToolRegistry in the tools module.
+"""
 
 from typing import List, Optional
 
@@ -12,6 +19,12 @@ class ToolRuntime:
     Tool runtime for executing tools in sandbox.
 
     This is a legacy compatibility layer. New code should use ToolRegistry directly.
+
+    **Migration Guide:**
+    - Instead of: `tool_runtime = ToolRuntime(sandbox)`
+    - Use: `registry = ToolRegistry(sandbox)`
+    - Instead of: `tool_runtime.run(cmd)`
+    - Use: `registry.execute("run", {"cmd": cmd})`
     """
 
     def __init__(self, sandbox: SandboxAdapter, skill_loader=None):

@@ -335,6 +335,37 @@ class MemoryConfig:
         metadata={"description": "Similarity threshold for deduplication (0-1)"},
     )
 
+    # Memory formatting options
+    # These control how memory is formatted when injected into LLM prompts
+    steps_summary_count: int = field(
+        default=20,
+        metadata={
+            "description": "Number of recent steps to show in Recent Activity section",
+            "rationale": "Controls how much recent activity context is provided to LLM",
+        },
+    )
+    tool_results_count: int = field(
+        default=5,
+        metadata={
+            "description": "Number of tool results to show in Tool Execution Results section",
+            "rationale": "Controls how many recent tool executions are shown to LLM",
+        },
+    )
+    max_file_content_length: int = field(
+        default=20000,
+        metadata={
+            "description": "Maximum file content length in memory summary (characters)",
+            "rationale": "Limits file content size to prevent token overflow",
+        },
+    )
+    include_file_content: bool = field(
+        default=True,
+        metadata={
+            "description": "Whether to include file content in memory summary",
+            "rationale": "File content provides context but increases token usage",
+        },
+    )
+
 
 @dataclass(frozen=True)
 class OutputLimitsConfig:

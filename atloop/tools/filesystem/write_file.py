@@ -55,7 +55,18 @@ class WriteFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "写入文件（完全覆盖整个文件内容。如果要修改文件的部分内容，请使用 edit_file；如果要追加内容，请使用 append_file）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
+        return (
+            "Write files (creates new files or completely overwrites existing files). "
+            "⚠️ Important: Use for creating new files or completely rewriting existing files. "
+            "Do NOT use for modifying parts of existing files (use `edit_file` instead). "
+            "Do NOT use for appending content (use `append_file` instead). "
+            "Character limit: Maximum 6,000 characters per turn. "
+            "Directory creation: Automatically creates parent directories if they don't exist. "
+            "⚠️ CRITICAL: Do NOT generate code with {variable} patterns - they will be written literally. "
+            "Use proper templating in the target language instead (e.g., Python f-strings, format(), etc.). "
+            "File content handling: Uses placeholder mechanism (WRITE_FILE_CONTENT_<description>). "
+            "Files always end with exactly one newline character."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

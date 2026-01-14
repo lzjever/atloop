@@ -241,6 +241,22 @@ class MemoryFormatter:
         """
         self.tool_registry = tool_registry
         self.tool_result_formatter = ToolResultFormatter()
+        # Load default format options from config (single source of truth)
+        self._load_default_format_options()
+
+    def _load_default_format_options(self) -> None:
+        """Load default format options from config.
+
+        This ensures all formatting options come from a single source of truth
+        (MemoryConfig), avoiding hardcoded values scattered across the codebase.
+        """
+        config = ConfigLoader.get()
+        self.default_format_options = {
+            "steps_summary_count": config.memory.steps_summary_count,
+            "tool_results_count": config.memory.tool_results_count,
+            "max_file_content_length": config.memory.max_file_content_length,
+            "include_file_content": config.memory.include_file_content,
+        }
 
     def format(
         self,
@@ -254,16 +270,21 @@ class MemoryFormatter:
         Args:
             state: AgentState 实例
             task_goal: 任务目标（可选，用于任务概览）
-            format_options: 格式选项
-                - tool_results_count: int (默认 5)
-                - steps_summary_count: int (默认 20)
-                - include_file_content: bool (默认 True)
-                - max_file_content_length: int (默认 20000)
+            format_options: 格式选项（可选，会覆盖配置中的默认值）
+                - tool_results_count: int (默认从 MemoryConfig 读取)
+                - steps_summary_count: int (默认从 MemoryConfig 读取)
+                - include_file_content: bool (默认从 MemoryConfig 读取)
+                - max_file_content_length: int (默认从 MemoryConfig 读取)
+                
+                注意：所有默认值现在从 MemoryConfig 读取，确保单一数据源。
+                可以通过 format_options 参数覆盖特定调用的值。
 
         Returns:
             格式化后的字符串，格式符合 MEMORY_PROMPT_FORMAT_DEMO.md
         """
-        options = format_options or {}
+        # Merge default options from config with user-provided options
+        # User options override defaults (allows per-call customization)
+        options = {**self.default_format_options, **(format_options or {})}
         parts = []
 
         # 1. Critical Warnings
@@ -282,21 +303,21 @@ class MemoryFormatter:
 
         # 5. Recent Activity
         parts.append(
-            self._format_recent_activity(state, steps_count=options.get("steps_summary_count", 20))
+            self._format_recent_activity(state, steps_count=options["steps_summary_count"])
         )
 
         # 6. Tool Execution Results
         parts.append(
             self._format_tool_execution_results(
-                state, max_count=options.get("tool_results_count", 5)
+                state, max_count=options["tool_results_count"]
             )
         )
 
         # 7. Modified Files Content
-        if options.get("include_file_content", True):
+        if options["include_file_content"]:
             parts.append(
                 self._format_modified_files_content(
-                    state, max_length=options.get("max_file_content_length", 20000)
+                    state, max_length=options["max_file_content_length"]
                 )
             )
 
@@ -497,7 +518,7 @@ class MemoryFormatter:
 
         return None
 
-    def _format_recent_activity(self, state: "AgentState", steps_count: int = 3) -> str:
+    def _format_recent_activity(self, state: "AgentState", steps_count: int) -> str:
         """格式化最近活动"""
         parts = [f"### 📊 Recent Activity (Last {steps_count} Steps)"]
 
@@ -619,35 +640,86 @@ class MemoryFormatter:
         return "\n".join(parts)
 
     def _format_current_state(self, state: "AgentState") -> str:
-        """格式化当前状态"""
+        """格式化当前状态摘要
+        
+        架构设计原则：
+        - Memory Context 只包含状态摘要，不包含完整内容
+        - 完整内容通过 Prompt Template 的占位符显示（{CURRENT_DIFF}, {RECENT_ERROR}, {TEST_RESULTS}）
+        - 这样可以避免重复，节省 token，并保持职责清晰
+        
+        职责边界：
+        - Memory Formatter: 格式化 memory 相关信息（plan, context, activity, tool results）
+        - Artifacts: 通过 Prompt Template 占位符显示完整内容（diff, errors, test results）
+        """
         parts = ["### ⚠️ Current State"]
 
-        # Last Error
+        # Last Error - 只显示摘要（第一行或关键信息）
+        # 完整错误信息在 Prompt Template 的 {RECENT_ERROR} 中显示
         if state.last_error.summary:
-            parts.append(f"**Last Error**: {state.last_error.summary}")
+            error_lines = state.last_error.summary.split('\n')
+            error_summary = error_lines[0]  # 第一行通常是错误类型和位置
+            if len(state.last_error.summary) > 200:
+                error_summary += " (see Recent Errors section below for full details)"
+            parts.append(f"**Last Error**: {error_summary}")
         else:
             parts.append("**Last Error**: None")
 
-        # Current Diff
+        # Current Diff - 只显示统计信息
+        # 完整 diff 在 Prompt Template 的 {CURRENT_DIFF} 中显示
         if state.artifacts.current_diff:
-            parts.append("**Current Diff**:")
-            parts.append("```")
-            # Truncate if too long
-            diff_preview = state.artifacts.current_diff[:2000]
-            if len(state.artifacts.current_diff) > 2000:
-                diff_preview += "\n... [Diff truncated]"
-            parts.append(diff_preview)
-            parts.append("```")
+            diff_lines = state.artifacts.current_diff.count('\n')
+            files_changed = self._extract_files_from_diff(state.artifacts.current_diff)
+            if files_changed:
+                files_summary = ', '.join(files_changed[:3])  # 最多显示3个文件
+                if len(files_changed) > 3:
+                    files_summary += f" (+{len(files_changed) - 3} more)"
+                parts.append(
+                    f"**Current Diff**: {diff_lines} lines changed in {len(files_changed)} file(s): "
+                    f"{files_summary} (see Current Diff section below for full details)"
+                )
+            else:
+                parts.append(
+                    f"**Current Diff**: {diff_lines} lines changed "
+                    f"(see Current Diff section below for full details)"
+                )
         else:
             parts.append("**Current Diff**: No changes")
 
-        # Test Results
+        # Test Results - 只显示状态摘要
+        # 完整测试结果在 Prompt Template 的 {TEST_RESULTS} 中显示
         if state.artifacts.test_results:
-            parts.append(f"**Test Results**: {state.artifacts.test_results}")
+            test_result_lower = state.artifacts.test_results.lower()
+            # 检测测试状态关键词
+            if "passed" in test_result_lower or "✓" in state.artifacts.test_results or "success" in test_result_lower:
+                parts.append("**Test Results**: ✓ Passed (see Test Results section below for details)")
+            elif "failed" in test_result_lower or "❌" in state.artifacts.test_results or "error" in test_result_lower:
+                parts.append("**Test Results**: ❌ Failed (see Test Results section below for details)")
+            else:
+                parts.append("**Test Results**: ⚠️ Unknown (see Test Results section below for details)")
         else:
             parts.append("**Test Results**: No verification command available")
 
         return "\n".join(parts)
+
+    def _extract_files_from_diff(self, diff: str) -> List[str]:
+        """从 diff 中提取修改的文件列表
+        
+        Args:
+            diff: Git diff 格式的字符串
+            
+        Returns:
+            修改的文件路径列表
+        """
+        files = []
+        for line in diff.split('\n')[:100]:  # 只检查前100行（通常足够）
+            if line.startswith('+++ ') or line.startswith('--- '):
+                file_path = line[4:].strip()
+                # 移除可能的 a/ 或 b/ 前缀（Git diff 格式）
+                if file_path.startswith('a/') or file_path.startswith('b/'):
+                    file_path = file_path[2:]
+                if file_path and file_path not in files:
+                    files.append(file_path)
+        return files
 
     def _format_next_steps_guidance(
         self, state: "AgentState", task_goal: Optional[str] = None

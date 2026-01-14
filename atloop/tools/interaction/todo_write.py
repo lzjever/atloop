@@ -46,7 +46,17 @@ class TodoWriteTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "创建和管理任务列表（TODO.md 格式）\n  参数: todos (array): 任务数组，每个任务包含:\n        - content (string): 任务内容（必需，命令式，如 'Run tests'）\n        - activeForm (string): 进行时形式（必需，如 'Running tests'）\n        - status (string): 任务状态 - 'pending'（未开始）、'in_progress'（进行中）、'completed'（已完成）\n  示例: todo_write(todos=[{'content': 'Run tests', 'activeForm': 'Running tests', 'status': 'in_progress'}])\n  说明: 用于跟踪复杂任务的进度。至少应有一个任务处于 in_progress 状态。"
+        return (
+            "Create and manage task lists in TODO.md format. "
+            "Use cases: tracking progress on complex multi-step tasks, managing task status (pending, in_progress, completed), "
+            "organizing work into manageable chunks, providing visibility into current work status. "
+            "Parameters: todos (array, required) - array of task objects, each containing: "
+            "content (str, required) - task content in imperative form (e.g., 'Run tests'), "
+            "activeForm (str, required) - present continuous form (e.g., 'Running tests'), "
+            "status (str, required) - 'pending' (not started), 'in_progress' (currently working), 'completed' (finished). "
+            "Best practices: at least one task should be in_progress at any time, use activeForm to describe what's happening, "
+            "update status as work progresses."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

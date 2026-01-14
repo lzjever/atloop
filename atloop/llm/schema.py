@@ -3,7 +3,10 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from atloop.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,8 @@ except ImportError:
     logger.debug("json5 not available, will use standard JSON parsing only")
 
 # Action JSON Schema
+# Note: Tool enum is now dynamic - generated from ToolRegistry at runtime
+# This schema is used for JSON structure validation only, not tool enumeration
 ACTION_JSON_SCHEMA = {
     "type": "object",
     "required": ["actions", "stop_reason"],
@@ -37,23 +42,7 @@ ACTION_JSON_SCHEMA = {
                 "type": "object",
                 "required": ["tool", "args"],
                 "properties": {
-                    "tool": {
-                        "type": "string",
-                        "enum": [
-                            "run",
-                            "write_file",
-                            "append_file",
-                            "read_file",
-                            "read_skill_file",
-                            "edit_file",
-                            "multi_edit_file",
-                            "glob",
-                            "search",
-                            "todo_write",
-                            "todo_read",
-                            "skill",
-                        ],
-                    },
+                    "tool": {"type": "string"},  # No enum - validated dynamically via ToolRegistry
                     "args": {"type": "object"},
                 },
             },
@@ -66,21 +55,10 @@ ACTION_JSON_SCHEMA = {
     },
 }
 
-# Valid tool names
-VALID_TOOLS = {
-    "run",
-    "write_file",
-    "append_file",  # Append content to files
-    "read_file",  # Enhanced file reading with type detection (sandbox files)
-    "read_skill_file",  # Read files from skill directories (skill files only, stored locally)
-    "edit_file",  # Git-style diff editing
-    "multi_edit_file",  # Batch multi-file editing
-    "glob",  # File matching with glob patterns
-    "search",  # Enhanced search with regex, context lines, file filtering
-    "todo_write",  # Write and manage todo lists
-    "todo_read",  # Read todo lists
-    "skill",  # Load skill knowledge on-demand
-}
+# DEPRECATED: VALID_TOOLS is no longer used for validation
+# Tool validation is now done dynamically via ToolRegistry
+# Kept for backward compatibility in error messages only
+VALID_TOOLS = set()  # Empty set - will be populated dynamically if needed
 
 
 class ActionJSONValidationError(ValueError):
@@ -175,7 +153,12 @@ class ActionJSON:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], validate: bool = True) -> "ActionJSON":
+    def from_dict(
+        cls,
+        data: Dict[str, Any],
+        validate: bool = True,
+        tool_registry: Optional["ToolRegistry"] = None,
+    ) -> "ActionJSON":
         """
         Create from dictionary with validation.
 
@@ -187,6 +170,9 @@ class ActionJSON:
         Args:
             data: Dictionary containing action JSON data
             validate: Whether to validate the data (default: True)
+            tool_registry: Optional ToolRegistry instance for dynamic tool validation.
+                If provided, validates tool existence and delegates argument validation
+                to tool.validate_args(). If not provided, only performs structural checks.
 
         Returns:
             ActionJSON instance
@@ -203,7 +189,7 @@ class ActionJSON:
 
         # Validate data structure if requested
         if validate:
-            is_valid, error_msg = validate_action_json(data)
+            is_valid, error_msg = validate_action_json(data, tool_registry=tool_registry)
             if not is_valid:
                 raise ActionJSONValidationError(error_msg, data=data)
 
@@ -219,12 +205,20 @@ class ActionJSON:
         )
 
 
-def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+def validate_action_json(
+    data: Dict[str, Any], tool_registry: Optional["ToolRegistry"] = None
+) -> Tuple[bool, Optional[str]]:
     """
     Validate Action JSON structure with detailed error messages.
 
+    This function performs structural validation only. Tool-specific argument
+    validation is delegated to each tool's validate_args() method.
+
     Args:
         data: Action JSON dictionary
+        tool_registry: Optional ToolRegistry instance for dynamic tool validation.
+            If provided, validates tool existence and delegates argument validation
+            to tool.validate_args(). If not provided, only performs structural checks.
 
     Returns:
         Tuple of (is_valid, error_message)
@@ -252,6 +246,11 @@ def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     if not isinstance(data["actions"], list):
         return False, f"'actions' must be a list/array, but got {type(data['actions']).__name__}."
 
+    # Get available tools from registry if provided
+    available_tools = None
+    if tool_registry:
+        available_tools = set(tool_registry.list_tools())
+
     # Count write_file actions - only one allowed per response
     write_file_count = 0
     for i, action in enumerate(data["actions"]):
@@ -262,9 +261,14 @@ def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
             )
 
         if "tool" not in action:
+            tool_list_msg = (
+                f" (one of: {sorted(available_tools)})"
+                if available_tools
+                else ""
+            )
             return (
                 False,
-                f"action[{i}] missing required field: 'tool'. Each action must have a 'tool' field (one of: {sorted(VALID_TOOLS)}).",
+                f"action[{i}] missing required field: 'tool'. Each action must have a 'tool' field{tool_list_msg}.",
             )
         if "args" not in action:
             return (
@@ -276,150 +280,34 @@ def validate_action_json(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         if not isinstance(tool, str):
             return False, f"action[{i}].tool must be a string, but got {type(tool).__name__}."
 
-        if tool not in VALID_TOOLS:
-            return (
-                False,
-                f"action[{i}] invalid tool: '{tool}'. Valid tools are: {sorted(VALID_TOOLS)}.",
-            )
-
+        # Check args type BEFORE tool validation (type check is structural, not tool-specific)
         if not isinstance(action["args"], dict):
             return (
                 False,
                 f"action[{i}].args must be a dictionary/object, but got {type(action['args']).__name__}.",
             )
 
-        # Validate tool-specific args
-        if tool == "run":
-            if "cmd" not in action["args"]:
+        # Validate tool existence if registry is available
+        if tool_registry:
+            if tool not in available_tools:
                 return (
                     False,
-                    f"action[{i}] (tool='run') missing required arg: 'cmd'. The 'run' tool requires a 'cmd' string argument.",
+                    f"action[{i}] invalid tool: '{tool}'. Valid tools are: {sorted(available_tools)}.",
                 )
-        elif tool == "write_file":
-            if "path" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='write_file') missing required arg: 'path'. The 'write_file' tool requires a 'path' string argument.",
-                )
-            if "content" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='write_file') missing required arg: 'content'. The 'write_file' tool requires a 'content' string argument.",
-                )
+
+            # Delegate tool-specific argument validation to the tool itself
+            tool_instance = tool_registry.get(tool)
+            if tool_instance:
+                is_valid, error_msg = tool_instance.validate_args(action["args"])
+                if not is_valid:
+                    return (
+                        False,
+                        f"action[{i}] (tool='{tool}') invalid arguments: {error_msg or 'Validation failed'}.",
+                    )
+
+        # Track write_file actions for enforcement rule
+        if tool == "write_file":
             write_file_count += 1
-        elif tool == "append_file":
-            if "path" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='append_file') missing required arg: 'path'. The 'append_file' tool requires a 'path' string argument.",
-                )
-            if "content" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='append_file') missing required arg: 'content'. The 'append_file' tool requires a 'content' string argument.",
-                )
-        elif tool == "read_file":
-            if "path" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='read_file') missing required arg: 'path'. The 'read_file' tool requires a 'path' string argument.",
-                )
-        elif tool == "read_local_file":
-            if "path" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='read_skill_file') missing required arg: 'path'. The 'read_skill_file' tool requires a 'path' string argument.",
-                )
-        elif tool == "edit_file":
-            if "path" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='edit_file') missing required arg: 'path'. The 'edit_file' tool requires a 'path' string argument.",
-                )
-            if "content" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='edit_file') missing required arg: 'content'. The 'edit_file' tool requires a 'content' string argument in format: <old>old_string</old><new>new_string</new>.",
-                )
-        elif tool == "multi_edit_file":
-            if "edits" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='multi_edit_file') missing required arg: 'edits'. The 'multi_edit_file' tool requires an 'edits' array argument.",
-                )
-            if not isinstance(action["args"].get("edits"), list):
-                return (
-                    False,
-                    f"action[{i}] (tool='multi_edit_file') invalid arg: 'edits' must be an array of edit objects.",
-                )
-            if len(action["args"].get("edits", [])) == 0:
-                return (
-                    False,
-                    f"action[{i}] (tool='multi_edit_file') invalid arg: 'edits' array must contain at least one edit.",
-                )
-        elif tool == "glob":
-            if "pattern" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='glob') missing required arg: 'pattern'. The 'glob' tool requires a 'pattern' string argument.",
-                )
-        elif tool == "search":
-            if "query" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='search') missing required arg: 'query'. The 'search' tool requires a 'query' string argument.",
-                )
-            if "output_mode" in action["args"] and action["args"]["output_mode"] not in [
-                "content",
-                "files_with_matches",
-                "count",
-            ]:
-                return (
-                    False,
-                    f"action[{i}] (tool='search') invalid arg: 'output_mode' must be one of 'content', 'files_with_matches', 'count'.",
-                )
-        elif tool == "todo_write":
-            if "todos" not in action["args"]:
-                return (
-                    False,
-                    f"action[{i}] (tool='todo_write') missing required arg: 'todos'. The 'todo_write' tool requires a 'todos' array argument.",
-                )
-            if not isinstance(action["args"].get("todos"), list):
-                return (
-                    False,
-                    f"action[{i}] (tool='todo_write') invalid arg: 'todos' must be an array.",
-                )
-            if len(action["args"].get("todos", [])) == 0:
-                return (
-                    False,
-                    f"action[{i}] (tool='todo_write') invalid arg: 'todos' array cannot be empty.",
-                )
-            for j, todo in enumerate(action["args"].get("todos", [])):
-                if not isinstance(todo, dict):
-                    return False, f"action[{i}] (tool='todo_write') todo[{j}] must be a dictionary."
-                if "content" not in todo:
-                    return (
-                        False,
-                        f"action[{i}] (tool='todo_write') todo[{j}] missing required field: 'content'.",
-                    )
-                if "activeForm" not in todo:
-                    return (
-                        False,
-                        f"action[{i}] (tool='todo_write') todo[{j}] missing required field: 'activeForm'.",
-                    )
-                if "status" not in todo:
-                    return (
-                        False,
-                        f"action[{i}] (tool='todo_write') todo[{j}] missing required field: 'status'.",
-                    )
-                if todo.get("status") not in ["pending", "in_progress", "completed"]:
-                    return (
-                        False,
-                        f"action[{i}] (tool='todo_write') todo[{j}] invalid status: must be 'pending', 'in_progress', or 'completed'.",
-                    )
-        elif tool == "skill":
-            if "name" not in action["args"]:
-                return (False,)
 
     # Enforce single file creation per response
     if write_file_count > 1:
@@ -440,6 +328,7 @@ def extract_json_from_text(text: str) -> Optional[str]:
     2. Handle nested braces correctly
     3. Handle strings with escaped quotes
     4. Try multiple extraction strategies
+    5. If multiple codeblocks found, try all and return the first valid one
 
     Args:
         text: Text that may contain JSON
@@ -448,31 +337,90 @@ def extract_json_from_text(text: str) -> Optional[str]:
         Extracted JSON string or None
     """
     # Strategy 1: Look for code block markers (```json or ```)
+    # Try all codeblocks and find the best one
     json_block_markers = [
         ("```json", "```"),
         ("```", "```"),
     ]
 
+    candidates = []
+    
     for start_marker, end_marker in json_block_markers:
-        start_idx = text.find(start_marker)
-        if start_idx != -1:
+        # Find all occurrences of this marker type
+        start_idx = 0
+        while True:
+            start_idx = text.find(start_marker, start_idx)
+            if start_idx == -1:
+                break
+            
             # Find the end marker after start marker
             content_start = start_idx + len(start_marker)
             end_idx = text.find(end_marker, content_start)
             if end_idx != -1:
                 json_candidate = text[content_start:end_idx].strip()
-                # Try to parse it
+                candidates.append((json_candidate, start_marker))
+                start_idx = end_idx + len(end_marker)
+            else:
+                break
+    
+    # Try all candidates and return the first valid one (with required fields)
+    valid_json = None
+    if candidates:
+        logger.debug(f"[extract_json_from_text] Found {len(candidates)} codeblock(s), trying all to find valid JSON")
+    
+    for json_candidate, marker_type in candidates:
+        # Try to parse it
+        try:
+            # Fast path: try direct parsing first
+            parsed = json.loads(json_candidate)
+            # Validate it has required fields for ActionJSON
+            if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
+                logger.debug(f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock")
+                valid_json = json_candidate
+                break  # Found valid one, stop searching
+        except json.JSONDecodeError:
+            # If direct parsing fails, try json repair if available
+            if JSON_REPAIR_AVAILABLE:
                 try:
-                    json.loads(json_candidate)
-                    return json_candidate
-                except json.JSONDecodeError:
+                    repaired_json = repair_json(json_candidate)
+                    # Verify the repaired JSON is valid
+                    parsed = json.loads(repaired_json)
+                    # Validate it has required fields
+                    if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
+                        logger.debug(f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock (repaired)")
+                        valid_json = repaired_json
+                        break  # Found valid one, stop searching
+                except Exception:
+                    # Repair failed, continue to next candidate
                     pass
-
+    
+    if valid_json:
+        return valid_json
+    
     # Strategy 2: Find first { and match braces (handling strings)
-    start_idx = text.find("{")
-    if start_idx == -1:
-        return None
-
+    # Skip codeblocks we already tried - look for JSON outside codeblocks
+    start_idx = 0
+    while True:
+        start_idx = text.find("{", start_idx)
+        if start_idx == -1:
+            return None
+        
+        # Check if this { is inside a codeblock we already tried
+        in_codeblock = False
+        for start_marker, end_marker in json_block_markers:
+            # Find the codeblock that contains this position
+            codeblock_start = text.rfind(start_marker, 0, start_idx)
+            if codeblock_start != -1:
+                codeblock_end = text.find(end_marker, codeblock_start + len(start_marker))
+                if codeblock_end != -1 and start_idx < codeblock_end:
+                    # This { is inside a codeblock, skip it
+                    in_codeblock = True
+                    start_idx = codeblock_end + len(end_marker)
+                    break
+        
+        if not in_codeblock:
+            break  # Found a { outside codeblocks
+    
     # Find matching closing brace, handling strings with escaped quotes
     brace_count = 0
     in_string = False
@@ -500,13 +448,25 @@ def extract_json_from_text(text: str) -> Optional[str]:
                 brace_count -= 1
                 if brace_count == 0:
                     # Found complete JSON object
-                    return text[start_idx : i + 1]
+                    json_candidate = text[start_idx : i + 1]
+                    # Validate it has required fields
+                    try:
+                        parsed = json.loads(json_candidate)
+                        if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
+                            logger.debug("[extract_json_from_text] Found valid JSON outside codeblocks")
+                            return json_candidate
+                    except json.JSONDecodeError:
+                        pass
+                    # If validation fails, still return it (will be handled by caller)
+                    return json_candidate
 
     return None
 
 
 def parse_action_json(
-    text: str, max_retries: int = 2
+    text: str,
+    max_retries: int = 2,
+    tool_registry: Optional["ToolRegistry"] = None,
 ) -> Tuple[Optional[ActionJSON], Optional[str], Dict[str, str]]:
     """
     Parse Action JSON from text with improved error handling.
@@ -530,6 +490,9 @@ def parse_action_json(
     Args:
         text: Text containing JSON and optionally file contents
         max_retries: Maximum number of retries (unused, kept for compatibility)
+        tool_registry: Optional ToolRegistry instance for dynamic tool validation.
+            If provided, validates tool existence and delegates argument validation
+            to tool.validate_args(). If not provided, only performs structural checks.
 
     Returns:
         Tuple of (ActionJSON or None, error_message, file_contents_dict)
@@ -552,10 +515,10 @@ def parse_action_json(
     # Strategy 1: Try direct JSON parsing first
     try:
         data = json.loads(json_text)
-        is_valid, error = validate_action_json(data)
+        is_valid, error = validate_action_json(data, tool_registry=tool_registry)
         if is_valid:
             # Data already validated, skip validation in from_dict() for performance
-            return ActionJSON.from_dict(data, validate=False), None, file_contents
+            return ActionJSON.from_dict(data, validate=False, tool_registry=tool_registry), None, file_contents
         else:
             return None, error, file_contents  # Return detailed validation error
     except json.JSONDecodeError as e:
@@ -569,9 +532,9 @@ def parse_action_json(
     if json_str:
         try:
             data = json.loads(json_str)
-            is_valid, error = validate_action_json(data)
+            is_valid, error = validate_action_json(data, tool_registry=tool_registry)
             if is_valid:
-                return ActionJSON.from_dict(data), None, file_contents
+                return ActionJSON.from_dict(data, tool_registry=tool_registry), None, file_contents
             else:
                 return None, error, file_contents  # Return detailed validation error
         except json.JSONDecodeError as e:
@@ -589,10 +552,10 @@ def parse_action_json(
     if fixed_json_str:
         try:
             data = json.loads(fixed_json_str)
-            is_valid, error = validate_action_json(data)
+            is_valid, error = validate_action_json(data, tool_registry=tool_registry)
             if is_valid:
                 logger.info("[parse_action_json] ✓ 使用JSON修复成功解析")
-                return ActionJSON.from_dict(data), None, file_contents
+                return ActionJSON.from_dict(data, tool_registry=tool_registry), None, file_contents
             else:
                 return None, error, file_contents
         except json.JSONDecodeError:
@@ -604,10 +567,10 @@ def parse_action_json(
             json_to_repair = json_text if json_str is None else json_str
             repaired_json = repair_json(json_to_repair)
             data = json.loads(repaired_json)
-            is_valid, error = validate_action_json(data)
+            is_valid, error = validate_action_json(data, tool_registry=tool_registry)
             if is_valid:
                 logger.info("[parse_action_json] ✓ 使用json-repair成功修复并解析")
-                return ActionJSON.from_dict(data), None, file_contents
+                return ActionJSON.from_dict(data, tool_registry=tool_registry), None, file_contents
             else:
                 return None, error, file_contents
         except Exception as e:
@@ -618,10 +581,10 @@ def parse_action_json(
         try:
             json_to_parse = json_text if json_str is None else json_str
             data = json5.loads(json_to_parse)
-            is_valid, error = validate_action_json(data)
+            is_valid, error = validate_action_json(data, tool_registry=tool_registry)
             if is_valid:
                 logger.info("[parse_action_json] ✓ 使用json5成功解析")
-                return ActionJSON.from_dict(data), None, file_contents
+                return ActionJSON.from_dict(data, tool_registry=tool_registry), None, file_contents
             else:
                 return None, error, file_contents
         except Exception as e:
@@ -857,6 +820,99 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
     return "".join(result)
 
 
+def _clean_extracted_content(content: str, placeholder_type: str) -> str:
+    """
+    Clean extracted placeholder content by removing markdown artifacts and trailing whitespace.
+    
+    This function removes:
+    - Markdown code block markers (```) at the start or end for executable types (SHELL_COMMAND, etc.)
+    - Trailing whitespace and newlines
+    - Common markdown artifacts that LLMs sometimes include
+    
+    Important: For file content types (WRITE_FILE_CONTENT, EDIT_FILE_CONTENT, APPEND_FILE_CONTENT),
+    code blocks in the middle are preserved (they're part of the actual file content, e.g., markdown files
+    with code examples). However, code block markers at the very start or end are removed as they are
+    markdown artifacts, not part of the file content.
+    
+    Args:
+        content: Raw extracted content
+        placeholder_type: Type of placeholder (SHELL_COMMAND, PYTHON_SCRIPT, etc.)
+    
+    Returns:
+        Cleaned content
+    """
+    import re
+    
+    if not content:
+        return content
+    
+    # Remove leading/trailing whitespace first
+    content = content.rstrip()
+    
+    # For file content types, we need to be careful:
+    # - Remove code block markers at the very start/end (they're artifacts)
+    # - But preserve code blocks in the middle (they're part of the content)
+    file_content_types = ("WRITE_FILE_CONTENT", "EDIT_FILE_CONTENT", "APPEND_FILE_CONTENT")
+    
+    if placeholder_type in file_content_types:
+        # For file content, remove code block markers only at the very start and end
+        # This prevents markdown artifacts from polluting the file content
+        
+        original_content = content
+        # Remove code block markers at the very start (must be at beginning of content)
+        # Pattern: ``` optionally followed by language identifier, then optional whitespace/newline
+        content = re.sub(r'^```[a-z]*\s*\n?', '', content, flags=re.MULTILINE)
+        
+        # Remove code block markers at the very end (must be at end of content)
+        # Pattern: optional whitespace/newline, then ```
+        content = re.sub(r'\n?\s*```\s*$', '', content, flags=re.MULTILINE)
+        
+        # Remove any trailing backticks that might be left over (but preserve content in the middle)
+        while content and content.endswith('`') and len(content) > 1:
+            # Check if removing the backtick would leave valid content
+            test_content = content[:-1].rstrip()
+            if test_content and not test_content.endswith('`'):
+                content = test_content
+            else:
+                break
+        
+        # Log if we removed codeblock markers
+        if content != original_content:
+            logger.debug(f"[_clean_extracted_content] Removed codeblock markers from {placeholder_type} content")
+        
+        return content.rstrip()
+    
+    # For executable types (SHELL_COMMAND, PYTHON_SCRIPT, SHELL_SCRIPT), remove code block markers
+    # These are markdown artifacts, not part of the actual code
+    
+    # Remove markdown code block markers (```) that might be at the very end
+    # Pattern: optional whitespace, then ```, then optional language identifier, then end of string
+    content = re.sub(r'\s*```[a-z]*\s*$', '', content, flags=re.MULTILINE)
+    
+    # Remove markdown code block markers at the very start
+    # Only match if it's at the beginning of the entire content
+    content = re.sub(r'^```[a-z]*\s*\n?', '', content, flags=re.MULTILINE)
+    
+    # Remove trailing backticks that might be left over (but preserve content in the middle)
+    # Only remove if they're at the very end
+    while content and content.endswith('`') and not content.rstrip('`').endswith('`'):
+        content = content[:-1]
+    
+    # Be more aggressive with trailing cleanup for executable types
+    content = content.rstrip()
+    # Remove trailing backticks and newlines (with safety limit)
+    max_iterations = 10  # Prevent infinite loop
+    iterations = 0
+    while iterations < max_iterations and (content.endswith('`') or content.endswith('\n')):
+        new_content = content.rstrip('`\n')
+        if new_content == content:  # No change, break to avoid infinite loop
+            break
+        content = new_content
+        iterations += 1
+    
+    return content
+
+
 def _extract_file_contents(text: str) -> Dict[str, str]:
     """
     Extract contents from type-specific placeholders in the format:
@@ -875,7 +931,7 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
 
     Returns:
         Dictionary mapping placeholder names (e.g., "WRITE_FILE_CONTENT_descriptive-name") to content
-        Content is extracted as-is without any trimming to preserve indentation and formatting.
+        Content is cleaned to remove markdown artifacts while preserving indentation and formatting.
     """
     from atloop.llm.placeholder_patterns import (
         extract_placeholder_name,
@@ -899,9 +955,13 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
         else:
             end_pos = len(text)
 
-        # Extract content as-is (preserve all whitespace, indentation, etc.)
-        # This is critical for code files where indentation matters
+        # Extract content
         content = text[start_pos:end_pos]
+        
+        # Clean content to remove markdown artifacts (especially for commands/scripts)
+        # placeholder_type is already the type (e.g., "SHELL_COMMAND"), placeholder is the full name
+        content = _clean_extracted_content(content, placeholder_type)
+        
         file_contents[placeholder] = content
 
     return file_contents
@@ -918,15 +978,38 @@ def _remove_file_content_sections(text: str) -> str:
     <command>
     ...
 
+    Also handles cases where the entire output is wrapped in code blocks (```json or ```).
+    This ensures compatibility even if LLM doesn't follow the no-codeblock rule.
+
     Args:
         text: Full text containing JSON and placeholder contents
 
     Returns:
-        Text with placeholder content sections removed
+        Text with placeholder content sections removed, and outer code blocks stripped if present
     """
     from atloop.llm.placeholder_patterns import PLACEHOLDER_SECTION_REGEX
 
+    # First, try to strip outer code blocks if the entire text is wrapped
+    # This handles cases where LLM wraps everything in ```json ... ``` or ``` ... ```
+    import re
+    stripped_text = text.strip()
+    
+    # Check for code block markers at start and end
+    # Try ```json first (more specific), then generic ```
+    if stripped_text.startswith('```json'):
+        # Remove ```json at start (with optional whitespace/newline)
+        stripped_text = re.sub(r'^```json\s*\n?', '', stripped_text, count=1)
+        # Remove ``` at end (with optional whitespace/newline before it)
+        stripped_text = re.sub(r'\n?```\s*$', '', stripped_text, count=1)
+        stripped_text = stripped_text.strip()
+    elif stripped_text.startswith('```'):
+        # Remove ``` at start (with optional whitespace/newline)
+        stripped_text = re.sub(r'^```\s*\n?', '', stripped_text, count=1)
+        # Remove ``` at end (with optional whitespace/newline before it)
+        stripped_text = re.sub(r'\n?```\s*$', '', stripped_text, count=1)
+        stripped_text = stripped_text.strip()
+    
     # Remove all placeholder content sections
-    result = PLACEHOLDER_SECTION_REGEX.sub("", text)
+    result = PLACEHOLDER_SECTION_REGEX.sub("", stripped_text)
 
     return result.strip()

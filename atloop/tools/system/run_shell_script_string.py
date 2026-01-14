@@ -69,7 +69,14 @@ class RunShellScriptStringTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "执行shell脚本字符串（避免shell转义问题）"
+        return (
+            "Execute shell script strings without shell escaping issues. "
+            "Use this tool instead of `run` with `bash -c \"...\"` for complex shell scripts. "
+            "Benefits: no shell escaping issues (quotes, variables, etc.), better error messages, "
+            "supports multi-line scripts easily. Script runs in /workspace directory. "
+            "Success is determined by stderr content, NOT exit code. "
+            "Use SHELL_SCRIPT_#N placeholder in JSON, then provide script content after JSON."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""
@@ -132,7 +139,18 @@ class RunShellScriptStringTool(BaseTool):
         # Create temporary shell script file
         # Use /workspace/.atloop_temp for temp files (will be cleaned up)
         temp_dir = Path("/workspace") / ".atloop_temp"
-        temp_dir.mkdir(exist_ok=True)
+        try:
+            temp_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            # If we can't create in /workspace, fall back to system temp
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"[RunShellScriptStringTool] Failed to create /workspace/.atloop_temp: {e}. "
+                f"Falling back to system temp directory."
+            )
+            temp_dir = Path(tempfile.gettempdir()) / "atloop_temp"
+            temp_dir.mkdir(parents=True, exist_ok=True)
 
         # Create temp file with .sh extension
         with tempfile.NamedTemporaryFile(

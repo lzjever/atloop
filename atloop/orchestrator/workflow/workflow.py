@@ -374,8 +374,10 @@ class Workflow:
             if not result.success and result.error:
                 # Phase may have already classified the error
                 if result.recoverable:
-                    logger.warning(
-                        f"[Workflow] Phase {phase} returned recoverable error: {result.error}"
+                    # Recoverable errors are business-normal (e.g., missing placeholders, JSON parsing issues)
+                    # Agent loop can handle them, so use info level instead of warning
+                    logger.info(
+                        f"[Workflow] Phase {phase} returned recoverable error (agent loop will handle): {result.error[:200]}"
                     )
                     return self._handle_recoverable_error(
                         phase,
@@ -387,8 +389,9 @@ class Workflow:
                     # Classify the error
                     error_category = ErrorClassifier.classify(Exception(result.error), result.error)
                     if error_category == ErrorCategory.RECOVERABLE:
-                        logger.warning(
-                            f"[Workflow] Classified error as recoverable: {result.error}"
+                        # Recoverable errors are business-normal, use info level
+                        logger.info(
+                            f"[Workflow] Classified error as recoverable (agent loop will handle): {result.error[:200]}"
                         )
                         return self._handle_recoverable_error(
                             phase,
@@ -453,8 +456,9 @@ class Workflow:
                 error_already_set_in_state = False
 
             if error_category == ErrorCategory.RECOVERABLE:
-                logger.warning(
-                    "[Workflow] Treating exception as recoverable, transitioning to recovery phase"
+                # Recoverable errors are business-normal, use info level
+                logger.info(
+                    "[Workflow] Treating exception as recoverable (agent loop will handle), transitioning to recovery phase"
                 )
                 return self._handle_recoverable_error(
                     phase, error_msg, {}, error_already_set_in_state=error_already_set_in_state

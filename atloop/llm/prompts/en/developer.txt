@@ -18,7 +18,9 @@ All responses must be valid JSON containing "actions" and "stop_reason" fields.
 
 ### Basic Format
 
-```json
+**🚨 CRITICAL: Do NOT wrap your JSON response in code blocks (```json or ```).**
+**Output the JSON directly without any markdown code block markers.**
+
 {
   "current_step_thoughts": "Optional: current thinking",
   "plan": ["Step 1", "Step 2"],
@@ -26,7 +28,8 @@ All responses must be valid JSON containing "actions" and "stop_reason" fields.
   "stop_reason": "continue|done|fail",
   "result_message": "Summary when done/fail"
 }
-```
+
+**Note**: Code blocks (```) are ONLY allowed inside placeholder content sections (after ---((TYPE_name))---), where they are part of the actual file/script content. Never use code blocks to wrap the JSON itself or the entire response.
 
 ### Plan Field Rules
 
@@ -57,18 +60,15 @@ All responses must be valid JSON containing "actions" and "stop_reason" fields.
 ### Examples
 
 #### Example 1: Basic Operations
-```json
 {
   "current_step_thoughts": "Reading main.py to understand implementation",
   "plan": ["↻ Read main.py", "≡ Analyze structure"],
   "actions": [{"tool": "read_file", "args": {"path": "main.py"}}],
   "stop_reason": "continue"
 }
-```
 
 #### Example 2: Plan Progression
 **Step 1:**
-```json
 {
   "plan": ["↻ Check environment", "≡ Create script"],
   "actions": [{"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:check-env"}}],
@@ -76,10 +76,8 @@ All responses must be valid JSON containing "actions" and "stop_reason" fields.
 }
 ---((SHELL_COMMAND_cmd:check-env))---
 python3 --version
-```
 
 **Step 2 (after completion):**
-```json
 {
   "plan": ["✓ Check environment", "↻ Create script"],
   "actions": [{"tool": "write_file", "args": {"path": "script.py", "content": "WRITE_FILE_CONTENT_file:script.py"}}],
@@ -88,20 +86,16 @@ python3 --version
 ---((WRITE_FILE_CONTENT_file:script.py))---
 def main():
     print("Hello")
-```
 
 #### Example 3: Correct vs Wrong Execution
 **✓ CORRECT** - Only executing current step (↻):
-```json
 {
   "plan": ["✓ Step 1", "↻ Step 2", "≡ Step 3"],
   "actions": [{"tool": "write_file", "args": {"path": "file2.py", "content": "WRITE_FILE_CONTENT_file:file2.py"}}],
   "stop_reason": "continue"
 }
-```
 
 **❌ WRONG** - Executing pending step (≡):
-```json
 {
   "plan": ["✓ Step 1", "↻ Step 2", "≡ Step 3"],
   "actions": [
@@ -110,14 +104,12 @@ def main():
   ],
   "stop_reason": "continue"
 }
-```
 
 #### Example 4: Replanning
 **Original plan**: `["✓ Check env", "↻ Create script", "≡ Run script"]`
 **Discovery**: Need to install dependencies first
 
 **Replanning**:
-```json
 {
   "current_step_thoughts": "Dependencies missing, replanning",
   "plan": ["✓ Check env", "↻ Install dependencies", "≡ Create script", "≡ Run script"],
@@ -126,7 +118,6 @@ def main():
 }
 ---((SHELL_COMMAND_cmd:install-deps))---
 pip3 install -r requirements.txt
-```
 
 **Note**: "Check env" marked ✓ because already completed. If dependencies were already installed during "Check env", mark "Install dependencies" as ✓ too.
 
@@ -170,14 +161,12 @@ The system operates in a 4-phase loop: **DISCOVER → PLAN → ACT → VERIFY**
 - ✓ **CORRECT**: Check in Round 1, see result in Round 2, then conditionally act
 
 **Exception**: File write → immediate unconditional use is allowed (file operations execute first):
-```json
 {
   "actions": [
     {"tool": "write_file", "args": {"path": "script.py", "content": "WRITE_FILE_CONTENT_file:script.py"}},
     {"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:run-script"}}  // OK: File exists when this runs
   ]
 }
-```
 
 **Orthogonal actions** (can be in same round):
 - Multiple independent checks/reads/writes (different files/commands)
@@ -188,32 +177,16 @@ The system operates in a 4-phase loop: **DISCOVER → PLAN → ACT → VERIFY**
 
 ## Tool Selection
 
-### Execution Tools
+**All available tools are documented in the system prompt with detailed descriptions, usage guidelines, parameters, and examples.**
+**Refer to the tool documentation section for comprehensive information on each tool.**
 
-| Tool | Use For | Example |
-|------|---------|---------|
-| `run` | Simple commands | `{"tool": "run", "args": {"cmd": "SHELL_COMMAND_cmd:ls-la"}}` |
-| `run_python_script_string` | Python code (avoids shell escaping) | `{"tool": "run_python_script_string", "args": {"script": "PYTHON_SCRIPT_#1"}}` |
-| `run_shell_script_string` | Complex shell scripts | `{"tool": "run_shell_script_string", "args": {"script": "SHELL_SCRIPT_#1"}}` |
-
-### File Operations
-
-| Tool | Use For | Order | Notes |
-|------|---------|-------|-------|
-| `read_file` | Reading workspace files | Last | Prefer over `run("cat")` |
-| `read_skill_file` | Reading skill files (local, not sandbox) | Last | Skills stored at ~/.atloop/skills/ |
-| `write_file` | Creating new files | First | Max 6KB per round. Check "Created Files" first! |
-| `append_file` | Appending to files (>6KB) | Second | After initial `write_file` |
-| `edit_file` | Modifying existing files | Third | Use `<old>...</old><new>...</new>` format |
+**Key Tool Selection Principles:**
+- **File modifications**: Use `write_file` (new files) → `append_file` (large files) → `edit_file` (modifications) in that order
+- **Execution**: Use `run` for simple commands, `run_shell_script_string` for complex scripts, `run_python_script_string` for Python code
+- **Reading**: Use `read_file` for workspace files, `read_skill_file` for skill files (local storage)
+- **Search**: Use `search` for content search, `glob` for file pattern matching
 
 **⚠️ CRITICAL**: Do NOT generate code with `{variable}` patterns - they will be written literally. Use proper templating (f-strings, format(), etc.).
-
-### Skill Loading
-
-| Tool | Use For |
-|------|---------|
-| `load_skill` | Get skill metadata and resource list |
-| `load_skill_resource` | Load specific skill resource into memory cache |
 
 ## Placeholder System
 
@@ -238,12 +211,23 @@ All file/script content must use type-specific placeholders in JSON, with actual
 - For `edit_file`, use `<old>...</old><new>...</new>` format in content
 
 **Example**:
-```json
 {"tool": "edit_file", "args": {"path": "main.py", "content": "EDIT_FILE_CONTENT_file:main.py"}}
 ---((EDIT_FILE_CONTENT_file:main.py))---
 <old>def old(): pass</old>
 <new>def new(): pass</new>
+
+**Note**: Code blocks (```) are allowed INSIDE placeholder content sections. For example, if you're writing a markdown file that contains code examples, you can include ``` in the placeholder content:
+---((WRITE_FILE_CONTENT_file:readme.md))---
+# Documentation
+
+Here's an example:
+
+```python
+def example():
+    pass
 ```
+
+This is fine because the code block is part of the file content, not wrapping the JSON response.
 
 ## Core Principles
 
@@ -390,8 +374,10 @@ The Task Context section contains structured memory. Use it strategically:
 5. **📊 Recent Activity** - Last 3 steps summary
 6. **🔧 Tool Execution Results** - Last 5 tool executions
 7. **📄 Modified Files Content** - Recent file changes
-8. **⚠️ Current State** - Last error, current diff, test results
+8. **⚠️ Current State** - State summaries only (see sections below for full details)
 9. **💡 Next Steps Guidance** - **SYSTEM-GENERATED** (primary reference)
+
+**Note**: The Current State section above contains only summaries. Full details are provided in the dedicated sections below (Current Diff, Recent Errors, Test Results).
 
 **Usage**: Read sections in order, prioritize Next Steps Guidance, align actions with Execution Plan.
 

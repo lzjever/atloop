@@ -222,8 +222,9 @@ class PlaceholderReplacer:
                     )
                 else:
                     # Placeholder not found - mark as pending
+                    # This is a normal business case - LLM may provide it in next iteration
                     missing_placeholders.append(placeholder_value)
-                    logger.warning(
+                    logger.debug(
                         f"[PlaceholderReplacer] Missing placeholder {placeholder_value} for {tool} "
                         f"(action {i + 1}) - will retry in next iteration"
                     )
@@ -234,9 +235,11 @@ class PlaceholderReplacer:
                 successful_actions.append(action.copy())
 
         if missing_placeholders:
-            logger.warning(
+            # This is a normal business case - LLM may provide placeholders in next iteration
+            # Agent loop can handle this gracefully
+            logger.debug(
                 f"[PlaceholderReplacer] Found {len(missing_placeholders)} missing placeholders: "
-                f"{missing_placeholders}"
+                f"{missing_placeholders} (will retry in next iteration)"
             )
 
         if type_mismatches:
@@ -353,7 +356,9 @@ class PlaceholderReplacer:
             if strict:
                 raise PlaceholderReplacementError(error_msg, result.missing_placeholders)
             else:
-                logger.warning(
+                # This is a normal business case - LLM may provide placeholders in next iteration
+                # Agent loop can handle this gracefully, so use debug level
+                logger.debug(
                     f"[PlaceholderReplacer] {error_msg}. "
                     f"Successful actions: {result.replaced_count}/{result.total_count}. "
                     f"Pending actions will be retried in next iteration."
@@ -406,7 +411,9 @@ class PlaceholderReplacer:
             if strict:
                 raise PlaceholderReplacementError(error_msg, result.missing_placeholders)
             else:
-                logger.warning(
+                # This is a normal business case - LLM may provide placeholders in next iteration
+                # Agent loop can handle this gracefully, so use debug level
+                logger.debug(
                     f"[PlaceholderReplacer] {error_msg}. "
                     f"Successful actions: {result.replaced_count}/{result.total_count}. "
                     f"Pending actions will be retried in next iteration."

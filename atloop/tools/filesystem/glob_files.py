@@ -39,7 +39,14 @@ class GlobFilesTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "文件匹配工具（支持 Gitignore 样式的 glob 模式）"
+        return (
+            "Find files using gitignore-style glob patterns. "
+            "Features: supports common glob patterns (*, **), recursive directory searching, "
+            "file filtering by extension or pattern. "
+            "Use cases: finding all Python files (*.py), finding all test files (test_*.py), "
+            "finding files recursively (**/*.js), listing files in a directory (dir/*.txt). "
+            "Use this tool for file pattern matching. For content search, use `search` tool instead."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

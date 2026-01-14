@@ -61,8 +61,13 @@ class ActPhase(BasePhase):
 
             # Parse and validate ActionJSON
             # ActionJSON.from_dict() will raise ActionJSONValidationError if invalid
+            # Pass tool_registry for dynamic validation
             try:
-                action_json = ActionJSON.from_dict(actions_dict, validate=True)
+                action_json = ActionJSON.from_dict(
+                    actions_dict,
+                    validate=True,
+                    tool_registry=self.coordinator.tool_runtime.registry,
+                )
                 logger.debug(
                     f"[ActPhase] Parsed and validated ActionJSON: {len(action_json.actions)} actions"
                 )

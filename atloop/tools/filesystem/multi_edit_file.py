@@ -46,7 +46,15 @@ class MultiEditFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "批量编辑多个文件（事务性提交，支持多文件同时编辑）"
+        return (
+            "Edit multiple files in a single atomic transaction. "
+            "Key features: transactional (all edits succeed or all fail), batch operations (edit multiple files in one operation), "
+            "rollback on error (if any edit fails, all changes are rolled back). "
+            "Use cases: updating imports across multiple files, refactoring code that spans multiple files, "
+            "applying the same change to multiple files, coordinated updates that must happen together. "
+            "When to use: need to edit multiple files atomically, changes must all succeed or all fail. "
+            "For single file edit, use `edit_file` (simpler). For independent edits, use multiple `edit_file` calls."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

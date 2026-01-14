@@ -1,7 +1,15 @@
 """Tool runtime module."""
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
-from atloop.runtime.tool_runtime import ToolRuntime  # Legacy compatibility
+
+# ToolRuntime has been moved to atloop.tools.runtime to avoid circular imports
+# Re-export for backward compatibility using lazy import
+def __getattr__(name: str):
+    """Lazy import for ToolRuntime to avoid circular imports."""
+    if name == "ToolRuntime":
+        from atloop.tools.runtime import ToolRuntime
+        return ToolRuntime
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # Backward compatibility: re-export ToolResult from tools module

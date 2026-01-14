@@ -53,7 +53,18 @@ class ReadSkillFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "从技能目录读取文件（⚠️ 技能文件存储在本地机器，不在远程沙盒中。当 skill 中提到其他文件时，必须使用此工具读取，不能使用 read_file 或 run 命令在沙盒中查找）"
+        return (
+            "Read files from skill directories (on local machine, NOT from sandbox workspace). "
+            "🚨🚨🚨 CRITICAL: This tool reads from skill directories on the LOCAL machine, NOT from the sandbox! "
+            "Key points: skill files are stored LOCALLY (on host machine, in ~/.atloop/skills/ or project .atloop/skills/), "
+            "workspace is a REMOTE SANDBOX (/workspace) - it does NOT contain skill files or templates, "
+            "when a skill mentions other files (e.g., 'see docx-js.md', 'reference guide.md'), those files are LOCAL, "
+            "you MUST use `read_skill_file` to read skill-related files - they are NOT in the sandbox! "
+            "DO NOT try to use `read_file` or `run(\"cat ...\")` to find skill files in the sandbox - they don't exist there! "
+            "Use cases: reading skill files (when skill mentions other files to reference), "
+            "reading files referenced in skill documentation, accessing skill-specific resources (templates, guides, examples). "
+            "Path resolution: with skill_name (path is relative to skill directory), without skill_name (absolute path or relative to ~/.atloop/), supports ~ expansion."
+        )
 
     @property
     def output_semantic_type(self) -> OutputSemanticType:

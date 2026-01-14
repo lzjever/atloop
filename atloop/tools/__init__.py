@@ -2,8 +2,18 @@
 
 from atloop.tools.base import BaseTool, ToolResult
 
-# Import ToolRegistry lazily to avoid circular imports
+# Import ToolRuntime lazily to avoid circular imports
+# ToolRuntime imports ToolRegistry, which may have dependencies
 __all__ = [
     "ToolResult",
     "BaseTool",
+    "ToolRuntime",  # Legacy compatibility - use ToolRegistry instead
 ]
+
+
+def __getattr__(name: str):
+    """Lazy import for ToolRuntime to avoid circular imports."""
+    if name == "ToolRuntime":
+        from atloop.tools.runtime import ToolRuntime
+        return ToolRuntime
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

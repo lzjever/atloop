@@ -55,7 +55,20 @@ class EditFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "编辑文件（Git 风格 diff 编辑，使用 content 参数，格式为 <old>old_string</old><new>new_string</new>）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
+        return (
+            "Edit files using Git-style diff (old_string -> new_string). "
+            "⚠️ This is the preferred tool for modifying existing files! "
+            "Why use edit_file instead of write_file: more precise (only modifies specified part), "
+            "safer (doesn't risk overwriting unrelated code), more efficient (no need to read and rewrite entire file), "
+            "better for local modifications (functions, classes, paragraphs, etc.). "
+            "Safety features: match count validation (only replaces if old_string appears exactly once), "
+            "prevents accidental multiple replacements, clear error messages when matches are not found or ambiguous. "
+            "Use cases: modifying a function or method, updating a class definition, changing a specific section of code, "
+            "fixing a bug in a specific location, updating configuration values. "
+            "Content format: <old>old_string</old><new>new_string</new>. "
+            "⚠️ CRITICAL: Do NOT generate code with {variable} patterns - they will be written literally. "
+            "Use proper templating in the target language instead."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

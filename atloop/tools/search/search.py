@@ -42,7 +42,17 @@ class SearchTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "强大的文件内容搜索工具（支持正则表达式、上下文行、文件过滤）\n  参数: query (string): 搜索查询（正则表达式，必需）\n        glob (string, 可选): 文件过滤模式（如 '*.py', '**/*.js'）\n        output_mode (string, 可选): 输出模式 - 'content'（显示匹配行，默认）、'files_with_matches'（仅文件路径）、'count'（匹配计数）\n        -A (int, 可选): 显示匹配行后的行数\n        -B (int, 可选): 显示匹配行前的行数\n        -C (int, 可选): 显示匹配行前后的行数\n        -i (bool, 可选): 忽略大小写（默认 false）\n        -n (bool, 可选): 显示行号（默认 true）\n        max_results (int, 可选): 最大结果数（默认 50）"
+        return (
+            "Enhanced file content search using grep with regex, context lines, and file filtering. "
+            "Features: full regex pattern support, context lines (before/after matches), "
+            "file filtering by glob pattern, multiple output modes (content, files, count), case-insensitive search option. "
+            "Use cases: finding function definitions (search('def function_name')), finding imports (search('^import |^from ')), "
+            "finding specific patterns (search('TODO|FIXME')), searching in specific file types (search('pattern', glob='*.py')). "
+            "Parameters: query (str, required) - regex pattern; glob (str, optional) - file filter; "
+            "output_mode (str, optional) - 'content' (default), 'files_with_matches', 'count'; "
+            "-A/-B/-C (int, optional) - context lines; -i (bool) - case insensitive; -n (bool) - show line numbers; "
+            "max_results (int, optional) - max results (default 50)."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

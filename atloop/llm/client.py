@@ -12,7 +12,6 @@ from lexilux import Chat, ChatContinue, ChatHistory, ChatParams, ChatResult
 from atloop.config.models import AtloopConfig
 from atloop.llm.prompts import PromptLoader
 from atloop.llm.schema import (
-    VALID_TOOLS,
     ActionJSON,
     parse_action_json,
 )
@@ -86,14 +85,19 @@ class LLMClient:
 
     def generate_tool_schema(self) -> str:
         """
-        Generate tool schema description for prompt.
+        Generate comprehensive tool schema description for prompt.
 
-        Automatically extracts descriptions from tool classes instead of hardcoding.
+        Dynamically extracts detailed descriptions from tool classes, including:
+        - Usage guidelines
+        - Important warnings
+        - Parameters
+        - Examples
+        - When to use vs other tools
 
         Returns:
-            Tool schema description string
+            Formatted tool schema description string
         """
-        tools_desc = ["Available tools:\n"]
+        tools_desc = ["## Available Tools\n"]
 
         try:
             from atloop.runtime.sandbox_adapter import SandboxAdapter
@@ -102,25 +106,97 @@ class LLMClient:
             dummy_sandbox = SandboxAdapter(self.config.sandbox, "dummy")
             registry = ToolRegistry(dummy_sandbox, skill_loader=self.skill_loader)
 
-            tool_descriptions = {}
+            # Collect tools with their detailed descriptions
+            tool_info = {}
             for tool_name, tool in registry.tools.items():
-                tool_descriptions[tool_name] = tool.description
+                try:
+                    detailed_desc = tool.get_detailed_description()
+                    tool_info[tool_name] = {
+                        "description": detailed_desc,
+                        "simple_desc": tool.description,
+                    }
+                except Exception as e:
+                    logger.warning(
+                        f"[LLMClient] Failed to get detailed description for {tool_name}: {e}"
+                    )
+                    tool_info[tool_name] = {
+                        "description": tool.description,
+                        "simple_desc": tool.description,
+                    }
 
             logger.debug(
-                f"[LLMClient] Auto-extracted descriptions for {len(tool_descriptions)} tools"
+                f"[LLMClient] Auto-extracted detailed descriptions for {len(tool_info)} tools"
             )
         except Exception as e:
             logger.warning(
                 f"[LLMClient] Failed to auto-extract tool descriptions: {e}. Using fallback."
             )
-            tool_descriptions = {}
+            tool_info = {}
 
-        priority_tools = ["edit_file", "append_file"]
-        other_tools = sorted([t for t in VALID_TOOLS if t not in priority_tools])
-
-        for tool in priority_tools + other_tools:
-            desc = tool_descriptions.get(tool, "No description")
-            tools_desc.append(f"- {tool}: {desc}")
+        # Group tools by category for better organization
+        file_tools = ["write_file", "append_file", "edit_file", "multi_edit_file", "read_file", "read_skill_file"]
+        execution_tools = ["run", "run_shell_script_string", "run_python_script_string"]
+        search_tools = ["search", "glob"]
+        interaction_tools = ["todo_write", "todo_read", "load_skill", "load_skill_resource"]
+        
+        # Priority order: most commonly used tools first
+        priority_order = [
+            "edit_file",  # Most common for modifications
+            "append_file",  # Common for large files
+            "write_file",  # Common for new files
+            "read_file",  # Common for reading
+            "run",  # Common for commands
+        ]
+        
+        # Get all tools
+        all_tools = sorted(tool_info.keys())
+        
+        # Organize tools
+        categorized = {
+            "File Operations": [],
+            "Execution Tools": [],
+            "Search & Discovery": [],
+            "Interaction & Skills": [],
+            "Other": [],
+        }
+        
+        for tool_name in all_tools:
+            if tool_name in file_tools:
+                categorized["File Operations"].append(tool_name)
+            elif tool_name in execution_tools:
+                categorized["Execution Tools"].append(tool_name)
+            elif tool_name in search_tools:
+                categorized["Search & Discovery"].append(tool_name)
+            elif tool_name in interaction_tools:
+                categorized["Interaction & Skills"].append(tool_name)
+            else:
+                categorized["Other"].append(tool_name)
+        
+        # Sort within categories by priority
+        for category in categorized:
+            tools = categorized[category]
+            # Sort: priority tools first, then alphabetically
+            tools.sort(key=lambda t: (t not in priority_order, t))
+        
+        # Generate formatted output
+        for category, tool_names in categorized.items():
+            if not tool_names:
+                continue
+            
+            tools_desc.append(f"\n### {category}\n")
+            
+            for tool_name in tool_names:
+                if tool_name not in tool_info:
+                    continue
+                
+                info = tool_info[tool_name]
+                detailed_desc = info["description"]
+                
+                # Format the description nicely
+                tools_desc.append(f"#### `{tool_name}`")
+                tools_desc.append("")
+                tools_desc.append(detailed_desc)
+                tools_desc.append("")
 
         return "\n".join(tools_desc)
 
@@ -665,16 +741,20 @@ Please output only valid JSON, do not add any other text, comments, or explanati
             # Check if any expected placeholders are missing
             missing = [p for p in expected_placeholders if p not in file_contents]
             if missing:
-                logger.warning(
+                # This is a normal business case - LLM may provide placeholders in next iteration
+                # Agent loop can handle this gracefully
+                logger.debug(
                     f"[LLMClient] Actions reference placeholders {missing} "
-                    f"but corresponding ---((TYPE_name))--- blocks not found in LLM output!"
+                    f"but corresponding ---((TYPE_name))--- blocks not found in LLM output "
+                    f"(will retry in next iteration)"
                 )
         elif expected_placeholders:
             # Actions use placeholders but we extracted nothing - LLM didn't provide content blocks
-            logger.warning(
+            # This is a normal business case - LLM may provide placeholders in next iteration
+            logger.debug(
                 f"[LLMClient] Actions reference placeholders {expected_placeholders} "
-                f"but no ---((TYPE_name))--- blocks found in LLM output! "
-                f"full_output length: {len(full_output)}"
+                f"but no ---((TYPE_name))--- blocks found in LLM output "
+                f"(full_output length: {len(full_output)}, will retry in next iteration)"
             )
         # else: No file-writing actions with placeholders (e.g., only run/read_file) -
         # empty file_contents is expected, no need to log

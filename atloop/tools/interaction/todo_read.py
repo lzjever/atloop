@@ -35,7 +35,12 @@ class TodoReadTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "读取任务列表（解析 TODO.md）\n  参数: 无\n  示例: todo_read()\n  说明: 读取并显示当前任务列表的状态。"
+        return (
+            "Read and display the current task list from TODO.md. "
+            "Use cases: checking current task status, reviewing progress on multi-step tasks, "
+            "understanding what work is in progress, planning next steps based on current status. "
+            "No parameters required. Returns formatted TODO list with tasks grouped by status (pending, in_progress, completed)."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

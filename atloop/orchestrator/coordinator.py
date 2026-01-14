@@ -19,7 +19,8 @@ from atloop.retrieval import (
     ProjectProfileDetector,
     WorkspaceIndexer,
 )
-from atloop.runtime import SandboxAdapter, ToolRuntime
+from atloop.runtime import SandboxAdapter
+from atloop.tools.runtime import ToolRuntime
 
 logger = logging.getLogger(__name__)
 

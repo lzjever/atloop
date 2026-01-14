@@ -54,16 +54,13 @@ class PlanPhase(BasePhase):
                 )
 
             # Get formatted memory context using new interface
+            # Format options are now loaded from MemoryConfig by default
+            # Only override if specific customization is needed
             memory_context = state.memory.get_formatted_context(
                 state=state,
                 task_goal=self.coordinator.task_spec.goal,
                 max_length=memory_summary_max_length,
-                format_options={
-                    "tool_results_count": 5,
-                    "steps_summary_count": 3,
-                    "include_file_content": True,
-                    "max_file_content_length": 20000,
-                },
+                format_options=None,  # Use defaults from MemoryConfig (single source of truth)
                 tool_registry=self.coordinator.tool_runtime.registry,
             )
             logger.debug(
@@ -371,10 +368,12 @@ class PlanPhase(BasePhase):
                     f"{list(file_contents.keys())}"
                 )
             elif expected_placeholders:
-                # Actions use placeholders but we received nothing - this is a problem
-                logger.warning(
+                # Actions use placeholders but we received nothing
+                # This is a normal business case - LLM may provide placeholders in next iteration
+                # Agent loop can handle this gracefully
+                logger.debug(
                     f"[PlanPhase] No file_contents received from LLM, but actions reference "
-                    f"placeholders {expected_placeholders}!"
+                    f"placeholders {expected_placeholders} (will retry in next iteration)"
                 )
             # else: No actions require placeholders (e.g., empty actions list or only read_file) -
             # empty file_contents is expected, no need to log
@@ -459,7 +458,10 @@ class PlanPhase(BasePhase):
                     )
 
                     error_msg = "\n".join(error_parts)
-                    logger.warning(f"[PlanPhase] {error_msg}")
+                    # This is a normal business case - LLM may provide placeholders in next iteration
+                    # Log at info level (not warning) since agent loop can handle this gracefully
+                    logger.info(f"[PlanPhase] {error_msg}")
+                    # Still store in last_error for LLM feedback, but don't treat as critical error
                     state.last_error.summary = error_msg
 
                     # Use only successful actions for this iteration
@@ -467,7 +469,8 @@ class PlanPhase(BasePhase):
 
                     # If no successful actions, transition back to DISCOVER
                     if not actions:
-                        logger.warning(
+                        # This is a normal business case - transitioning back to allow retry
+                        logger.info(
                             "[PlanPhase] No successful actions after placeholder replacement. "
                             "Transitioning back to DISCOVER to allow LLM to retry."
                         )
@@ -478,6 +481,8 @@ class PlanPhase(BasePhase):
                             data={},
                             next_phase=Phase.DISCOVER,
                             error=error_msg,
+                            recoverable=True,  # Mark as recoverable - agent loop can handle this
+                            error_already_set_in_state=True,  # Error already stored in state.last_error
                         )
                 else:
                     # All placeholders replaced successfully

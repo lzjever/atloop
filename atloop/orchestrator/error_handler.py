@@ -18,6 +18,7 @@ class ErrorClassifier:
     """Classify errors into recoverable vs fatal categories."""
 
     # Recoverable error patterns (case-insensitive)
+    # These are business-normal cases that agent loop can handle gracefully
     RECOVERABLE_PATTERNS = [
         "timed out",
         "timeout",
@@ -34,6 +35,16 @@ class ErrorClassifier:
         "file not found",  # Can be handled by LLM
         "permission denied",  # Can be handled by LLM
         "command not found",  # Can be handled by LLM
+        # LLM instruction parsing/execution issues (business-normal, agent loop can handle)
+        "placeholder",
+        "missing placeholder",
+        "placeholder replacement incomplete",
+        "will retry",
+        "json",
+        "parse",
+        "incomplete",
+        "no file_contents received",
+        "no successful actions after placeholder",
     ]
 
     # Fatal error patterns (case-insensitive)

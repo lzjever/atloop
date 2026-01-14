@@ -2,7 +2,8 @@
 
 from typing import Any, Dict, List, Optional
 
-from atloop.runtime import ToolResult, ToolRuntime
+from atloop.runtime import ToolResult
+from atloop.tools.runtime import ToolRuntime
 
 
 class WorkspaceIndexer:

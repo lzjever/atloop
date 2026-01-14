@@ -53,7 +53,18 @@ class AppendFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "追加内容到文件（在现有文件末尾添加内容）。⚠️ 注意：不要生成包含 {variable} 模式的代码，这些不会被shell变量展开，会原样写入文件。"
+        return (
+            "Append content to the end of existing files. "
+            "⚠️ This tool is fully available and can be used normally! "
+            "Use cases: continuing to write files that exceed 6,000 characters (after initial write_file), "
+            "adding log entries, appending comments or notes, building files incrementally. "
+            "Key differences: `write_file` completely overwrites file, `edit_file` replaces specific text within file, "
+            "`append_file` adds content to end of file (doesn't modify existing content). "
+            "Content handling: content is appended exactly as provided, preserves trailing newlines in input content, "
+            "unlike write_file/edit_file, doesn't normalize trailing newlines. "
+            "⚠️ CRITICAL: Do NOT generate code with {variable} patterns - they will be written literally. "
+            "Use proper templating in the target language instead."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""

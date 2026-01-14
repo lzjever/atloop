@@ -44,7 +44,18 @@ class RunCommandTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "执行shell命令（优先使用此工具执行系统命令）"
+        return (
+            "Execute shell commands in the sandbox workspace. "
+            "This is the primary tool for executing system commands. "
+            "Use cases: running build commands (make, npm, pip), running tests (pytest, unittest), "
+            "executing scripts (python3, node), file operations (ls, cat, grep, find), system checks (which, type). "
+            "Commands run in /workspace directory. "
+            "⚠️ IMPORTANT: Success is determined by stderr content, NOT exit code. "
+            "Many commands return exit_code=0 even with errors. Always check stdout and stderr content to judge success. "
+            "For complex shell scripts, prefer `run_shell_script_string`. "
+            "For Python code, prefer `run_python_script_string`. "
+            "All `run` commands MUST use SHELL_COMMAND_<description> placeholder in JSON."
+        )
 
     @property
     def output_semantic_type(self) -> OutputSemanticType:

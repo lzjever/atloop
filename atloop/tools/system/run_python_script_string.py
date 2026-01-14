@@ -65,7 +65,15 @@ class RunPythonScriptStringTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "执行Python代码字符串（避免shell转义问题）"
+        return (
+            "Execute Python code strings without shell escaping issues. "
+            "Use this tool instead of `run` with `python3 -c \"...\"` for complex Python code. "
+            "Benefits: no shell escaping issues (quotes, f-strings, etc.), better error messages, "
+            "cleaner code (no need to escape quotes). Script runs in /workspace directory. "
+            "Python path includes /workspace automatically. "
+            "Success is determined by stderr content, NOT exit code. "
+            "Use PYTHON_SCRIPT_#N placeholder in JSON, then provide script content after JSON."
+        )
 
     def validate_args(self, args: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate arguments."""
@@ -124,7 +132,18 @@ class RunPythonScriptStringTool(BaseTool):
         # Create temporary Python file
         # Use /workspace/.atloop_temp for temp files (will be cleaned up)
         temp_dir = Path("/workspace") / ".atloop_temp"
-        temp_dir.mkdir(exist_ok=True)
+        try:
+            temp_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            # If we can't create in /workspace, fall back to system temp
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"[RunPythonScriptStringTool] Failed to create /workspace/.atloop_temp: {e}. "
+                f"Falling back to system temp directory."
+            )
+            temp_dir = Path(tempfile.gettempdir()) / "atloop_temp"
+            temp_dir.mkdir(parents=True, exist_ok=True)
 
         # Create temp file with .py extension
         with tempfile.NamedTemporaryFile(

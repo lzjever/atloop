@@ -58,14 +58,22 @@ class TestMemoryFormatter:
 
     def test_format_recent_activity(self):
         """Test formatting recent activity."""
+        from atloop.config.loader import ConfigLoader
+
+        ConfigLoader.setup()
+        config = ConfigLoader.get()
         state = create_sample_state(step=7, stage="mid")
         formatter = MemoryFormatter()
 
-        activity = formatter._format_recent_activity(state, steps_count=3)
+        # Use config default instead of hardcoded value
+        activity = formatter._format_recent_activity(
+            state, steps_count=config.memory.steps_summary_count
+        )
 
         assert "### 📊 Recent Activity" in activity
         assert "**Steps**" in activity
         assert "**Files Modified**" in activity
+        assert f"Last {config.memory.steps_summary_count} Steps" in activity
 
     def test_format_tool_execution_results(self):
         """Test formatting tool execution results."""
@@ -119,10 +127,14 @@ class TestMemoryFormatter:
         assert_memory_format_valid(formatted)
 
     def test_format_with_options(self):
-        """Test formatting with options."""
+        """Test formatting with options (overrides config defaults)."""
+        from atloop.config.loader import ConfigLoader
+
+        ConfigLoader.setup()
         state = create_sample_state(step=7, stage="mid")
         formatter = MemoryFormatter()
 
+        # Override config defaults with custom values
         formatted = formatter.format(
             state,
             format_options={
@@ -132,9 +144,11 @@ class TestMemoryFormatter:
             },
         )
 
-        # Verify options are applied
+        # Verify override options are applied
         extract_sections(formatted)
         assert formatted is not None
+        assert "### 📊 Recent Activity (Last 2 Steps)" in formatted
+        assert "### 🔧 Tool Execution Results (Last 3)" in formatted
 
     def test_format_length_limit(self):
         """Test length limit application."""

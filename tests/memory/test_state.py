@@ -23,9 +23,13 @@ class TestMemoryGetFormattedContext:
         assert "Execution Plan" in context
 
     def test_get_formatted_context_with_options(self):
-        """Test get_formatted_context with format options."""
+        """Test get_formatted_context with format options (overrides config defaults)."""
+        from atloop.config.loader import ConfigLoader
+
+        ConfigLoader.setup()
         state = create_sample_state(step=7, stage="mid")
 
+        # Override config defaults with custom values
         context = state.memory.get_formatted_context(
             state=state,
             format_options={
@@ -37,6 +41,9 @@ class TestMemoryGetFormattedContext:
 
         assert isinstance(context, str)
         assert len(context) > 0
+        # Verify override values are used
+        assert "### 📊 Recent Activity (Last 2 Steps)" in context
+        assert "### 🔧 Tool Execution Results (Last 3)" in context
 
     def test_get_formatted_context_length_limit(self):
         """Test get_formatted_context with length limit."""

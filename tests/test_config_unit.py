@@ -414,3 +414,27 @@ class TestMemoryConfig:
         assert memory_config.summary_min_effective_length == 24000
         assert memory_config.compression_threshold == 80000
         assert memory_config.compression_target == 60000
+
+    def test_memory_config_formatting_options(self):
+        """Test MemoryConfig formatting options (new fields)."""
+        memory_config = MemoryConfig(
+            steps_summary_count=25,
+            tool_results_count=7,
+            max_file_content_length=15000,
+            include_file_content=False,
+        )
+
+        assert memory_config.steps_summary_count == 25
+        assert memory_config.tool_results_count == 7
+        assert memory_config.max_file_content_length == 15000
+        assert memory_config.include_file_content is False
+
+    def test_memory_config_formatting_options_defaults(self):
+        """Test MemoryConfig formatting options have correct defaults."""
+        memory_config = MemoryConfig()
+
+        # Verify defaults match what we expect
+        assert memory_config.steps_summary_count == 20
+        assert memory_config.tool_results_count == 5
+        assert memory_config.max_file_content_length == 20000
+        assert memory_config.include_file_content is True

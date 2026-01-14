@@ -50,16 +50,13 @@ class DiscoverPhase(BasePhase):
                 )
 
             # Get formatted memory context using new interface
+            # Format options are now loaded from MemoryConfig by default
+            # Only override if specific customization is needed
             memory_context = state.memory.get_formatted_context(
                 state=state,
                 task_goal=self.coordinator.task_spec.goal,
                 max_length=memory_summary_max_length,
-                format_options={
-                    "tool_results_count": 5,
-                    "steps_summary_count": 3,
-                    "include_file_content": True,
-                    "max_file_content_length": 20000,
-                },
+                format_options=None,  # Use defaults from MemoryConfig (single source of truth)
                 tool_registry=self.coordinator.tool_runtime.registry,
             )
             memory_summary = memory_context  # Keep variable name for compatibility

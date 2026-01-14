@@ -45,7 +45,15 @@ class ReadFileTool(BaseTool):
     @property
     def description(self) -> str:
         """Tool description."""
-        return "读取文件内容（增强的文件读取工具，支持类型检测和大文件分块）"
+        return (
+            "Read files from the sandbox workspace with type detection and chunked reading. "
+            "Features: automatic file type detection (text/binary), support for large files via line range reading, "
+            "binary file detection and handling, file size limits (10MB max for full read). "
+            "Use cases: reading source code files, configuration files, documentation files, log files (with line ranges). "
+            "⚠️ Note: This tool reads from the sandbox workspace (/workspace), NOT from the local machine. "
+            "For reading skill files (stored locally), use `read_skill_file` instead. "
+            "Prefer this tool over `run(\"cat\")` for file reading."
+        )
 
     @property
     def output_semantic_type(self) -> OutputSemanticType:

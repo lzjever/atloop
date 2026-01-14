@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from atloop.config.loader import ConfigLoader
-from atloop.runtime import ToolRuntime
+from atloop.tools.runtime import ToolRuntime
 
 
 @dataclass

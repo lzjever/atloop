@@ -138,11 +138,14 @@ class Memory:
             state: AgentState 实例（需要访问 memory, last_error, artifacts）
             task_goal: 任务目标（可选，用于任务概览）
             max_length: 最大长度限制（可选）
-            format_options: 格式选项
-                - tool_results_count: int (默认 5)
-                - steps_summary_count: int (默认 3)
-                - include_file_content: bool (默认 True)
-                - max_file_content_length: int (默认 20000)
+            format_options: 格式选项（可选，会覆盖配置中的默认值）
+                - tool_results_count: int (默认从 MemoryConfig 读取)
+                - steps_summary_count: int (默认从 MemoryConfig 读取)
+                - include_file_content: bool (默认从 MemoryConfig 读取)
+                - max_file_content_length: int (默认从 MemoryConfig 读取)
+                
+                注意：所有默认值现在从 MemoryConfig 读取，确保单一数据源。
+                可以通过 format_options 参数覆盖特定调用的值。
                 - string_mappings: Dict[str, str] (字符串映射规则)
             tool_registry: 工具注册表（用于输出限制策略）
 
