@@ -114,7 +114,14 @@ def main():
 
 ## Available Tools
 
-All tools are auto-discovered and registered in `ToolRegistry`. Tool definitions in `atloop/llm/schema.py:70-83`.
+All tools are auto-discovered and registered in `ToolRegistry`. Tool validation is now performed dynamically via `ToolRegistry` rather than using a static `VALID_TOOLS` list.
+
+**Dynamic Tool System:**
+- Tools are auto-discovered from `atloop/tools/` subdirectories (filesystem, system, search, interaction)
+- Each tool's `validate_args()` method validates its own arguments
+- Tool descriptions are automatically extracted from docstrings via `BaseTool.get_detailed_description()`
+- Tool existence is validated dynamically at runtime through `ToolRegistry`
+- Adding new tools requires no central enumeration - just inherit from `BaseTool` and place in the correct directory
 
 ### Filesystem Tools
 
@@ -191,8 +198,8 @@ Entry Points (CLI/API) → Orchestrator → Phases → Core Services
 - `project_profile.py` - Project type detection (language, package manager, test commands)
 
 **Tools (`atloop/tools/`)**
-- `base.py` - BaseTool abstract class
-- `registry.py` - Tool registration and execution
+- `base.py` - BaseTool abstract class with `get_detailed_description()` for automatic docstring parsing
+- `registry.py` - Dynamic tool registration and execution (no static VALID_TOOLS)
 - `auto_discovery.py` - Auto-discovers tools from modules
 - `filesystem/` - File operations (read, write, edit, glob)
 - `system/` - Command execution (run, shell scripts, Python scripts)
@@ -251,9 +258,9 @@ Entry Points (CLI/API) → Orchestrator → Phases → Core Services
    - Current step
 4. Call LLM to generate ActionJSON
 5. **Extract placeholders** from response (content follows JSON)
-6. Validate ActionJSON:
-   - Check tool names are valid
-   - Validate arguments
+6. Validate ActionJSON using `ToolRegistry`:
+   - Check tool exists in dynamic tool registry (not static VALID_TOOLS)
+   - Delegate argument validation to tool's `validate_args()` method
    - **CRITICAL**: Validate placeholder uniqueness
    - **CRITICAL**: Validate placeholder types match tool expectations
 7. Store `placeholder_info` in job_state for ACT phase
@@ -274,8 +281,8 @@ Entry Points (CLI/API) → Orchestrator → Phases → Core Services
    - Replace placeholder strings with actual content
    - Validate all placeholders were replaced
 3. Execute tools in sequence:
-   - Validate tool exists in registry
-   - Validate tool arguments
+   - Validate tool exists in dynamic ToolRegistry
+   - Validate tool arguments via tool's `validate_args()` method
    - Execute tool in sandbox
    - Capture results (stdout, stderr, exit_code)
 4. Process results using `ActResultProcessor`:
@@ -563,10 +570,22 @@ All tool execution happens in sandbox - no direct file system access. Changes ar
 ### Adding New Tools
 1. Inherit from `BaseTool` in `atloop/tools/base.py`
 2. Implement `execute()` method returning `ToolResult`
-3. Implement `validate_args()` for argument validation
+3. Implement `validate_args()` for argument validation (called dynamically by ToolRegistry)
 4. Set `name` and `description` properties
-5. Add to `VALID_TOOLS` in `atloop/llm/schema.py`
-6. If tool uses placeholders, add placeholder type to `PLACEHOLDER_TYPES` in `atloop/llm/placeholder_patterns.py`
+5. Write comprehensive docstring - `get_detailed_description()` will auto-parse it for LLM prompts
+6. Place tool file in appropriate subdirectory (filesystem, system, search, interaction)
+7. **No need to modify VALID_TOOLS** - tool discovery is automatic
+8. If tool uses placeholders, add placeholder type to `PLACEHOLDER_TYPES` in `atloop/llm/placeholder_patterns.py`
+
+**Note**: The `get_detailed_description()` method in BaseTool automatically extracts structured information from your tool's docstring, including:
+- Main description
+- Usage guidelines
+- Important warnings
+- Parameter documentation
+- Usage examples
+- When to use vs other tools
+
+This means comprehensive docstrings are critical for good LLM tool usage.
 
 ### Adding New Phases
 1. Inherit from `BasePhase` in `atloop/orchestrator/phases/base.py`
@@ -610,7 +629,7 @@ All tool execution happens in sandbox - no direct file system access. Changes ar
 
 **Symptom**: Tool not found
 **Cause**: Tool not registered or wrong tool name
-**Solution**: Check `VALID_TOOLS` in schema.py, verify tool auto-discovery
+**Solution**: Verify tool file exists in correct subdirectory, check ToolRegistry auto-discovery, ensure tool inherits from BaseTool
 
 **Symptom**: Tool validation failed
 **Cause**: Invalid arguments or missing required fields
