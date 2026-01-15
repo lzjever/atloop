@@ -1,9 +1,13 @@
 """Run command tool."""
 
+import logging
 from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
+from atloop.security.command_validator import SecurityError, validate_command
 from atloop.tools.base import BaseTool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 
 class RunCommandTool(BaseTool):
@@ -51,6 +55,18 @@ class RunCommandTool(BaseTool):
             return False, "Missing required argument: 'cmd'"
         if not isinstance(args["cmd"], str):
             return False, "Argument 'cmd' must be a string"
+
+        # Security validation: prevent command injection
+        cmd = args["cmd"]
+        try:
+            is_valid, error_msg = validate_command(cmd)
+            if not is_valid:
+                logger.warning("Command validation failed: %s (command: %s)", error_msg, cmd[:100])
+                return False, f"Command validation failed: {error_msg}"
+        except SecurityError as e:
+            logger.error("Security violation: %s (command: %s)", str(e), cmd[:100])
+            return False, f"Security violation: {str(e)}"
+
         return True, None
 
     def execute(self, args: Dict[str, Any]) -> ToolResult:
