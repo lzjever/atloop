@@ -113,7 +113,7 @@ class CommandValidator:
         "kill -9",  # Force kill (allow with restrictions)
         "killall",  # Kill all processes
         "pkill",  # Kill processes by name
-    }
+    ]
 
     # Shell metacharacters that enable command chaining
     DANGEROUS_METACHARS: List[str] = [
