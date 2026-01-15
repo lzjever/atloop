@@ -116,10 +116,134 @@ class MemoryCompressor:
                     f"[MemoryCompressor] Deduplication failed: {e}, continuing without deduplication"
                 )
 
-        # Phase 5: Compress modified files content (handled in AgentLoop._compress_modified_files_if_needed)
-        # This is called automatically after each file modification, so we don't need to do it here
+        # === NEW: Intelligent modified_files_content compression ===
+        if MemoryCompressor._compress_modified_files_content(state):
+            compressed = True
+        # === END NEW ===
 
         return compressed
+
+    @staticmethod
+    def _compress_modified_files_content(state: AgentState) -> bool:
+        """
+        Compress modified_files_content with importance-based retention.
+
+        Keeps files based on:
+        1. Recent modification (files modified in last 3 steps get priority)
+        2. Importance score (based on file type, size, and role)
+        3. Diversity (keep different file types)
+
+        Args:
+            state: Agent state
+
+        Returns:
+            True if compression was performed, False otherwise
+        """
+        max_files = 10  # Keep maximum 10 files
+
+        if len(state.memory.modified_files_content) <= max_files:
+            return False
+
+        files = state.memory.modified_files_content
+        current_step = state.step
+
+        # Calculate importance score for each file
+        for file_record in files:
+            file_record["importance_score"] = MemoryCompressor._calculate_file_importance(
+                file_record, current_step
+            )
+
+        # Sort by importance score (descending)
+        sorted_files = sorted(
+            files,
+            key=lambda x: (
+                x.get("importance_score", 0),
+                x.get("last_modified_step", 0),
+            ),
+            reverse=True,
+        )
+
+        # Keep top max_files files
+        compressed_files = sorted_files[:max_files]
+        removed_count = len(files) - len(compressed_files)
+
+        # Update state
+        state.memory.modified_files_content = compressed_files
+
+        logger.info(
+            f"[MemoryCompressor] Compressed modified_files_content: "
+            f"removed {removed_count} files, kept {len(compressed_files)} most important"
+        )
+
+        return True
+
+    @staticmethod
+    def _calculate_file_importance(file_record: Dict[str, Any], current_step: int) -> float:
+        """
+        Calculate importance score for a file.
+
+        Higher score = more important to keep
+
+        Args:
+            file_record: File record from modified_files_content
+            current_step: Current step number
+
+        Returns:
+            Importance score (0.0 to 1.0)
+        """
+        score = 0.0
+
+        file_path = file_record.get("path", "")
+        last_modified = file_record.get("last_modified_step", 0)
+        content_length = len(file_record.get("content", ""))
+
+        # 1. Recency score (0.0 - 0.4)
+        # Files modified in last 3 steps get bonus
+        if last_modified >= current_step - 3:
+            recency_score = 0.4 * (1 - (current_step - last_modified) / 10)
+        else:
+            recency_score = 0.1
+        score += max(0, recency_score)
+
+        # 2. File type score (0.0 - 0.3)
+        # Important file types get bonus
+        important_extensions = {
+            ".py": 0.3,  # Python files
+            ".js": 0.25,  # JavaScript
+            ".ts": 0.25,  # TypeScript
+            ".jsx": 0.25,  # React
+            ".tsx": 0.25,  # React TypeScript
+            ".md": 0.2,  # Markdown
+            ".json": 0.15,  # Config
+            ".yaml": 0.15,  # Config
+            ".yml": 0.15,  # Config
+            ".txt": 0.1,  # Text
+        }
+
+        import os
+
+        _, ext = os.path.splitext(file_path)
+        type_score = important_extensions.get(ext, 0.05)
+        score += type_score
+
+        # 3. Content utility score (0.0 - 0.2)
+        # Prefer medium-sized files (not too small, not too large)
+        if 100 <= content_length <= 5000:
+            utility_score = 0.2
+        elif 50 <= content_length < 100 or 5000 < content_length <= 10000:
+            utility_score = 0.1
+        else:
+            utility_score = 0.05
+        score += utility_score
+
+        # 4. Role-based score (0.0 - 0.1)
+        # Files in key directories get bonus
+        if any(keyword in file_path for keyword in ["src/", "lib/", "app/", "core/"]):
+            score += 0.1
+        elif any(keyword in file_path for keyword in ["test/", "tests/"]):
+            score += 0.05
+
+        return min(score, 1.0)
 
     @staticmethod
     def _compress_attempts(state: AgentState, keep_recent: int = None) -> None:
