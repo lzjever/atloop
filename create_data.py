@@ -43,6 +43,6 @@ with open("training_data.txt", "w") as f:
 
 print(f"Created training_data.txt with {len(corpus)} sentences")
 print(f"Total characters: {sum(len(s) for s in corpus)}")
-print(f"Sample sentences:")
+print("Sample sentences:")
 for i in range(5):
     print(f"  {i+1}. {corpus[i]}")

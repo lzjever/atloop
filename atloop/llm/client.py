@@ -10,6 +10,10 @@ from lexilux import Chat, ChatContinue, ChatHistory, ChatParams, ChatResult
 
 # Note: ChatHistory is kept for backward compatibility but no longer used
 from atloop.config.models import AtloopConfig
+from atloop.llm.placeholder_patterns import (
+    PARTIAL_PLACEHOLDER_REGEX,
+    PLACEHOLDER_DELIMITER_REGEX,
+)
 from atloop.llm.prompts import PromptLoader
 from atloop.llm.schema import (
     ActionJSON,
@@ -20,12 +24,6 @@ from atloop.output.events import LLMCallEvent, LLMResultEvent, LLMStreamEvent
 from atloop.skills import EnhancedSkillLoader
 
 logger = logging.getLogger(__name__)
-
-# Import placeholder patterns from centralized module
-from atloop.llm.placeholder_patterns import (
-    PARTIAL_PLACEHOLDER_REGEX,
-    PLACEHOLDER_DELIMITER_REGEX,
-)
 
 
 class LLMClient:
@@ -134,11 +132,18 @@ class LLMClient:
             tool_info = {}
 
         # Group tools by category for better organization
-        file_tools = ["write_file", "append_file", "edit_file", "multi_edit_file", "read_file", "read_skill_file"]
+        file_tools = [
+            "write_file",
+            "append_file",
+            "edit_file",
+            "multi_edit_file",
+            "read_file",
+            "read_skill_file",
+        ]
         execution_tools = ["run", "run_shell_script_string", "run_python_script_string"]
         search_tools = ["search", "glob"]
         interaction_tools = ["todo_write", "todo_read", "load_skill", "load_skill_resource"]
-        
+
         # Priority order: most commonly used tools first
         priority_order = [
             "edit_file",  # Most common for modifications
@@ -147,10 +152,10 @@ class LLMClient:
             "read_file",  # Common for reading
             "run",  # Common for commands
         ]
-        
+
         # Get all tools
         all_tools = sorted(tool_info.keys())
-        
+
         # Organize tools
         categorized = {
             "File Operations": [],
@@ -159,7 +164,7 @@ class LLMClient:
             "Interaction & Skills": [],
             "Other": [],
         }
-        
+
         for tool_name in all_tools:
             if tool_name in file_tools:
                 categorized["File Operations"].append(tool_name)
@@ -171,27 +176,27 @@ class LLMClient:
                 categorized["Interaction & Skills"].append(tool_name)
             else:
                 categorized["Other"].append(tool_name)
-        
+
         # Sort within categories by priority
         for category in categorized:
             tools = categorized[category]
             # Sort: priority tools first, then alphabetically
             tools.sort(key=lambda t: (t not in priority_order, t))
-        
+
         # Generate formatted output
         for category, tool_names in categorized.items():
             if not tool_names:
                 continue
-            
+
             tools_desc.append(f"\n### {category}\n")
-            
+
             for tool_name in tool_names:
                 if tool_name not in tool_info:
                     continue
-                
+
                 info = tool_info[tool_name]
                 detailed_desc = info["description"]
-                
+
                 # Format the description nicely
                 tools_desc.append(f"#### `{tool_name}`")
                 tools_desc.append("")

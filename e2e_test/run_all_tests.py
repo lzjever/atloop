@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 TEST_DIR = Path(__file__).parent
 ATLOOP_DIR = TEST_DIR.parent
@@ -25,7 +25,7 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
     """Run a single test."""
     test_dir = TEST_DIR / f"test_{test_num}"
     prompt_file = TEST_DIR / f"test_{test_num}_prompt.txt"
-    
+
     if not prompt_file.exists():
         return TestResult(
             test_num,
@@ -33,26 +33,26 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
             False,
             f"Prompt file not found: {prompt_file}",
         )
-    
+
     prompt = prompt_file.read_text().strip()
-    
+
     # Ensure workspace exists
     test_dir.mkdir(exist_ok=True)
-    
+
     # Run test
     import os
     env = os.environ.copy()
     env["ATLOOP__RUNTIME__WORKSPACE_ROOT"] = str(test_dir)
     env["ATLOOP__SANDBOX__LOCAL_TEST"] = "true"
-    
+
     cmd = [
         "uv", "run", "atloopc", "exec-file", str(prompt_file),
     ]
-    
+
     print(f"\n{'='*60}")
     print(f"Test {test_num}: {prompt[:50]}...")
     print(f"{'='*60}")
-    
+
     start_time = time.time()
     try:
         result = subprocess.run(
@@ -64,10 +64,10 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
             env=env,
         )
         duration = time.time() - start_time
-        
+
         output = result.stdout + result.stderr
         success = result.returncode == 0
-        
+
         # Check for common error patterns
         error_msg = ""
         if not success:
@@ -80,19 +80,19 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
                 ])
             ]
             error_msg = "\n".join(error_lines[-10:])  # Last 10 error lines
-        
+
         test_result = TestResult(test_num, prompt, success, error_msg, output)
         test_result.duration = duration
-        
+
         if success:
             print(f"✓ Test {test_num} PASSED ({duration:.1f}s)")
         else:
             print(f"❌ Test {test_num} FAILED ({duration:.1f}s)")
             if error_msg:
                 print(f"Error: {error_msg[:200]}")
-        
+
         return test_result
-        
+
     except subprocess.TimeoutExpired:
         duration = time.time() - start_time
         print(f"⏱️  Test {test_num} TIMEOUT ({duration:.1f}s)")
@@ -116,7 +116,7 @@ def run_test(test_num: int, timeout: int = 300) -> TestResult:
 def verify_test_result(test_num: int) -> Tuple[bool, str]:
     """Verify test result by checking expected outputs."""
     test_dir = TEST_DIR / f"test_{test_num}"
-    
+
     # Test-specific verification
     if test_num == 1:
         # Check 1.txt contains "hi world"
@@ -127,7 +127,7 @@ def verify_test_result(test_num: int) -> Tuple[bool, str]:
                 return True, "File contains expected content"
             return False, f"File content incorrect: {content[:50]}"
         return False, "File 1.txt not found"
-    
+
     elif test_num == 2:
         # Check greeting.py exists and has greet function
         file_path = test_dir / "greeting.py"
@@ -137,7 +137,7 @@ def verify_test_result(test_num: int) -> Tuple[bool, str]:
                 return True, "greeting.py contains greet function"
             return False, "greeting.py missing expected content"
         return False, "greeting.py not found"
-    
+
     elif test_num == 3:
         # Check main.py and utils.py exist
         main_file = test_dir / "main.py"
@@ -149,7 +149,7 @@ def verify_test_result(test_num: int) -> Tuple[bool, str]:
                 return True, "Both files exist with expected content"
             return False, "Files missing expected content"
         return False, "main.py or utils.py not found"
-    
+
     # For other tests, just check if any files were created
     files = list(test_dir.glob("*"))
     files = [f for f in files if f.is_file() and f.name != ".gitkeep"]
@@ -163,14 +163,14 @@ def main():
     print("="*60)
     print("E2E Test Suite")
     print("="*60)
-    
+
     results: List[TestResult] = []
-    
+
     # Run tests 1-10
     for i in range(1, 11):
         result = run_test(i, timeout=300)
         results.append(result)
-        
+
         # Verify result
         if result.success:
             verified, msg = verify_test_result(i)
@@ -178,22 +178,22 @@ def main():
                 result.success = False
                 result.error = f"Verification failed: {msg}"
                 print(f"⚠️  Test {i} verification failed: {msg}")
-    
+
     # Summary
     print("\n" + "="*60)
     print("Test Summary")
     print("="*60)
-    
+
     passed = sum(1 for r in results if r.success)
     failed = len(results) - passed
     total_time = sum(r.duration for r in results)
-    
+
     print(f"Total: {len(results)}")
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
     print(f"Total time: {total_time:.1f}s")
     print()
-    
+
     # Show failures
     if failed > 0:
         print("Failed Tests:")
@@ -203,7 +203,7 @@ def main():
                 if r.error:
                     print(f"    Error: {r.error[:100]}")
         print()
-    
+
     # Save detailed report
     report_file = TEST_DIR / "test_report.txt"
     with open(report_file, "w") as f:
@@ -216,9 +216,9 @@ def main():
             if r.error:
                 f.write(f"  Error: {r.error}\n")
             f.write("\n")
-    
+
     print(f"Detailed report saved to: {report_file}")
-    
+
     return 0 if failed == 0 else 1
 
 

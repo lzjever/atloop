@@ -14,7 +14,7 @@ from atloop.output.events import ErrorEvent, OutputEvent, ToolResultEvent
 
 class ErrorComponent(FormattingComponent):
     """Formats error information using Rich.
-    
+
     Distinguishes between recoverable errors (business-normal, agent loop can handle)
     and fatal errors (true failures that need attention).
     """
@@ -52,12 +52,12 @@ class ErrorComponent(FormattingComponent):
                         "incomplete",
                     ]
                 )
-                
+
                 # For LLM parsing issues that are recoverable, skip display in minimal/verbose
                 # They're logged at debug/info level and don't need red error boxes
                 if is_llm_parsing_issue:
                     return None  # Skip display - these are business-normal
-            
+
             # For fatal or non-LLM recoverable errors, show as before
             content = Text()
             if event.recoverable:
@@ -66,13 +66,13 @@ class ErrorComponent(FormattingComponent):
             else:
                 content.append("Status: ", style="bold")
                 content.append("✗ Failure", style="red bold")
-            
+
             content.append("\nReason: ", style="bold")
             if event.recoverable:
                 content.append(event.error_message, style="yellow")
             else:
                 content.append(event.error_message, style="red")
-            
+
             content.append(f"\nStep: {event.step}", style="bold")
             content.append(f"\nPhase: {event.phase}", style="bold")
 

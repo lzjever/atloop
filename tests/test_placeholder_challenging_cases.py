@@ -106,8 +106,8 @@ content for b
         assert len(contents) == 2
         # First should have empty or minimal content
         assert "WRITE_FILE_CONTENT_file:a.py" in contents
-        # Second should have content
-        assert contents["WRITE_FILE_CONTENT_file:b.py"] == "content for b\n"
+        # Second should have content (trailing newline is stripped by _clean_extracted_content)
+        assert contents["WRITE_FILE_CONTENT_file:b.py"] == "content for b"
 
     def test_placeholder_name_unicode_emojis(self):
         """Test placeholder name with unicode emojis."""

@@ -143,7 +143,7 @@ class Memory:
                 - steps_summary_count: int (默认从 MemoryConfig 读取)
                 - include_file_content: bool (默认从 MemoryConfig 读取)
                 - max_file_content_length: int (默认从 MemoryConfig 读取)
-                
+
                 注意：所有默认值现在从 MemoryConfig 读取，确保单一数据源。
                 可以通过 format_options 参数覆盖特定调用的值。
                 - string_mappings: Dict[str, str] (字符串映射规则)

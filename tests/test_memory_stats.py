@@ -177,7 +177,7 @@ class TestMemoryStatsFormatting:
 
         # Should be compact - total lines should be reasonable (around 15-20)
         # Header (3 lines) + Table (7-10 lines) + Footer (3 lines) = ~13-16 lines
-        assert len([l for l in lines if l.strip()]) <= 20
+        assert len([line for line in lines if line.strip()]) <= 20
 
     def test_format_memory_stats_all_categories_present(self):
         """Test that all main categories are present in output."""
@@ -277,7 +277,7 @@ class TestMemoryStatsSimpleFormat:
         lines = result.split("\n")
 
         # Simple format should be very compact (around 6-8 lines)
-        non_empty_lines = [l for l in lines if l.strip()]
+        non_empty_lines = [line for line in lines if line.strip()]
         assert len(non_empty_lines) <= 8
 
 

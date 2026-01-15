@@ -60,7 +60,7 @@ class ReadSkillFileTool(BaseTool):
             "workspace is a REMOTE SANDBOX (/workspace) - it does NOT contain skill files or templates, "
             "when a skill mentions other files (e.g., 'see docx-js.md', 'reference guide.md'), those files are LOCAL, "
             "you MUST use `read_skill_file` to read skill-related files - they are NOT in the sandbox! "
-            "DO NOT try to use `read_file` or `run(\"cat ...\")` to find skill files in the sandbox - they don't exist there! "
+            'DO NOT try to use `read_file` or `run("cat ...")` to find skill files in the sandbox - they don\'t exist there! '
             "Use cases: reading skill files (when skill mentions other files to reference), "
             "reading files referenced in skill documentation, accessing skill-specific resources (templates, guides, examples). "
             "Path resolution: with skill_name (path is relative to skill directory), without skill_name (absolute path or relative to ~/.atloop/), supports ~ expansion."

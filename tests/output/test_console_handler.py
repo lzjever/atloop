@@ -305,14 +305,21 @@ class TestConsoleOutputHandler:
     def test_handler_initialization(self):
         """Test handler initialization."""
         console = Console(file=StringIO())
-        handler = ConsoleOutputHandler(verbose=False, enabled=True, console=console)
+        handler = ConsoleOutputHandler(output_format="minimal", enabled=True, console=console)
         assert handler.is_enabled() is True
-        assert handler.verbose is False
-        assert isinstance(handler.formatter, MinimalConsoleFormatter)
+        assert handler.output_format == "minimal"
+        assert handler.strategy is not None
+
+        handler = ConsoleOutputHandler(output_format="verbose", enabled=True, console=console)
+        assert handler.output_format == "verbose"
+        assert handler.strategy is not None
+
+        # Test deprecated verbose parameter (backward compatibility)
+        handler = ConsoleOutputHandler(verbose=False, enabled=True, console=console)
+        assert handler.output_format == "minimal"
 
         handler = ConsoleOutputHandler(verbose=True, enabled=True, console=console)
-        assert handler.verbose is True
-        assert isinstance(handler.formatter, VerboseConsoleFormatter)
+        assert handler.output_format == "verbose"
 
     def test_handler_enable_disable(self):
         """Test handler enable/disable."""

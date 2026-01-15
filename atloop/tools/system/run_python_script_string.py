@@ -67,7 +67,7 @@ class RunPythonScriptStringTool(BaseTool):
         """Tool description."""
         return (
             "Execute Python code strings without shell escaping issues. "
-            "Use this tool instead of `run` with `python3 -c \"...\"` for complex Python code. "
+            'Use this tool instead of `run` with `python3 -c "..."` for complex Python code. '
             "Benefits: no shell escaping issues (quotes, f-strings, etc.), better error messages, "
             "cleaner code (no need to escape quotes). Script runs in /workspace directory. "
             "Python path includes /workspace automatically. "
@@ -137,6 +137,7 @@ class RunPythonScriptStringTool(BaseTool):
         except Exception as e:
             # If we can't create in /workspace, fall back to system temp
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 f"[RunPythonScriptStringTool] Failed to create /workspace/.atloop_temp: {e}. "

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from atloop.orchestrator.coordinator import WorkflowCoordinator
 from atloop.orchestrator.error_handler import ErrorCategory, ErrorClassifier, ErrorRecoveryStrategy
+from atloop.orchestrator.error_metrics import ErrorMetricsCollector
 from atloop.output.emitter import OutputEventEmitter
 from atloop.output.events import (
     BudgetUpdateEvent,
@@ -38,6 +39,7 @@ class Workflow:
         self.plan = PlanPhase(coordinator)
         self.act = ActPhase(coordinator)
         self.verify = VerifyPhase(coordinator)
+        self.error_metrics = ErrorMetricsCollector()
         logger.debug("[Workflow] Workflow initialized with all phases")
 
     def run(self) -> Dict[str, Any]:
@@ -388,6 +390,17 @@ class Workflow:
                 else:
                     # Classify the error
                     error_category = ErrorClassifier.classify(Exception(result.error), result.error)
+
+                    # Record error metric
+                    state = self.coordinator.state_manager.agent_state
+                    self.error_metrics.record_error(
+                        Exception(result.error),
+                        phase=phase.value,
+                        step=state.step,
+                        category=error_category.value,
+                        context=f"Phase {phase.value} execution",
+                    )
+
                     if error_category == ErrorCategory.RECOVERABLE:
                         # Recoverable errors are business-normal, use info level
                         logger.info(
@@ -413,8 +426,19 @@ class Workflow:
 
             # Classify the error
             error_category = ErrorClassifier.classify(e)
+
+            # Record error metric
+            state = self.coordinator.state_manager.agent_state
+            self.error_metrics.record_error(
+                e,
+                phase=phase.value,
+                step=state.step,
+                category=error_category.value,
+                context=f"Phase {phase.value} unexpected exception",
+            )
+
             error_msg = ErrorRecoveryStrategy.format_error_for_llm(
-                e, error_category, context=f"Phase {phase.value}"
+                e, error_category, context=f"Phase {phase.value} (step {state.step})"
             )
 
             # Update state with error information
@@ -554,6 +578,10 @@ class Workflow:
         state = self.coordinator.state_manager.agent_state
         logger.debug(f"[Workflow] Generating success report for step {state.step}")
 
+        # Log error metrics summary if any errors occurred
+        if self.error_metrics.errors:
+            self.error_metrics.log_summary()
+
         # Extract result_message from multiple sources (in order of preference)
         result_message = None
 
@@ -618,6 +646,10 @@ class Workflow:
         """Generate failure report."""
         state = self.coordinator.state_manager.agent_state
         logger.debug(f"[Workflow] Generating failure report: {reason}")
+
+        # Log error metrics summary
+        if self.error_metrics.errors:
+            self.error_metrics.log_summary()
         return {
             "status": "failure",
             "task_id": self.coordinator.task_spec.task_id,

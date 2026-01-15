@@ -164,8 +164,8 @@ class ContextPackBuilder:
                     result = self.indexer.search(keyword, max_results=10)
                     if result.ok and result.stdout:
                         all_results.append(result.stdout)
-                except Exception:
-                    # If search fails, continue with other keywords
+                except (ValueError, RuntimeError, AttributeError):
+                    # If search fails (invalid args, runtime error, missing attribute), continue with other keywords
                     continue
 
             if all_results:

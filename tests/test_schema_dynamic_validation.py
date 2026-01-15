@@ -15,7 +15,7 @@ Test design principles:
 
 import json
 from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -138,8 +138,9 @@ def empty_registry(mock_sandbox):
     """Create an empty ToolRegistry."""
     # Use importlib to avoid circular import issues
     import importlib
+
     tools_registry_module = importlib.import_module("atloop.tools.registry")
-    ToolRegistry = tools_registry_module.ToolRegistry
+    ToolRegistry = tools_registry_module.ToolRegistry  # noqa: N806
     registry = ToolRegistry(sandbox=mock_sandbox)
     # Clear auto-discovered tools for clean testing
     registry.tools.clear()
@@ -148,29 +149,27 @@ def empty_registry(mock_sandbox):
 
 def _create_registry_with_tools(mock_sandbox):
     """Helper function to create ToolRegistry with test tools.
-    
+
     Created as a function instead of fixture to avoid circular import issues
     when fixture is evaluated at import time.
     """
     # Import here to avoid circular import - this will be called at test runtime
     import importlib
-    import sys
+
     # Try to import, handling circular import gracefully
     try:
         tools_registry_module = importlib.import_module("atloop.tools.registry")
-        ToolRegistry = tools_registry_module.ToolRegistry
+        ToolRegistry = tools_registry_module.ToolRegistry  # noqa: N806
     except ImportError as e:
         # If circular import occurs, try to work around it
         # This is a known issue in the business code
         pytest.skip(f"Circular import issue in business code: {e}")
-    
+
     registry = ToolRegistry(sandbox=mock_sandbox)
     registry.tools.clear()
 
     # Add tools with different validation behaviors
-    registry.register(
-        MockToolWithValidation("test_tool", required_args=["arg1", "arg2"])
-    )
+    registry.register(MockToolWithValidation("test_tool", required_args=["arg1", "arg2"]))
     registry.register(MockToolWithValidation("simple_tool", required_args=[]))
     registry.register(
         MockToolWithValidation(
@@ -320,9 +319,7 @@ class TestValidateActionJsonWithRegistry:
         """Test that only one write_file action is allowed per response."""
         # Single write_file - should pass
         data = {
-            "actions": [
-                {"tool": "write_file", "args": {"path": "/test", "content": "content"}}
-            ],
+            "actions": [{"tool": "write_file", "args": {"path": "/test", "content": "content"}}],
             "stop_reason": "continue",
         }
         is_valid, error = validate_action_json(data, tool_registry=registry_with_tools)
@@ -447,9 +444,7 @@ class TestActionJSONFromDictWithRegistry:
             ],
             "stop_reason": "done",
         }
-        action_json = ActionJSON.from_dict(
-            data, validate=True, tool_registry=registry_with_tools
-        )
+        action_json = ActionJSON.from_dict(data, validate=True, tool_registry=registry_with_tools)
         assert action_json.stop_reason == "done"
         assert len(action_json.actions) == 2
 
@@ -481,9 +476,7 @@ class TestActionJSONFromDictWithRegistry:
             "stop_reason": "continue",
         }
         # Should not raise even though tool doesn't exist
-        action_json = ActionJSON.from_dict(
-            data, validate=False, tool_registry=registry_with_tools
-        )
+        action_json = ActionJSON.from_dict(data, validate=False, tool_registry=registry_with_tools)
         assert action_json.actions[0]["tool"] == "nonexistent"
 
     def test_from_dict_preserves_all_fields(self, registry_with_tools):
@@ -495,9 +488,7 @@ class TestActionJSONFromDictWithRegistry:
             "plan": ["step1", "step2"],
             "result_message": "Done",
         }
-        action_json = ActionJSON.from_dict(
-            data, validate=True, tool_registry=registry_with_tools
-        )
+        action_json = ActionJSON.from_dict(data, validate=True, tool_registry=registry_with_tools)
         assert action_json.current_step_thoughts == "Thinking..."
         assert action_json.plan == ["step1", "step2"]
         assert action_json.result_message == "Done"
@@ -528,9 +519,7 @@ class TestParseActionJsonWithRegistry:
         """Test parsing valid JSON with registry."""
         json_text = json.dumps(
             {
-                "actions": [
-                    {"tool": "test_tool", "args": {"arg1": "v1", "arg2": "v2"}}
-                ],
+                "actions": [{"tool": "test_tool", "args": {"arg1": "v1", "arg2": "v2"}}],
                 "stop_reason": "done",
             }
         )
@@ -655,8 +644,9 @@ class TestEdgeCasesAndErrorHandling:
     def test_tool_validation_exception_handling(self, mock_sandbox):
         """Test that exceptions in tool validation are handled gracefully."""
         import importlib
+
         tools_registry_module = importlib.import_module("atloop.tools.registry")
-        ToolRegistry = tools_registry_module.ToolRegistry
+        ToolRegistry = tools_registry_module.ToolRegistry  # noqa: N806
         registry = ToolRegistry(sandbox=mock_sandbox)
         registry.tools.clear()
         registry.register(MockToolThatRaisesException("exception_tool"))
@@ -725,8 +715,9 @@ class TestRealToolIntegration:
     def test_with_real_tool_registry(self, mock_sandbox):
         """Test validation with real ToolRegistry (auto-discovered tools)."""
         import importlib
+
         tools_registry_module = importlib.import_module("atloop.tools.registry")
-        ToolRegistry = tools_registry_module.ToolRegistry
+        ToolRegistry = tools_registry_module.ToolRegistry  # noqa: N806
         registry = ToolRegistry(sandbox=mock_sandbox)
         # Registry should have auto-discovered tools
 
@@ -752,8 +743,9 @@ class TestRealToolIntegration:
     def test_real_tool_missing_required_args(self, mock_sandbox):
         """Test that real tools validate their required arguments."""
         import importlib
+
         tools_registry_module = importlib.import_module("atloop.tools.registry")
-        ToolRegistry = tools_registry_module.ToolRegistry
+        ToolRegistry = tools_registry_module.ToolRegistry  # noqa: N806
         registry = ToolRegistry(sandbox=mock_sandbox)
 
         # Find a tool that requires arguments
