@@ -352,13 +352,15 @@ class PlanPhase(BasePhase):
             tool = action.get("tool")
             args = action.get("args", {})
             logger.debug(
-                f"[PlanPhase] Processing action {i+1}/{len(actions)}: tool={tool}, "
+                f"[PlanPhase] Processing action {i + 1}/{len(actions)}: tool={tool}, "
                 f"args keys: {list(args.keys())}"
             )
 
             if tool == "write_file":
                 content = args.get("content", "")
-                logger.debug(f"[PlanPhase] write_file: content={content[:100] if len(content) > 100 else content}")
+                logger.debug(
+                    f"[PlanPhase] write_file: content={content[:100] if len(content) > 100 else content}"
+                )
                 if content in file_contents:
                     args = args.copy()
                     args["content"] = file_contents[content]
@@ -381,7 +383,9 @@ class PlanPhase(BasePhase):
 
             elif tool == "append_file":
                 content = args.get("content", "")
-                logger.debug(f"[PlanPhase] append_file: content={content[:100] if len(content) > 100 else content}")
+                logger.debug(
+                    f"[PlanPhase] append_file: content={content[:100] if len(content) > 100 else content}"
+                )
                 if content in file_contents:
                     args = args.copy()
                     args["content"] = file_contents[content]
@@ -428,16 +432,16 @@ class PlanPhase(BasePhase):
                         f"[PlanPhase] Available file_contents keys: {list(file_contents.keys())}"
                     )
                     logger.error(
-                        f"[PlanPhase] This will cause edit_file to fail - placeholder was not replaced!"
+                        "[PlanPhase] This will cause edit_file to fail - placeholder was not replaced!"
                     )
                 else:
                     logger.debug(
-                        f"[PlanPhase] edit_file: content is not a placeholder (already replaced or direct content)"
+                        "[PlanPhase] edit_file: content is not a placeholder (already replaced or direct content)"
                     )
 
             modified_actions.append(action)
             logger.debug(
-                f"[PlanPhase] Action {i+1} processed, final args keys: {list(action.get('args', {}).keys())}"
+                f"[PlanPhase] Action {i + 1} processed, final args keys: {list(action.get('args', {}).keys())}"
             )
 
         logger.debug(

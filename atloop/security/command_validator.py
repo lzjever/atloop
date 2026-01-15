@@ -191,7 +191,10 @@ class CommandValidator:
                 base_cmd,
                 sorted(self.allowed_commands),
             )
-            return False, f"Command not allowed: {base_cmd}. Allowed commands: {', '.join(sorted(self.allowed_commands))}"
+            return (
+                False,
+                f"Command not allowed: {base_cmd}. Allowed commands: {', '.join(sorted(self.allowed_commands))}",
+            )
 
         # Additional checks for specific commands
         if base_cmd == "rm":

@@ -81,7 +81,7 @@ class ToolExecutor:
         args = action.get("args", {})
 
         logger.debug(f"[ToolExecutor] Executing tool: {tool_name} with args: {list(args.keys())}")
-        
+
         # Additional debug logging for edit_file
         if tool_name == "edit_file":
             content = args.get("content", "")
@@ -99,7 +99,7 @@ class ToolExecutor:
             f"ok={result.ok if hasattr(result, 'ok') else 'N/A'}, "
             f"stderr_length={len(result.stderr) if hasattr(result, 'stderr') else 'N/A'}"
         )
-        
+
         # Log edit_file result details
         if tool_name == "edit_file":
             logger.info(

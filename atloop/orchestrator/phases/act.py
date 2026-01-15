@@ -90,12 +90,12 @@ class ActPhase(BasePhase):
                 logger.debug(
                     f"[ActPhase] Executing action {i + 1}/{len(action_json.actions)}: {tool}"
                 )
-                
+
                 # Debug logging for edit_file to see what args are received
                 if tool == "edit_file":
                     content = args.get("content", "")
                     logger.info(
-                        f"[ActPhase] edit_file action {i+1}: path={args.get('path', 'N/A')}, "
+                        f"[ActPhase] edit_file action {i + 1}: path={args.get('path', 'N/A')}, "
                         f"content_length={len(content)}, "
                         f"is_placeholder={content.startswith('FILE_CONTENT_#')}, "
                         f"content_preview={content[:200] if len(content) > 200 else content}"

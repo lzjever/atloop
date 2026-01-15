@@ -221,15 +221,15 @@ class StopReasonHandler:
                 content = action.get("args", {}).get("content", "")
                 if content.startswith("FILE_CONTENT_#"):
                     logger.error(
-                        f"[StopReasonHandler] ❌ CRITICAL: Action {i+1} still has unreplaced placeholder "
+                        f"[StopReasonHandler] ❌ CRITICAL: Action {i + 1} still has unreplaced placeholder "
                         f"{content} when storing for ACT phase! This will cause tool execution to fail!"
                     )
                 else:
                     logger.debug(
-                        f"[StopReasonHandler] Action {i+1} ({tool}): content_length={len(content)}, "
+                        f"[StopReasonHandler] Action {i + 1} ({tool}): content_length={len(content)}, "
                         f"preview={content[:100] if len(content) > 100 else content}"
                     )
-        
+
         action_json_with_replaced = ActionJSON(
             thought_summary=action_json.thought_summary,
             plan=action_json.plan,
@@ -240,7 +240,7 @@ class StopReasonHandler:
         stored_dict = action_json_with_replaced.to_dict()
         job_state.shared_data["actions"] = stored_dict
         logger.debug(f"[StopReasonHandler] Stored {len(actions)} actions for ACT phase")
-        
+
         # Verify stored actions don't have placeholders
         stored_actions = stored_dict.get("actions", [])
         for i, action in enumerate(stored_actions):
@@ -249,7 +249,7 @@ class StopReasonHandler:
                 content = action.get("args", {}).get("content", "")
                 if content.startswith("FILE_CONTENT_#"):
                     logger.error(
-                        f"[StopReasonHandler] ❌ CRITICAL: Stored action {i+1} still has unreplaced placeholder "
+                        f"[StopReasonHandler] ❌ CRITICAL: Stored action {i + 1} still has unreplaced placeholder "
                         f"{content}! This indicates a bug in action storage!"
                     )
 
