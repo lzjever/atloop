@@ -1,10 +1,14 @@
 """Write file tool."""
 
+import logging
 import shlex
 from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
+from atloop.security.path_validator import SecurityError, validate_path
 from atloop.tools.base import BaseTool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 
 class WriteFileTool(BaseTool):
@@ -62,6 +66,19 @@ class WriteFileTool(BaseTool):
             return False, "Argument 'path' must be a string"
         if not isinstance(args["content"], str):
             return False, "Argument 'content' must be a string"
+
+        # Security validation: prevent path traversal attacks
+        path = args["path"]
+        try:
+            is_valid, error_msg, resolved_path = validate_path(path)
+            if not is_valid:
+                logger.warning("Path validation failed: %s (path: %s)", error_msg, path)
+                return False, f"Path validation failed: {error_msg}"
+            logger.debug("Path validated: %s -> %s", path, resolved_path)
+        except SecurityError as e:
+            logger.error("Security violation: %s (path: %s)", str(e), path)
+            return False, f"Security violation: {str(e)}"
+
         return True, None
 
     def execute(self, args: Dict[str, Any]) -> ToolResult:
