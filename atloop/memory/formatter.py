@@ -243,6 +243,10 @@ class MemoryFormatter:
         self.tool_result_formatter = ToolResultFormatter()
         # Load default format options from config (single source of truth)
         self._load_default_format_options()
+        # Cache for formatted memory (key: (step, cache_key), value: formatted_string)
+        self._cache: Dict[tuple, str] = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     def _load_default_format_options(self) -> None:
         """Load default format options from config.
@@ -265,7 +269,7 @@ class MemoryFormatter:
         format_options: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
-        格式化 Memory 数据。
+        格式化 Memory 数据 (with caching for performance).
 
         Args:
             state: AgentState 实例
@@ -275,7 +279,7 @@ class MemoryFormatter:
                 - steps_summary_count: int (默认从 MemoryConfig 读取)
                 - include_file_content: bool (默认从 MemoryConfig 读取)
                 - max_file_content_length: int (默认从 MemoryConfig 读取)
-                
+
                 注意：所有默认值现在从 MemoryConfig 读取，确保单一数据源。
                 可以通过 format_options 参数覆盖特定调用的值。
 
@@ -285,6 +289,15 @@ class MemoryFormatter:
         # Merge default options from config with user-provided options
         # User options override defaults (allows per-call customization)
         options = {**self.default_format_options, **(format_options or {})}
+
+        # Check cache (key: step + memory content hash + options)
+        cache_key = self._get_cache_key(state, task_goal, options)
+        if cache_key in self._cache:
+            self._cache_hits += 1
+            return self._cache[cache_key]
+
+        # Cache miss - format memory
+        self._cache_misses += 1
         parts = []
 
         # 1. Critical Warnings
@@ -308,9 +321,7 @@ class MemoryFormatter:
 
         # 6. Tool Execution Results
         parts.append(
-            self._format_tool_execution_results(
-                state, max_count=options["tool_results_count"]
-            )
+            self._format_tool_execution_results(state, max_count=options["tool_results_count"])
         )
 
         # 7. Modified Files Content
@@ -335,7 +346,79 @@ class MemoryFormatter:
         if max_length and len(result) > max_length:
             result = self._apply_length_limit(result, max_length)
 
+        # Store in cache (limit cache size to prevent memory issues)
+        if len(self._cache) > 10:  # Keep only last 10 entries
+            # Remove oldest entry (FIFO)
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+        self._cache[cache_key] = result
+
         return result
+
+    def _get_cache_key(
+        self, state: "AgentState", task_goal: Optional[str], options: Dict[str, Any]
+    ) -> tuple:
+        """
+        Generate cache key for formatted memory.
+
+        Cache key is based on:
+        - Step number (changes every step)
+        - Memory content hash (changes when memory is updated)
+        - Format options (affects output)
+        - Task goal (affects task overview section)
+
+        Args:
+            state: AgentState instance
+            task_goal: Task goal string
+            options: Format options dictionary
+
+        Returns:
+            Tuple suitable as cache key
+        """
+        import hashlib
+
+        # Create a hash of memory content (key fields that affect formatting)
+        memory_hash_data = {
+            "step": state.step,
+            "tool_results_count": len(state.memory.tool_results_history),
+            "attempts_count": len(state.memory.attempts),
+            "modified_files_count": len(state.memory.modified_files_content),
+            "plan": str(state.memory.plan)[:100],  # First 100 chars of plan
+        }
+        memory_hash = hashlib.md5(
+            str(memory_hash_data).encode("utf-8")
+        ).hexdigest()[:8]  # Short hash
+
+        # Create cache key
+        cache_key = (
+            state.step,
+            memory_hash,
+            task_goal,
+            tuple(sorted(options.items())),  # Sort for consistent hashing
+        )
+        return cache_key
+
+    def get_cache_stats(self) -> Dict[str, int]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary with cache hit/miss counts and hit rate
+        """
+        total = self._cache_hits + self._cache_misses
+        hit_rate = (self._cache_hits / total * 100) if total > 0 else 0.0
+        return {
+            "hits": self._cache_hits,
+            "misses": self._cache_misses,
+            "hit_rate": round(hit_rate, 2),
+            "cache_size": len(self._cache),
+        }
+
+    def clear_cache(self) -> None:
+        """Clear the formatting cache."""
+        self._cache.clear()
+        self._cache_hits = 0
+        self._cache_misses = 0
 
     def _format_critical_warnings(self, state: "AgentState") -> str:
         """格式化关键警告（已创建的文件）"""
@@ -641,12 +724,12 @@ class MemoryFormatter:
 
     def _format_current_state(self, state: "AgentState") -> str:
         """格式化当前状态摘要
-        
+
         架构设计原则：
         - Memory Context 只包含状态摘要，不包含完整内容
         - 完整内容通过 Prompt Template 的占位符显示（{CURRENT_DIFF}, {RECENT_ERROR}, {TEST_RESULTS}）
         - 这样可以避免重复，节省 token，并保持职责清晰
-        
+
         职责边界：
         - Memory Formatter: 格式化 memory 相关信息（plan, context, activity, tool results）
         - Artifacts: 通过 Prompt Template 占位符显示完整内容（diff, errors, test results）
@@ -656,7 +739,7 @@ class MemoryFormatter:
         # Last Error - 只显示摘要（第一行或关键信息）
         # 完整错误信息在 Prompt Template 的 {RECENT_ERROR} 中显示
         if state.last_error.summary:
-            error_lines = state.last_error.summary.split('\n')
+            error_lines = state.last_error.summary.split("\n")
             error_summary = error_lines[0]  # 第一行通常是错误类型和位置
             if len(state.last_error.summary) > 200:
                 error_summary += " (see Recent Errors section below for full details)"
@@ -667,10 +750,10 @@ class MemoryFormatter:
         # Current Diff - 只显示统计信息
         # 完整 diff 在 Prompt Template 的 {CURRENT_DIFF} 中显示
         if state.artifacts.current_diff:
-            diff_lines = state.artifacts.current_diff.count('\n')
+            diff_lines = state.artifacts.current_diff.count("\n")
             files_changed = self._extract_files_from_diff(state.artifacts.current_diff)
             if files_changed:
-                files_summary = ', '.join(files_changed[:3])  # 最多显示3个文件
+                files_summary = ", ".join(files_changed[:3])  # 最多显示3个文件
                 if len(files_changed) > 3:
                     files_summary += f" (+{len(files_changed) - 3} more)"
                 parts.append(
@@ -690,12 +773,26 @@ class MemoryFormatter:
         if state.artifacts.test_results:
             test_result_lower = state.artifacts.test_results.lower()
             # 检测测试状态关键词
-            if "passed" in test_result_lower or "✓" in state.artifacts.test_results or "success" in test_result_lower:
-                parts.append("**Test Results**: ✓ Passed (see Test Results section below for details)")
-            elif "failed" in test_result_lower or "❌" in state.artifacts.test_results or "error" in test_result_lower:
-                parts.append("**Test Results**: ❌ Failed (see Test Results section below for details)")
+            if (
+                "passed" in test_result_lower
+                or "✓" in state.artifacts.test_results
+                or "success" in test_result_lower
+            ):
+                parts.append(
+                    "**Test Results**: ✓ Passed (see Test Results section below for details)"
+                )
+            elif (
+                "failed" in test_result_lower
+                or "❌" in state.artifacts.test_results
+                or "error" in test_result_lower
+            ):
+                parts.append(
+                    "**Test Results**: ❌ Failed (see Test Results section below for details)"
+                )
             else:
-                parts.append("**Test Results**: ⚠️ Unknown (see Test Results section below for details)")
+                parts.append(
+                    "**Test Results**: ⚠️ Unknown (see Test Results section below for details)"
+                )
         else:
             parts.append("**Test Results**: No verification command available")
 
@@ -703,19 +800,19 @@ class MemoryFormatter:
 
     def _extract_files_from_diff(self, diff: str) -> List[str]:
         """从 diff 中提取修改的文件列表
-        
+
         Args:
             diff: Git diff 格式的字符串
-            
+
         Returns:
             修改的文件路径列表
         """
         files = []
-        for line in diff.split('\n')[:100]:  # 只检查前100行（通常足够）
-            if line.startswith('+++ ') or line.startswith('--- '):
+        for line in diff.split("\n")[:100]:  # 只检查前100行（通常足够）
+            if line.startswith("+++ ") or line.startswith("--- "):
                 file_path = line[4:].strip()
                 # 移除可能的 a/ 或 b/ 前缀（Git diff 格式）
-                if file_path.startswith('a/') or file_path.startswith('b/'):
+                if file_path.startswith("a/") or file_path.startswith("b/"):
                     file_path = file_path[2:]
                 if file_path and file_path not in files:
                     files.append(file_path)

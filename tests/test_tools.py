@@ -194,6 +194,16 @@ class TestToolExecutor:
         coordinator = MagicMock(spec=WorkflowCoordinator)
         coordinator.tool_runtime = MagicMock()
         coordinator.tool_runtime.registry = ToolRegistry(sandbox=MagicMock())
+
+        # Add state_manager with agent_state for ToolExecutor
+        coordinator.state_manager = MagicMock()
+        coordinator.state_manager.agent_state = MagicMock()
+        coordinator.state_manager.agent_state.step = 0
+
+        # Add task_spec for ToolExecutor
+        coordinator.task_spec = MagicMock()
+        coordinator.task_spec.task_id = "test_task"
+
         return coordinator
 
     @pytest.fixture
@@ -431,6 +441,12 @@ class TestToolIntegration:
         mock_coordinator = MagicMock(spec=WorkflowCoordinator)
         mock_coordinator.tool_runtime = MagicMock()
         mock_coordinator.tool_runtime.registry = registry
+        # Add state_manager and task_spec for ToolExecutor
+        mock_coordinator.state_manager = MagicMock()
+        mock_coordinator.state_manager.agent_state = MagicMock()
+        mock_coordinator.state_manager.agent_state.step = 0
+        mock_coordinator.task_spec = MagicMock()
+        mock_coordinator.task_spec.task_id = "test_task"
 
         executor = ToolExecutor(mock_coordinator)
 
@@ -478,6 +494,12 @@ class TestToolIntegration:
         mock_coordinator = MagicMock(spec=WorkflowCoordinator)
         mock_coordinator.tool_runtime = MagicMock()
         mock_coordinator.tool_runtime.registry = registry
+        # Add state_manager and task_spec for ToolExecutor
+        mock_coordinator.state_manager = MagicMock()
+        mock_coordinator.state_manager.agent_state = MagicMock()
+        mock_coordinator.state_manager.agent_state.step = 0
+        mock_coordinator.task_spec = MagicMock()
+        mock_coordinator.task_spec.task_id = "test_task"
 
         executor = ToolExecutor(mock_coordinator)
         actions = [{"tool": "meta_tool", "args": {}}]
@@ -511,6 +533,12 @@ class TestToolIntegration:
         mock_coordinator = MagicMock(spec=WorkflowCoordinator)
         mock_coordinator.tool_runtime = MagicMock()
         mock_coordinator.tool_runtime.registry = registry
+        # Add state_manager and task_spec for ToolExecutor
+        mock_coordinator.state_manager = MagicMock()
+        mock_coordinator.state_manager.agent_state = MagicMock()
+        mock_coordinator.state_manager.agent_state.step = 0
+        mock_coordinator.task_spec = MagicMock()
+        mock_coordinator.task_spec.task_id = "test_task"
 
         executor = ToolExecutor(mock_coordinator)
         actions = [{"tool": "empty_meta_tool", "args": {}}]

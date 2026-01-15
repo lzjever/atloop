@@ -40,7 +40,8 @@ class EnhancedSkillLoader:
         """Parse a SKILL.md file into metadata and body."""
         try:
             content = path.read_text(encoding="utf-8")
-        except Exception:
+        except (OSError, UnicodeDecodeError, FileNotFoundError):
+            # File read failed (permissions, encoding, not found)
             return None
 
         match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", content, re.DOTALL)

@@ -6,8 +6,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import sys
 import os
+import sys
 
 # Add the project root to the path for local development
 # In Read the Docs, the package is installed via pip, so this is mainly for local builds
@@ -63,7 +63,7 @@ html_theme_options = {
     # Sidebar
     "sidebar_hide_name": False,
     "navigation_with_keys": True,
-    
+
     # Footer
     "footer_icons": [
         {
@@ -77,7 +77,7 @@ html_theme_options = {
             "class": "",
         },
     ],
-    
+
     # Source repository (for edit button)
     "source_repository": "https://github.com/lzjever/atloop",
     "source_branch": "main",

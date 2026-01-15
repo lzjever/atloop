@@ -1,4 +1,4 @@
-.PHONY: help clean install dev-install test test-cov test-integration lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package setup-venv
+.PHONY: help clean install dev-install test test-cov test-integration lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package setup-venv pre-commit-install pre-commit-run type-check
 
 # Use uv if available, otherwise fall back to pip
 UV := $(shell command -v uv 2>/dev/null)
@@ -109,6 +109,36 @@ format-check:
 
 check: lint format-check test
 	@echo "All checks passed!"
+
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit install; \
+		echo "✓ Pre-commit hooks installed!"; \
+	else \
+		echo "Error: pre-commit not found. Install with: uv pip install pre-commit"; \
+		exit 1; \
+	fi
+
+pre-commit-run:
+	@echo "Running pre-commit hooks on all files..."
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		pre-commit run --all-files; \
+	else \
+		echo "Error: pre-commit not found. Install with: uv pip install pre-commit"; \
+		exit 1; \
+	fi
+
+type-check:
+	$(PYTHON_CMD) -m mypy atloop/
+
+benchmark:
+	@echo "Running performance benchmarks..."
+	$(PYTHON_CMD) -m pytest tests/benchmarks/ -v -m benchmark
+
+profile:
+	@echo "Profiling memory formatting..."
+	$(PYTHON_CMD) scripts/profile_memory_formatting.py
 
 build: clean
 	@if [ -n "$(UV)" ]; then \

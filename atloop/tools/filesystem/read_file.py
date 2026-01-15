@@ -52,7 +52,7 @@ class ReadFileTool(BaseTool):
             "Use cases: reading source code files, configuration files, documentation files, log files (with line ranges). "
             "⚠️ Note: This tool reads from the sandbox workspace (/workspace), NOT from the local machine. "
             "For reading skill files (stored locally), use `read_skill_file` instead. "
-            "Prefer this tool over `run(\"cat\")` for file reading."
+            'Prefer this tool over `run("cat")` for file reading.'
         )
 
     @property

@@ -139,22 +139,22 @@ class ErrorRecoveryStrategy:
         error: Exception, error_category: ErrorCategory, context: Optional[str] = None
     ) -> str:
         """
-        Format error message for LLM consumption.
+        Format error message for LLM consumption with improved context.
 
         Args:
             error: The exception
             error_category: Category of the error
-            context: Optional context about where error occurred
+            context: Optional context about where error occurred (e.g., "Phase PLAN (step 5)")
 
         Returns:
-            Formatted error message for LLM
+            Formatted error message for LLM with context
         """
         error_msg = str(error)
         error_type = type(error).__name__
 
         parts = []
         if context:
-            parts.append(f"Context: {context}")
+            parts.append(f"📍 Context: {context}")
 
         if ErrorClassifier.is_timeout(error):
             parts.append(
@@ -171,5 +171,6 @@ class ErrorRecoveryStrategy:
             )
         else:
             parts.append(f"❌ Fatal error ({error_type}): {error_msg}")
+            parts.append("This is a fatal error that cannot be recovered automatically.")
 
         return "\n\n".join(parts)

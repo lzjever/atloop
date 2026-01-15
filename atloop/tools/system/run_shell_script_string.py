@@ -71,7 +71,7 @@ class RunShellScriptStringTool(BaseTool):
         """Tool description."""
         return (
             "Execute shell script strings without shell escaping issues. "
-            "Use this tool instead of `run` with `bash -c \"...\"` for complex shell scripts. "
+            'Use this tool instead of `run` with `bash -c "..."` for complex shell scripts. '
             "Benefits: no shell escaping issues (quotes, variables, etc.), better error messages, "
             "supports multi-line scripts easily. Script runs in /workspace directory. "
             "Success is determined by stderr content, NOT exit code. "
@@ -144,6 +144,7 @@ class RunShellScriptStringTool(BaseTool):
         except Exception as e:
             # If we can't create in /workspace, fall back to system temp
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 f"[RunShellScriptStringTool] Failed to create /workspace/.atloop_temp: {e}. "

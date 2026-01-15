@@ -187,7 +187,8 @@ class ToolRuntime:
 
             try:
                 os.unlink(patch_file)
-            except Exception:
+            except (OSError, FileNotFoundError):
+                # File may not exist or already deleted, ignore
                 pass
 
         return result

@@ -5,10 +5,7 @@ formatting options are loaded from MemoryConfig (single source of truth)
 instead of being hardcoded in multiple places.
 """
 
-import pytest
-
 from atloop.config.loader import ConfigLoader
-from atloop.config.models import MemoryConfig
 from atloop.memory.formatter import MemoryFormatter
 from tests.memory.fixtures.sample_state import create_sample_state
 
@@ -60,9 +57,7 @@ class TestMemoryFormatterConfigDefaults:
         # Extract the steps count from the formatted output
         import re
 
-        recent_activity_match = re.search(
-            r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted
-        )
+        recent_activity_match = re.search(r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted)
         if recent_activity_match:
             steps_count_in_output = int(recent_activity_match.group(1))
             assert steps_count_in_output == config.memory.steps_summary_count
@@ -107,18 +102,14 @@ class TestMemoryFormatterConfigOverride:
         # Verify override values are used
         import re
 
-        recent_activity_match = re.search(
-            r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted
-        )
+        recent_activity_match = re.search(r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted)
         if recent_activity_match:
             steps_count_in_output = int(recent_activity_match.group(1))
             assert steps_count_in_output == custom_steps_count
             assert steps_count_in_output != config.memory.steps_summary_count
 
         # Verify tool results count override
-        tool_results_match = re.search(
-            r"### 🔧 Tool Execution Results \(Last (\d+)\)", formatted
-        )
+        tool_results_match = re.search(r"### 🔧 Tool Execution Results \(Last (\d+)\)", formatted)
         if tool_results_match:
             tool_results_count_in_output = int(tool_results_match.group(1))
             assert tool_results_count_in_output == custom_tool_results_count
@@ -140,17 +131,13 @@ class TestMemoryFormatterConfigOverride:
         # Verify override is used
         import re
 
-        recent_activity_match = re.search(
-            r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted
-        )
+        recent_activity_match = re.search(r"### 📊 Recent Activity \(Last (\d+) Steps\)", formatted)
         if recent_activity_match:
             steps_count_in_output = int(recent_activity_match.group(1))
             assert steps_count_in_output == custom_steps_count
 
         # Verify other options still use defaults
-        tool_results_match = re.search(
-            r"### 🔧 Tool Execution Results \(Last (\d+)\)", formatted
-        )
+        tool_results_match = re.search(r"### 🔧 Tool Execution Results \(Last (\d+)\)", formatted)
         if tool_results_match:
             tool_results_count_in_output = int(tool_results_match.group(1))
             assert tool_results_count_in_output == config.memory.tool_results_count
@@ -261,16 +248,12 @@ class TestMemoryFormatterConfigIntegration:
         state = create_sample_state(step=10, stage="mid")
         formatter = MemoryFormatter()
 
-        formatted = formatter.format(state, format_options=None)
+        # Format to ensure formatter works (result not used, just verifying it doesn't crash)
+        formatter.format(state, format_options=None)
 
         # Check if Modified Files Content section appears based on config
         # Note: The section might not appear if there are no modified files,
         # or if include_file_content is False
-        has_modified_files_section = (
-            "### 📄 Modified Files Content" in formatted
-            or "Modified Files Content" in formatted
-        )
-
         if config.memory.include_file_content:
             # If True and there are modified files, section should appear
             # But it might not appear if there are no modified files in the sample state

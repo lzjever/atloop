@@ -5,6 +5,10 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  schedule:
+    # Run E2E tests weekly on Sundays at 02:00 UTC
+    - cron: "0 2 * * 0"
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   test:
@@ -28,13 +32,14 @@ jobs:
         run: |
           uv sync --group docs --all-extras
       
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
           uv run pytest tests/ \
             --cov=atloop \
             --cov-report=xml \
             --cov-report=term-missing \
             --cov-report=html \
+            --cov-fail-under=60 \
             -v
       
       - name: Upload coverage to Codecov
@@ -62,6 +67,11 @@ jobs:
       - name: Check formatting
         run: |
           uv run ruff format --check atloop/ tests/
+
+      - name: Run type checking
+        run: |
+          uv run mypy atloop/ --ignore-missing-imports
+        continue-on-error: true  # Don't fail CI on type errors yet (gradual adoption)
 
   build:
     runs-on: ubuntu-latest
@@ -124,3 +134,43 @@ jobs:
         with:
           name: documentation
           path: docs/build/html
+
+  # E2E tests run weekly (they're slow and require external services)
+  e2e:
+    runs-on: ubuntu-latest
+    # Run weekly on Sundays at 02:00 UTC (after security scan)
+    # Also allow manual triggering
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+      
+      - name: Install dependencies
+        run: |
+          uv sync --group docs --all-extras
+      
+      - name: Run E2E tests
+        run: |
+          uv run pytest tests/ -m e2e -v --tb=short
+        continue-on-error: true  # Don't fail CI, just report results
+      
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            .pytest_cache/
+          retention-days: 30
+          if-no-files-found: ignore

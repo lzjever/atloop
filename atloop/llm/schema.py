@@ -261,11 +261,7 @@ def validate_action_json(
             )
 
         if "tool" not in action:
-            tool_list_msg = (
-                f" (one of: {sorted(available_tools)})"
-                if available_tools
-                else ""
-            )
+            tool_list_msg = f" (one of: {sorted(available_tools)})" if available_tools else ""
             return (
                 False,
                 f"action[{i}] missing required field: 'tool'. Each action must have a 'tool' field{tool_list_msg}.",
@@ -344,7 +340,7 @@ def extract_json_from_text(text: str) -> Optional[str]:
     ]
 
     candidates = []
-    
+
     for start_marker, end_marker in json_block_markers:
         # Find all occurrences of this marker type
         start_idx = 0
@@ -352,7 +348,7 @@ def extract_json_from_text(text: str) -> Optional[str]:
             start_idx = text.find(start_marker, start_idx)
             if start_idx == -1:
                 break
-            
+
             # Find the end marker after start marker
             content_start = start_idx + len(start_marker)
             end_idx = text.find(end_marker, content_start)
@@ -362,12 +358,14 @@ def extract_json_from_text(text: str) -> Optional[str]:
                 start_idx = end_idx + len(end_marker)
             else:
                 break
-    
+
     # Try all candidates and return the first valid one (with required fields)
     valid_json = None
     if candidates:
-        logger.debug(f"[extract_json_from_text] Found {len(candidates)} codeblock(s), trying all to find valid JSON")
-    
+        logger.debug(
+            f"[extract_json_from_text] Found {len(candidates)} codeblock(s), trying all to find valid JSON"
+        )
+
     for json_candidate, marker_type in candidates:
         # Try to parse it
         try:
@@ -375,7 +373,9 @@ def extract_json_from_text(text: str) -> Optional[str]:
             parsed = json.loads(json_candidate)
             # Validate it has required fields for ActionJSON
             if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
-                logger.debug(f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock")
+                logger.debug(
+                    f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock"
+                )
                 valid_json = json_candidate
                 break  # Found valid one, stop searching
         except json.JSONDecodeError:
@@ -387,16 +387,18 @@ def extract_json_from_text(text: str) -> Optional[str]:
                     parsed = json.loads(repaired_json)
                     # Validate it has required fields
                     if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
-                        logger.debug(f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock (repaired)")
+                        logger.debug(
+                            f"[extract_json_from_text] Found valid JSON in {marker_type} codeblock (repaired)"
+                        )
                         valid_json = repaired_json
                         break  # Found valid one, stop searching
-                except Exception:
-                    # Repair failed, continue to next candidate
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    # Repair failed (invalid JSON, value error, type error), continue to next candidate
                     pass
-    
+
     if valid_json:
         return valid_json
-    
+
     # Strategy 2: Find first { and match braces (handling strings)
     # Skip codeblocks we already tried - look for JSON outside codeblocks
     start_idx = 0
@@ -404,7 +406,7 @@ def extract_json_from_text(text: str) -> Optional[str]:
         start_idx = text.find("{", start_idx)
         if start_idx == -1:
             return None
-        
+
         # Check if this { is inside a codeblock we already tried
         in_codeblock = False
         for start_marker, end_marker in json_block_markers:
@@ -417,10 +419,10 @@ def extract_json_from_text(text: str) -> Optional[str]:
                     in_codeblock = True
                     start_idx = codeblock_end + len(end_marker)
                     break
-        
+
         if not in_codeblock:
             break  # Found a { outside codeblocks
-    
+
     # Find matching closing brace, handling strings with escaped quotes
     brace_count = 0
     in_string = False
@@ -452,8 +454,14 @@ def extract_json_from_text(text: str) -> Optional[str]:
                     # Validate it has required fields
                     try:
                         parsed = json.loads(json_candidate)
-                        if isinstance(parsed, dict) and "actions" in parsed and "stop_reason" in parsed:
-                            logger.debug("[extract_json_from_text] Found valid JSON outside codeblocks")
+                        if (
+                            isinstance(parsed, dict)
+                            and "actions" in parsed
+                            and "stop_reason" in parsed
+                        ):
+                            logger.debug(
+                                "[extract_json_from_text] Found valid JSON outside codeblocks"
+                            )
                             return json_candidate
                     except json.JSONDecodeError:
                         pass
@@ -518,7 +526,11 @@ def parse_action_json(
         is_valid, error = validate_action_json(data, tool_registry=tool_registry)
         if is_valid:
             # Data already validated, skip validation in from_dict() for performance
-            return ActionJSON.from_dict(data, validate=False, tool_registry=tool_registry), None, file_contents
+            return (
+                ActionJSON.from_dict(data, validate=False, tool_registry=tool_registry),
+                None,
+                file_contents,
+            )
         else:
             return None, error, file_contents  # Return detailed validation error
     except json.JSONDecodeError as e:
@@ -823,93 +835,95 @@ def _fix_unescaped_quotes_in_strings(text: str) -> str:
 def _clean_extracted_content(content: str, placeholder_type: str) -> str:
     """
     Clean extracted placeholder content by removing markdown artifacts and trailing whitespace.
-    
+
     This function removes:
     - Markdown code block markers (```) at the start or end for executable types (SHELL_COMMAND, etc.)
     - Trailing whitespace and newlines
     - Common markdown artifacts that LLMs sometimes include
-    
+
     Important: For file content types (WRITE_FILE_CONTENT, EDIT_FILE_CONTENT, APPEND_FILE_CONTENT),
     code blocks in the middle are preserved (they're part of the actual file content, e.g., markdown files
     with code examples). However, code block markers at the very start or end are removed as they are
     markdown artifacts, not part of the file content.
-    
+
     Args:
         content: Raw extracted content
         placeholder_type: Type of placeholder (SHELL_COMMAND, PYTHON_SCRIPT, etc.)
-    
+
     Returns:
         Cleaned content
     """
     import re
-    
+
     if not content:
         return content
-    
+
     # Remove leading/trailing whitespace first
     content = content.rstrip()
-    
+
     # For file content types, we need to be careful:
     # - Remove code block markers at the very start/end (they're artifacts)
     # - But preserve code blocks in the middle (they're part of the content)
     file_content_types = ("WRITE_FILE_CONTENT", "EDIT_FILE_CONTENT", "APPEND_FILE_CONTENT")
-    
+
     if placeholder_type in file_content_types:
         # For file content, remove code block markers only at the very start and end
         # This prevents markdown artifacts from polluting the file content
-        
+
         original_content = content
         # Remove code block markers at the very start (must be at beginning of content)
         # Pattern: ``` optionally followed by language identifier, then optional whitespace/newline
-        content = re.sub(r'^```[a-z]*\s*\n?', '', content, flags=re.MULTILINE)
-        
+        content = re.sub(r"^```[a-z]*\s*\n?", "", content, flags=re.MULTILINE)
+
         # Remove code block markers at the very end (must be at end of content)
         # Pattern: optional whitespace/newline, then ```
-        content = re.sub(r'\n?\s*```\s*$', '', content, flags=re.MULTILINE)
-        
+        content = re.sub(r"\n?\s*```\s*$", "", content, flags=re.MULTILINE)
+
         # Remove any trailing backticks that might be left over (but preserve content in the middle)
-        while content and content.endswith('`') and len(content) > 1:
+        while content and content.endswith("`") and len(content) > 1:
             # Check if removing the backtick would leave valid content
             test_content = content[:-1].rstrip()
-            if test_content and not test_content.endswith('`'):
+            if test_content and not test_content.endswith("`"):
                 content = test_content
             else:
                 break
-        
+
         # Log if we removed codeblock markers
         if content != original_content:
-            logger.debug(f"[_clean_extracted_content] Removed codeblock markers from {placeholder_type} content")
-        
+            logger.debug(
+                f"[_clean_extracted_content] Removed codeblock markers from {placeholder_type} content"
+            )
+
         return content.rstrip()
-    
+
     # For executable types (SHELL_COMMAND, PYTHON_SCRIPT, SHELL_SCRIPT), remove code block markers
     # These are markdown artifacts, not part of the actual code
-    
+
     # Remove markdown code block markers (```) that might be at the very end
     # Pattern: optional whitespace, then ```, then optional language identifier, then end of string
-    content = re.sub(r'\s*```[a-z]*\s*$', '', content, flags=re.MULTILINE)
-    
+    content = re.sub(r"\s*```[a-z]*\s*$", "", content, flags=re.MULTILINE)
+
     # Remove markdown code block markers at the very start
     # Only match if it's at the beginning of the entire content
-    content = re.sub(r'^```[a-z]*\s*\n?', '', content, flags=re.MULTILINE)
-    
+    content = re.sub(r"^```[a-z]*\s*\n?", "", content, flags=re.MULTILINE)
+
     # Remove trailing backticks that might be left over (but preserve content in the middle)
     # Only remove if they're at the very end
-    while content and content.endswith('`') and not content.rstrip('`').endswith('`'):
+    while content and content.endswith("`") and not content.rstrip("`").endswith("`"):
         content = content[:-1]
-    
+
     # Be more aggressive with trailing cleanup for executable types
     content = content.rstrip()
     # Remove trailing backticks and newlines (with safety limit)
     max_iterations = 10  # Prevent infinite loop
     iterations = 0
-    while iterations < max_iterations and (content.endswith('`') or content.endswith('\n')):
-        new_content = content.rstrip('`\n')
+    while iterations < max_iterations and (content.endswith("`") or content.endswith("\n")):
+        new_content = content.rstrip("`\n")
         if new_content == content:  # No change, break to avoid infinite loop
             break
         content = new_content
         iterations += 1
-    
+
     return content
 
 
@@ -957,11 +971,11 @@ def _extract_file_contents(text: str) -> Dict[str, str]:
 
         # Extract content
         content = text[start_pos:end_pos]
-        
+
         # Clean content to remove markdown artifacts (especially for commands/scripts)
         # placeholder_type is already the type (e.g., "SHELL_COMMAND"), placeholder is the full name
         content = _clean_extracted_content(content, placeholder_type)
-        
+
         file_contents[placeholder] = content
 
     return file_contents
@@ -987,28 +1001,29 @@ def _remove_file_content_sections(text: str) -> str:
     Returns:
         Text with placeholder content sections removed, and outer code blocks stripped if present
     """
-    from atloop.llm.placeholder_patterns import PLACEHOLDER_SECTION_REGEX
-
     # First, try to strip outer code blocks if the entire text is wrapped
     # This handles cases where LLM wraps everything in ```json ... ``` or ``` ... ```
     import re
+
+    from atloop.llm.placeholder_patterns import PLACEHOLDER_SECTION_REGEX
+
     stripped_text = text.strip()
-    
+
     # Check for code block markers at start and end
     # Try ```json first (more specific), then generic ```
-    if stripped_text.startswith('```json'):
+    if stripped_text.startswith("```json"):
         # Remove ```json at start (with optional whitespace/newline)
-        stripped_text = re.sub(r'^```json\s*\n?', '', stripped_text, count=1)
+        stripped_text = re.sub(r"^```json\s*\n?", "", stripped_text, count=1)
         # Remove ``` at end (with optional whitespace/newline before it)
-        stripped_text = re.sub(r'\n?```\s*$', '', stripped_text, count=1)
+        stripped_text = re.sub(r"\n?```\s*$", "", stripped_text, count=1)
         stripped_text = stripped_text.strip()
-    elif stripped_text.startswith('```'):
+    elif stripped_text.startswith("```"):
         # Remove ``` at start (with optional whitespace/newline)
-        stripped_text = re.sub(r'^```\s*\n?', '', stripped_text, count=1)
+        stripped_text = re.sub(r"^```\s*\n?", "", stripped_text, count=1)
         # Remove ``` at end (with optional whitespace/newline before it)
-        stripped_text = re.sub(r'\n?```\s*$', '', stripped_text, count=1)
+        stripped_text = re.sub(r"\n?```\s*$", "", stripped_text, count=1)
         stripped_text = stripped_text.strip()
-    
+
     # Remove all placeholder content sections
     result = PLACEHOLDER_SECTION_REGEX.sub("", stripped_text)
 

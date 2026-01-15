@@ -7,7 +7,6 @@ These tests verify that:
 4. All tools have adequate documentation
 """
 
-import inspect
 from unittest.mock import MagicMock
 
 import pytest
@@ -101,11 +100,22 @@ class TestToolDescriptionGeneration:
         assert detailed_desc is not None
         assert len(detailed_desc) > 0
         # Should extract main description
-        assert "testing comprehensive docstring" in detailed_desc.lower() or "test tool" in detailed_desc.lower()
+        assert (
+            "testing comprehensive docstring" in detailed_desc.lower()
+            or "test tool" in detailed_desc.lower()
+        )
         # Should extract CRITICAL section (normalized)
-        assert "CRITICAL" in detailed_desc or "critical" in detailed_desc.lower() or "Important" in detailed_desc
+        assert (
+            "CRITICAL" in detailed_desc
+            or "critical" in detailed_desc.lower()
+            or "Important" in detailed_desc
+        )
         # Should extract use cases or parameters
-        assert "use cases" in detailed_desc.lower() or "Use cases" in detailed_desc or "Parameters" in detailed_desc
+        assert (
+            "use cases" in detailed_desc.lower()
+            or "Use cases" in detailed_desc
+            or "Parameters" in detailed_desc
+        )
 
     def test_get_detailed_description_extracts_parameters(self):
         """Test that parameters are extracted from execute() docstring."""
@@ -117,6 +127,7 @@ class TestToolDescriptionGeneration:
 
     def test_get_detailed_description_fallback(self):
         """Test that get_detailed_description() falls back gracefully."""
+
         # Create tool with no docstring
         class ToolNoDocstring(BaseTool):
             @property
@@ -148,7 +159,6 @@ class TestToolDescriptionGeneration:
         """Test that real tools can generate detailed descriptions."""
         # Import a real tool
         from atloop.tools.filesystem.write_file import WriteFileTool
-        from atloop.runtime.sandbox_adapter import SandboxAdapter
 
         mock_sandbox = MagicMock()
         tool = WriteFileTool(mock_sandbox)
@@ -164,7 +174,6 @@ class TestToolDescriptionGeneration:
     def test_real_tool_extracts_sections(self):
         """Test that real tools extract key sections from docstring."""
         from atloop.tools.filesystem.edit_file import EditFileTool
-        from atloop.runtime.sandbox_adapter import SandboxAdapter
 
         mock_sandbox = MagicMock()
         tool = EditFileTool(mock_sandbox)
@@ -249,7 +258,6 @@ class TestToolDescriptionQuality:
 
     def test_all_tools_have_descriptions(self):
         """Test that all registered tools have descriptions."""
-        from atloop.runtime.sandbox_adapter import SandboxAdapter
         from atloop.tools.registry import ToolRegistry
 
         mock_sandbox = MagicMock()
@@ -258,11 +266,12 @@ class TestToolDescriptionQuality:
         for tool_name, tool in registry.tools.items():
             assert tool.description is not None, f"Tool {tool_name} has no description"
             assert len(tool.description) > 0, f"Tool {tool_name} has empty description"
-            assert isinstance(tool.description, str), f"Tool {tool_name} description is not a string"
+            assert isinstance(tool.description, str), (
+                f"Tool {tool_name} description is not a string"
+            )
 
     def test_all_tools_can_generate_detailed_descriptions(self):
         """Test that all tools can generate detailed descriptions."""
-        from atloop.runtime.sandbox_adapter import SandboxAdapter
         from atloop.tools.registry import ToolRegistry
 
         mock_sandbox = MagicMock()
@@ -271,15 +280,20 @@ class TestToolDescriptionQuality:
         for tool_name, tool in registry.tools.items():
             try:
                 detailed_desc = tool.get_detailed_description()
-                assert detailed_desc is not None, f"Tool {tool_name} returned None for detailed description"
-                assert len(detailed_desc) > 0, f"Tool {tool_name} returned empty detailed description"
-                assert isinstance(detailed_desc, str), f"Tool {tool_name} detailed description is not a string"
+                assert detailed_desc is not None, (
+                    f"Tool {tool_name} returned None for detailed description"
+                )
+                assert len(detailed_desc) > 0, (
+                    f"Tool {tool_name} returned empty detailed description"
+                )
+                assert isinstance(detailed_desc, str), (
+                    f"Tool {tool_name} detailed description is not a string"
+                )
             except Exception as e:
                 pytest.fail(f"Tool {tool_name} failed to generate detailed description: {e}")
 
     def test_tool_descriptions_are_informative(self):
         """Test that tool descriptions contain useful information."""
-        from atloop.runtime.sandbox_adapter import SandboxAdapter
         from atloop.tools.registry import ToolRegistry
 
         mock_sandbox = MagicMock()
@@ -295,5 +309,6 @@ class TestToolDescriptionQuality:
                 assert len(detailed_desc) > 50, f"Tool {tool_name} description too short"
                 # Should contain tool name or key concepts
                 assert tool_name in detailed_desc.lower() or any(
-                    word in detailed_desc.lower() for word in ["file", "command", "execute", "read", "write"]
+                    word in detailed_desc.lower()
+                    for word in ["file", "command", "execute", "read", "write"]
                 )
