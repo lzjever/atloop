@@ -1,11 +1,14 @@
 """Sandbox adapter for noxrunner."""
 
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from noxrunner import NoxRunnerClient
 
 from atloop.config.models import SandboxConfig
+
+logger = logging.getLogger(__name__)
 
 
 class SandboxAdapter:
@@ -51,7 +54,7 @@ class SandboxAdapter:
             self._initialized = True
             return True
         except Exception as e:
-            print(f"Failed to create sandbox: {e}")
+            logger.error("Failed to create sandbox: %s", e)
             return False
 
     def upload_workspace(self, workspace_path: str) -> bool:
@@ -94,7 +97,7 @@ class SandboxAdapter:
                 )
             return True
         except Exception as e:
-            print(f"Failed to upload workspace: {e}")
+            logger.error("Failed to upload workspace: %s", e)
             return False
 
     def initialize_git(self) -> bool:
@@ -147,7 +150,7 @@ class SandboxAdapter:
 
             return result["exitCode"] == 0
         except Exception as e:
-            print(f"Failed to initialize git: {e}")
+            logger.error("Failed to initialize git: %s", e)
             return False
 
     def exec_shell(
