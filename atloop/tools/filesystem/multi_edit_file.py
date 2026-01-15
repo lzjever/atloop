@@ -1,10 +1,14 @@
 """Multi-edit file tool for batch file editing."""
 
+import logging
 import shlex
 from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
+from atloop.security.path_validator import SecurityError, validate_path
 from atloop.tools.base import BaseTool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 
 class MultiEditFileTool(BaseTool):
@@ -73,6 +77,18 @@ class MultiEditFileTool(BaseTool):
                 return False, f"Edit[{i}].old_string must be a string"
             if not isinstance(edit["new_string"], str):
                 return False, f"Edit[{i}].new_string must be a string"
+
+            # Security validation: prevent path traversal attacks
+            path = edit["path"]
+            try:
+                is_valid, error_msg, resolved_path = validate_path(path)
+                if not is_valid:
+                    logger.warning("Path validation failed: %s (path: %s)", error_msg, path)
+                    return False, f"Edit[{i}] path validation failed: {error_msg}"
+                logger.debug("Edit[%d] path validated: %s -> %s", i, path, resolved_path)
+            except SecurityError as e:
+                logger.error("Security violation in Edit[%i]: %s (path: %s)", i, str(e), path)
+                return False, f"Edit[{i}] security violation: {str(e)}"
 
             # Check if old_string and new_string are the same
             if edit["old_string"] == edit["new_string"]:
