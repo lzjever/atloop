@@ -51,8 +51,12 @@ class StateMachine:
                 Phase.DONE,
                 Phase.FAIL,
             ],  # Allow PLAN -> DONE when LLM decides task is done
-            Phase.ACT: [Phase.VERIFY, Phase.FAIL],
-            Phase.VERIFY: [Phase.DONE, Phase.DISCOVER, Phase.FAIL],
+            # ACT → PLAN: Fast recovery path for simple errors
+            # This allows the LLM to quickly recover from errors without going through VERIFY→DISCOVER
+            Phase.ACT: [Phase.VERIFY, Phase.PLAN, Phase.FAIL],
+            # VERIFY → PLAN: Fast recovery path for verification failures
+            # This allows the LLM to quickly fix simple verification errors (syntax, test failures)
+            Phase.VERIFY: [Phase.DONE, Phase.DISCOVER, Phase.PLAN, Phase.FAIL],
             Phase.DONE: [],  # Terminal state
             Phase.FAIL: [],  # Terminal state
         }

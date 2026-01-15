@@ -4,12 +4,26 @@ import logging
 
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.state_machine import Phase
+from atloop.retrieval.incremental_indexer import IncrementalIndexer
 
 logger = logging.getLogger(__name__)
 
 
 class DiscoverPhase(BasePhase):
     """DISCOVER phase: Build context and prepare for planning."""
+
+    def __init__(self, coordinator):
+        """Initialize DISCOVER phase."""
+        super().__init__(coordinator)
+        # Initialize incremental indexer
+        self._incremental_indexer = None
+
+    @property
+    def incremental_indexer(self) -> IncrementalIndexer:
+        """Get or create incremental indexer."""
+        if self._incremental_indexer is None:
+            self._incremental_indexer = IncrementalIndexer(self.coordinator.indexer)
+        return self._incremental_indexer
 
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
@@ -34,6 +48,20 @@ class DiscoverPhase(BasePhase):
                     next_phase=Phase.FAIL,
                     error="ContextBuilder not initialized",
                 )
+
+            # === NEW: Incremental indexing of new/changed files ===
+            changed_files = self.incremental_indexer.track_changes_since_last_discover(state)
+            if changed_files:
+                logger.info(f"[DiscoverPhase] Found {len(changed_files)} new/changed files")
+                indexed_count = self.incremental_indexer.index_new_files(changed_files)
+                logger.debug(f"[DiscoverPhase] Indexed {indexed_count}/{len(changed_files)} files")
+
+                # Extract keywords from new files
+                file_keywords = self.incremental_indexer.extract_keywords_from_files(changed_files)
+                logger.debug(f"[DiscoverPhase] Extracted {len(file_keywords)} keywords from new files")
+            else:
+                file_keywords = []
+            # === END NEW ===
 
             # Build memory summary
             logger.debug("[DiscoverPhase] Building memory summary")
@@ -64,9 +92,11 @@ class DiscoverPhase(BasePhase):
                 f"[DiscoverPhase] Memory summary length: {len(memory_summary)} chars (max: {memory_summary_max_length})"
             )
 
-            # Extract keywords
+            # Extract keywords (including from new files)
             logger.debug("[DiscoverPhase] Extracting keywords")
             keywords = self._extract_keywords()
+            # Add keywords from new files
+            keywords.extend(file_keywords)
             logger.debug(f"[DiscoverPhase] Extracted {len(keywords)} keywords: {keywords[:5]}")
 
             # Build context pack

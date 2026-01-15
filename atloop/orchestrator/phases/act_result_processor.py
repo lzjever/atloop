@@ -1,7 +1,7 @@
 """Tool result processing utilities for ActPhase."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from atloop.config.loader import ConfigLoader
 from atloop.tools.base import BaseTool
@@ -309,28 +309,93 @@ class FileChangeTracker:
         file_path: str,
         file_content: str,
         modified_files: list,
+        tool_name: str = "edit_file",
     ) -> None:
         """
         Track a modified file (edit_file, append_file) and update state.
+
+        **IMPORTANT**: For edit_file and append_file, this method now reads the
+        COMPLETE file content from sandbox and stores it in modified_files_content.
+        This ensures the LLM can see the full file state in the next round.
 
         Args:
             state: Agent state
             coordinator: Workflow coordinator
             file_path: Path of the modified file
-            file_content: New content of the file
+            file_content: Edit/append content (NOT the full file content for edit/append)
             modified_files: List to append file_path to
+            tool_name: The tool that caused the modification ("edit_file" or "append_file")
         """
         if not file_path:
             return
 
         modified_files.append(file_path)
 
+        # === NEW: Read complete file content from sandbox ===
+        # For edit_file and append_file, we need to read the FULL file content
+        # so the LLM can see the complete file state in the next round
+        complete_file_content = file_content  # Default to provided content
+
+        if tool_name in ("edit_file", "append_file"):
+            # Read the complete file from sandbox
+            complete_file_content = FileChangeTracker._read_file_from_sandbox(
+                coordinator, file_path
+            )
+            if complete_file_content is None:
+                # If read fails, fall back to provided content
+                logger.warning(
+                    f"[FileChangeTracker] Failed to read complete file content for {file_path}, "
+                    f"using provided content instead"
+                )
+                complete_file_content = file_content
+            else:
+                logger.debug(
+                    f"[FileChangeTracker] Read complete file content for {file_path} "
+                    f"({len(complete_file_content)} chars)"
+                )
+        # === END NEW ===
+
         # Store file content in modified_files_content for LLM context
         FileChangeTracker._update_modified_files_content(
-            state, file_path, file_content, is_new=False
+            state, file_path, complete_file_content, is_new=False
         )
 
         coordinator.state_manager.save()
+
+    @staticmethod
+    def _read_file_from_sandbox(coordinator: Any, file_path: str) -> Optional[str]:
+        """
+        Read complete file content from sandbox.
+
+        Args:
+            coordinator: Workflow coordinator
+            file_path: Path to the file
+
+        Returns:
+            File content or None if read fails
+        """
+        import shlex
+
+        try:
+            path_escaped = shlex.quote(file_path)
+            read_cmd = f"cat {path_escaped} 2>/dev/null"
+            result = coordinator.sandbox.exec_shell(
+                command=read_cmd,
+                workdir="/workspace",
+                timeout_seconds=30,
+            )
+
+            # Check for errors
+            if result.get("stderr", "").strip():
+                logger.warning(
+                    f"[FileChangeTracker] Error reading file {file_path}: {result.get('stderr', '')}"
+                )
+                return None
+
+            return result.get("stdout", "")
+        except Exception as e:
+            logger.error(f"[FileChangeTracker] Exception reading file {file_path}: {e}")
+            return None
 
     @staticmethod
     def _update_modified_files_content(

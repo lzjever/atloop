@@ -628,5 +628,126 @@ class TestFileChangeTracker:
 
         assert file_path in modified_files
         assert file_path in mock_state.memory.created_files
-        # Diff should not be updated if no content
-        # (implementation may vary, but should not crash)
+
+    def test_track_file_modification_edit_file_reads_full_content(self, mock_state, mock_coordinator):
+        """Test that track_file_modification reads full file content for edit_file."""
+        file_path = "test.py"
+        edit_content = "<old>old</old><new>new</new>"
+        modified_files = []
+
+        # Mock sandbox to return full file content
+        mock_coordinator.sandbox = MagicMock()
+        mock_coordinator.sandbox.exec_shell = MagicMock(
+            return_value={
+                "stdout": "def foo():\n    pass\n\ndef bar():\n    pass\n",
+                "stderr": "",
+            }
+        )
+
+        FileChangeTracker.track_file_modification(
+            mock_state, mock_coordinator, file_path, edit_content, modified_files, "edit_file"
+        )
+
+        assert file_path in modified_files
+        assert mock_coordinator.sandbox.exec_shell.called
+        # Verify the full file content (not just edit content) is stored
+        stored_content = None
+        for record in mock_state.memory.modified_files_content:
+            if record.get("path") == file_path:
+                stored_content = record.get("content")
+                break
+        assert stored_content is not None
+        # Should have the full file content, not just the edit tags
+        assert "def foo():" in stored_content
+        assert "def bar():" in stored_content
+        assert "<old>" not in stored_content  # Edit tags should not be stored
+
+    def test_track_file_modification_append_file_reads_full_content(self, mock_state, mock_coordinator):
+        """Test that track_file_modification reads full file content for append_file."""
+        file_path = "test.py"
+        append_content = "print('hello')"
+        modified_files = []
+
+        # Mock sandbox to return full file content after append
+        mock_coordinator.sandbox = MagicMock()
+        mock_coordinator.sandbox.exec_shell = MagicMock(
+            return_value={
+                "stdout": "original line\nprint('hello')\n",
+                "stderr": "",
+            }
+        )
+
+        FileChangeTracker.track_file_modification(
+            mock_state, mock_coordinator, file_path, append_content, modified_files, "append_file"
+        )
+
+        assert file_path in modified_files
+        assert mock_coordinator.sandbox.exec_shell.called
+        # Verify the full file content (including original) is stored
+        stored_content = None
+        for record in mock_state.memory.modified_files_content:
+            if record.get("path") == file_path:
+                stored_content = record.get("content")
+                break
+        assert stored_content is not None
+        assert "original line" in stored_content
+        assert "print('hello')" in stored_content
+
+    def test_track_file_modification_sandbox_read_failure_fallback(self, mock_state, mock_coordinator):
+        """Test that track_file_modification falls back to provided content if sandbox read fails."""
+        file_path = "test.py"
+        edit_content = "<old>old</old><new>new</new>"
+        modified_files = []
+
+        # Mock sandbox to return error
+        mock_coordinator.sandbox = MagicMock()
+        mock_coordinator.sandbox.exec_shell = MagicMock(
+            return_value={
+                "stdout": "",
+                "stderr": "File not found",
+            }
+        )
+
+        FileChangeTracker.track_file_modification(
+            mock_state, mock_coordinator, file_path, edit_content, modified_files, "edit_file"
+        )
+
+        assert file_path in modified_files
+        # Should fall back to provided content
+        stored_content = None
+        for record in mock_state.memory.modified_files_content:
+            if record.get("path") == file_path:
+                stored_content = record.get("content")
+                break
+        assert stored_content is not None
+        # Should have the edit content as fallback
+        assert "<old>" in stored_content
+
+    def test_track_file_modification_default_tool_name(self, mock_state, mock_coordinator):
+        """Test that track_file_modification defaults to edit_file behavior."""
+        file_path = "test.py"
+        edit_content = "<old>old</old><new>new</new>"
+        modified_files = []
+
+        # Mock sandbox to return full file content
+        mock_coordinator.sandbox = MagicMock()
+        mock_coordinator.sandbox.exec_shell = MagicMock(
+            return_value={
+                "stdout": "full content\n",
+                "stderr": "",
+            }
+        )
+
+        # Call without tool_name (should default to "edit_file")
+        FileChangeTracker.track_file_modification(
+            mock_state, mock_coordinator, file_path, edit_content, modified_files
+        )
+
+        # Should still read from sandbox (default is edit_file behavior)
+        assert mock_coordinator.sandbox.exec_shell.called
+        stored_content = None
+        for record in mock_state.memory.modified_files_content:
+            if record.get("path") == file_path:
+                stored_content = record.get("content")
+                break
+        assert stored_content == "full content\n"

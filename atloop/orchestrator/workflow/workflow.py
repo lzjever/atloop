@@ -299,6 +299,25 @@ class Workflow:
                 logger.debug(f"[Workflow] Transitioning to phase: {result.next_phase}")
                 self.coordinator.state_machine.transition(result.next_phase)
                 self.coordinator.state_manager.update(phase=result.next_phase.value)
+            elif result.success is False and result.recoverable:
+                # Phase returned None for next_phase but marked as recoverable
+                # This is a signal for Workflow to handle recovery
+                # Use the recovery handler which will transition to PLAN
+                logger.debug(
+                    f"[Workflow] Phase {current_phase} returned recoverable error with no next_phase, "
+                    f"using Workflow recovery handler"
+                )
+                recovery_result = self._handle_recoverable_error(
+                    current_phase,
+                    result.error or "Recoverable error",
+                    result.data,
+                    error_already_set_in_state=result.error_already_set_in_state,
+                )
+                # Apply the recovery transition
+                if recovery_result.next_phase:
+                    logger.debug(f"[Workflow] Recovery transitioning to phase: {recovery_result.next_phase}")
+                    self.coordinator.state_machine.transition(recovery_result.next_phase)
+                    self.coordinator.state_manager.update(phase=recovery_result.next_phase.value)
 
         logger.warning(f"[Workflow] Max iterations reached: {max_iterations}")
         failure_result = self._failure("Max iterations reached")

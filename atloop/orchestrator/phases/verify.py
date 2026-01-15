@@ -5,12 +5,25 @@ import logging
 from atloop.config.loader import ConfigLoader
 from atloop.orchestrator.phases.base import BasePhase, PhaseContext, PhaseResult
 from atloop.orchestrator.state_machine import Phase
+from atloop.orchestrator.verification.multi_dim_verifier import MultiDimensionVerifier
 
 logger = logging.getLogger(__name__)
 
 
 class VerifyPhase(BasePhase):
-    """VERIFY phase: Run verification tests."""
+    """VERIFY phase: Run verification tests with multi-dimensional validation."""
+
+    def __init__(self, coordinator):
+        """Initialize VERIFY phase."""
+        super().__init__(coordinator)
+        self._multi_dim_verifier = None
+
+    @property
+    def multi_dim_verifier(self) -> MultiDimensionVerifier:
+        """Get or create multi-dimensional verifier."""
+        if self._multi_dim_verifier is None:
+            self._multi_dim_verifier = MultiDimensionVerifier(self.coordinator.sandbox)
+        return self._multi_dim_verifier
 
     def execute(self, context: PhaseContext) -> PhaseResult:
         """
@@ -26,7 +39,7 @@ class VerifyPhase(BasePhase):
         state = self.coordinator.state_manager.agent_state
 
         try:
-            # Run verification
+            # Run standard verification (tests)
             logger.debug("[VerifyPhase] Running verification")
             verification_result = self.coordinator.verifier.verify()
             logger.debug(
@@ -59,11 +72,26 @@ class VerifyPhase(BasePhase):
                     f"[VerifyPhase] Test results stored: {len(test_output)} chars (limited to {test_results_limit})"
                 )
 
+            # === NEW: Multi-dimensional verification ===
+            multi_dim_result = self.multi_dim_verifier.verify(state, state.artifacts)
+            logger.info(
+                f"[VerifyPhase] Multi-dimensional verification: "
+                f"overall={multi_dim_result.overall_success}, "
+                f"confidence={multi_dim_result.completion_confidence:.2f}, "
+                f"summary={multi_dim_result.get_summary()}"
+            )
+
+            # Store multi-dimensional results in artifacts for context
+            state.artifacts.multi_dim_verification = {
+                "overall_success": multi_dim_result.overall_success,
+                "completion_confidence": multi_dim_result.completion_confidence,
+                "details": multi_dim_result.details,
+                "summary": multi_dim_result.get_summary(),
+            }
+            # === END NEW ===
+
             # Update last error if verification failed
             # Note: We set error info here to inform LLM in next PLAN phase about verification failure.
-            # However, we return success=True because verification failure is not fatal - it just means
-            # LLM needs to adjust strategy. This won't trigger error recovery, so we don't need to
-            # mark error_already_set_in_state=True (that flag is only relevant for error recovery flow).
             if not verification_result.success and verification_result.command:
                 logger.debug("[VerifyPhase] Verification failed, updating error state")
                 error_msg_parts = []
@@ -87,6 +115,15 @@ class VerifyPhase(BasePhase):
                         f"\nFull test output:\n{test_output[:test_results_limit]}"
                     )
 
+                # === NEW: Add multi-dimensional verification errors ===
+                if not multi_dim_result.overall_success:
+                    error_msg_parts.append(
+                        f"\nMulti-dimensional verification: {multi_dim_result.get_summary()}"
+                    )
+                    if multi_dim_result.errors:
+                        error_msg_parts.append(f"\nDetails: {'; '.join(multi_dim_result.errors[:3])}")
+                # === END NEW ===
+
                 error_summary_text = (
                     "\n".join(error_msg_parts) if error_msg_parts else "Verification failed"
                 )
@@ -104,25 +141,28 @@ class VerifyPhase(BasePhase):
                 f"[VerifyPhase] Verification success stored: {verification_result.success}"
             )
 
-            # Task completion detection: Check if task goal is achieved
-            task_goal = self.coordinator.task_spec.goal.lower()
-            if state.memory.created_files and task_goal:
-                # Simple heuristic: if goal contains "write" and "code" and file exists, task might be complete
-                if ("write" in task_goal or "create" in task_goal) and (
-                    "code" in task_goal or "file" in task_goal or "python" in task_goal
-                ):
-                    logger.info(
-                        f"[VerifyPhase] Task completion detected: "
-                        f"goal='{self.coordinator.task_spec.goal}', "
-                        f"created_files={state.memory.created_files}"
-                    )
-                    # Add completion hint to state for next PLAN phase
-                    state.memory.notes.append(
-                        f"Task completion hint: File(s) {state.memory.created_files} created. "
-                        f"Task goal '{self.coordinator.task_spec.goal}' appears to be achieved. "
-                        f"Consider setting stop_reason='done' if task is complete."
-                    )
-                    logger.info("[VerifyPhase] Added task completion hint to memory.notes")
+            # === NEW: Smart completion detection and fast recovery ===
+            decision = self._make_completion_decision(state, multi_dim_result)
+
+            if decision.should_stop:
+                logger.info(f"[VerifyPhase] Task complete: {decision.reason}")
+                # Transition to DONE
+                return PhaseResult(
+                    success=True,
+                    data={"verification_result": verification_result},
+                    next_phase=Phase.DONE,
+                )
+            elif decision.fast_recovery:
+                # Fast recovery: Go directly to PLAN for simple errors
+                logger.info(f"[VerifyPhase] Fast recovery to PLAN: {decision.reason}")
+                self._transition(Phase.PLAN)
+                self.coordinator.state_manager.update(phase="PLAN")
+                return PhaseResult(
+                    success=True,
+                    data={"verification_result": verification_result},
+                    next_phase=Phase.PLAN,
+                )
+            # === END NEW ===
 
             # Transition to DISCOVER (let LLM decide in PLAN phase)
             logger.debug("[VerifyPhase] Transitioning to DISCOVER phase")
@@ -140,3 +180,57 @@ class VerifyPhase(BasePhase):
             # Let Workflow handle the exception with unified error handling
             logger.error(f"[VerifyPhase] VERIFY phase exception: {e}")
             raise  # Re-raise for Workflow to handle
+
+    def _make_completion_decision(
+        self, state, multi_dim_result
+    ):
+        """
+        Make intelligent decision about task completion.
+
+        Args:
+            state: Current agent state
+            multi_dim_result: Multi-dimensional verification result
+
+        Returns:
+            CompletionDecision with next action
+        """
+        from dataclasses import dataclass
+
+        @dataclass
+        class CompletionDecision:
+            should_stop: bool = False
+            fast_recovery: bool = False
+            reason: str = ""
+
+        # 1. Check if LLM explicitly marked task as done
+        if self.coordinator.job_state.shared_data.get("pending_stop_reason") == "done":
+            return CompletionDecision(
+                should_stop=True,
+                reason="LLM explicitly marked task as complete"
+            )
+
+        # 2. Check multi-dimensional verification confidence
+        if multi_dim_result.completion_confidence >= 0.8:
+            return CompletionDecision(
+                should_stop=True,
+                reason=f"High completion confidence ({multi_dim_result.completion_confidence:.2f})"
+            )
+
+        # 3. Check for simple recoverable errors (fast recovery to PLAN)
+        if not multi_dim_result.overall_success:
+            syntax_failed = not multi_dim_result.details.get("syntax", {}).get("passed", True)
+            files_missing = not multi_dim_result.details.get("files_exist", {}).get("passed", True)
+
+            if syntax_failed or files_missing:
+                # Simple errors that can be fixed quickly
+                return CompletionDecision(
+                    fast_recovery=True,
+                    reason=f"Simple error detected (syntax={syntax_failed}, files={files_missing})"
+                )
+
+        # 4. Default: Continue normal DISCOVER cycle
+        return CompletionDecision(
+            should_stop=False,
+            fast_recovery=False,
+            reason="Continue normal cycle"
+        )

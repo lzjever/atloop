@@ -564,10 +564,10 @@ class ActPhase(BasePhase):
             file_path = args.get("path", "")
             file_content = args.get("content", "")
             # For edit_file and append_file, track as modification
-            # Note: The content here is the edit/append content, not the full file
-            # We store it so LLM knows what was changed
+            # IMPORTANT: We now read the COMPLETE file content from sandbox
+            # so the LLM can see the full file state in the next round
             FileChangeTracker.track_file_modification(
-                state, self.coordinator, file_path, file_content, modified_files
+                state, self.coordinator, file_path, file_content, modified_files, tool_name
             )
 
     def _update_memory_after_execution(
