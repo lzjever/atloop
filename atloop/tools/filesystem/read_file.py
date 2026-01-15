@@ -1,10 +1,14 @@
 """Read file tool with enhanced capabilities."""
 
+import logging
 import shlex
 from typing import Any, Dict, Optional
 
 from atloop.runtime.sandbox_adapter import SandboxAdapter
+from atloop.security.path_validator import SecurityError, validate_path
 from atloop.tools.base import BaseTool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 
 class ReadFileTool(BaseTool):
@@ -56,6 +60,19 @@ class ReadFileTool(BaseTool):
             return False, "Argument 'offset' must be an integer"
         if "limit" in args and not isinstance(args.get("limit"), int):
             return False, "Argument 'limit' must be an integer"
+
+        # Security validation: prevent path traversal attacks
+        path = args["path"]
+        try:
+            is_valid, error_msg, resolved_path = validate_path(path)
+            if not is_valid:
+                logger.warning("Path validation failed: %s (path: %s)", error_msg, path)
+                return False, f"Path validation failed: {error_msg}"
+            logger.debug("Path validated: %s -> %s", path, resolved_path)
+        except SecurityError as e:
+            logger.error("Security violation: %s (path: %s)", str(e), path)
+            return False, f"Security violation: {str(e)}"
+
         return True, None
 
     def execute(self, args: Dict[str, Any]) -> ToolResult:
