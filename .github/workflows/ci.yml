@@ -58,10 +58,16 @@ jobs:
       - name: Run linting
         run: |
           uv run ruff check atloop/ tests/ --output-format=concise --no-fix
-      
+
       - name: Check formatting
         run: |
           uv run ruff format --check atloop/ tests/
+
+      - name: Security audit - dependency vulnerabilities
+        run: |
+          uv pip install pip-audit
+          uv run pip-audit --desc
+        continue-on-error: false
 
   build:
     runs-on: ubuntu-latest
